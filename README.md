@@ -163,3 +163,5 @@ npm run lint && npm run type-check
 - **State separation**: Persistent data lives in WatermelonDB; ephemeral/transient state (e.g. active rest timers, in-progress workout flag) lives in Zustand. Never store WatermelonDB records in Zustand.
 - **Decoupled modules**: Progressive overload logic and schedule tracking are built as decoupled modules so they can be swapped or upgraded independently of the UI.
 - **No business logic in components**: Extract domain logic into modules within the relevant feature slice.
+
+For a full breakdown of the data layer, models, state management rules, and conventions for extending the schema, see **[docs/architecture.md](docs/architecture.md)**.
