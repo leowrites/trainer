@@ -6,6 +6,8 @@ module.exports = function (api) {
       'nativewind/babel',
     ],
     plugins: [
+      // WatermelonDB requires legacy decorators (must come before class-properties).
+      ['@babel/plugin-proposal-decorators', { legacy: true }],
       [
         'module-resolver',
         {
