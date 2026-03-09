@@ -15,3 +15,4 @@ export {
 } from './models';
 export { schema } from './schema';
 export { DatabaseProvider, useDatabase } from './provider';
+export { seedDefaultExercises } from './seed-exercises';
