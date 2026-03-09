@@ -96,13 +96,13 @@ Defined in `src/core/database/schema.ts`. The schema is versioned; increment `ve
 
 **Current version: 1**
 
-| Table               | Columns                                                           |
-| ------------------- | ----------------------------------------------------------------- |
-| `exercises`         | `name` (string), `muscle_group` (string)                          |
-| `routines`          | `name` (string), `notes` (string, optional)                       |
-| `routine_exercises` | `routine_id`\*, `exercise_id`\*, `target_sets`, `target_reps`     |
-| `workout_sessions`  | `routine_id`\*, `start_time`, `end_time` (optional)               |
-| `workout_sets`      | `session_id`\*, `exercise_id`\*, `weight`, `reps`, `is_completed` |
+| Table               | Columns                                                                        |
+| ------------------- | ------------------------------------------------------------------------------ |
+| `exercises`         | `name` (string), `muscle_group` (string)                                       |
+| `routines`          | `name` (string), `notes` (string, optional)                                    |
+| `routine_exercises` | `routine_id`\*, `exercise_id`\*, `position`, `target_sets`, `target_reps`      |
+| `workout_sessions`  | `routine_id`\* (optional), `start_time`, `end_time` (optional)                 |
+| `workout_sets`      | `session_id`\*, `exercise_id`\*, `weight`, `reps`, `is_completed`              |
 
 \* Indexed foreign-key column.
 
@@ -118,12 +118,10 @@ Exercise
                               └── @children routineExercises
 
 WorkoutSession
+  └── @relation routine ──► Routine (optional — null for ad-hoc workouts)
   └── @children workoutSets
         └── @relation exercise ──► Exercise
         └── @relation session  ──► WorkoutSession
-
-Routine
-  └── WorkoutSession (via routineId field)
 ```
 
 #### `Exercise`
@@ -154,6 +152,7 @@ class RoutineExercise extends Model {
   static table = 'routine_exercises';
   @field('routine_id') routineId: string;
   @field('exercise_id') exerciseId: string;
+  @field('position') position: number; // display/execution order within the routine
   @field('target_sets') targetSets: number;
   @field('target_reps') targetReps: number;
   @relation('routines', 'routine_id') routine: Relation<Routine>;
@@ -166,9 +165,10 @@ class RoutineExercise extends Model {
 ```ts
 class WorkoutSession extends Model {
   static table = 'workout_sessions';
-  @field('routine_id') routineId: string;
-  @readonly @date('start_time') startTime: Date;
+  @field('routine_id') routineId: string | null; // null for ad-hoc workouts
+  @date('start_time') startTime: Date;
   @date('end_time') endTime: Date | null;
+  @relation('routines', 'routine_id') routine: Relation<Routine>;
   @children('workout_sets') workoutSets: Query<WorkoutSet>;
 }
 ```

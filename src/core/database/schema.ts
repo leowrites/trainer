@@ -28,6 +28,7 @@ export const schema = appSchema({
       columns: [
         { name: 'routine_id', type: 'string', isIndexed: true },
         { name: 'exercise_id', type: 'string', isIndexed: true },
+        { name: 'position', type: 'number' },
         { name: 'target_sets', type: 'number' },
         { name: 'target_reps', type: 'number' },
       ],
@@ -35,7 +36,12 @@ export const schema = appSchema({
     tableSchema({
       name: 'workout_sessions',
       columns: [
-        { name: 'routine_id', type: 'string', isIndexed: true },
+        {
+          name: 'routine_id',
+          type: 'string',
+          isIndexed: true,
+          isOptional: true,
+        },
         { name: 'start_time', type: 'number' },
         { name: 'end_time', type: 'number', isOptional: true },
       ],

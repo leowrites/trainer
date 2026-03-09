@@ -9,13 +9,14 @@ import type { Routine } from './routine';
  *
  * Join table that links a Routine to an Exercise and stores the
  * programmer's intent for that exercise within the routine
- * (target sets and target reps).
+ * (target sets, target reps, and display order).
  */
 export class RoutineExercise extends Model {
   static table = 'routine_exercises';
 
   @field('routine_id') routineId!: string;
   @field('exercise_id') exerciseId!: string;
+  @field('position') position!: number;
   @field('target_sets') targetSets!: number;
   @field('target_reps') targetReps!: number;
 
