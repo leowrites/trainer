@@ -1,0 +1,22 @@
+node_modules/
+dist/
+build/
+.expo/
+web-build/
+coverage/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+# macOS
+.DS_Store
+# Environment
+.env
+.env.local
+.env.*.local
+# TypeScript
+*.tsbuildinfo
+# Metro Bundler
+.metro-health-check*
