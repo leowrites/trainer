@@ -10,15 +10,12 @@ coverage/
 *.key
 *.mobileprovision
 *.orig.*
-web-build/
 # macOS
 .DS_Store
 # Environment
 .env
 .env.local
 .env.*.local
-# Expo
-expo-env.d.ts
 # TypeScript
 *.tsbuildinfo
 # Metro Bundler
