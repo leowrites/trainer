@@ -123,3 +123,15 @@ The algorithm analyzes the last 1–3 workouts for each exercise and suggests th
 - **Below threshold** (<75%): Deload by 10% and rebuild
 
 Tests: `npx jest src/utils/__tests__/progressiveOverload.test.ts`
+
+## Development Roadmap
+
+The codebase is organised so that it can be reviewed and merged as **five focused PRs**, each building on the previous one. See [CONTRIBUTING.md](./CONTRIBUTING.md) for full instructions on branching strategy.
+
+| PR | Scope | Key files |
+|---|---|---|
+| **1 – Foundation** | Project scaffold, types, database schema, Redux store, navigation skeleton | `App.tsx`, `src/types/`, `src/database/database.ts`, `src/store/`, `src/navigation/` |
+| **2 – Routines** | Exercise library, routine CRUD | `src/database/{exercises,routines}.ts`, `src/hooks/useRoutines.ts`, `src/components/routine/`, `src/screens/RoutinesScreen.tsx` |
+| **3 – Workout Mode** | Live workout logging, timers, set tracking | `src/database/workouts.ts`, `src/hooks/useWorkout.ts`, `src/components/workout/`, `src/screens/WorkoutScreen.tsx` |
+| **4 – History & Progress** | Past workouts, exercise progress charts, progressive overload | `src/utils/progressiveOverload.ts`, `src/hooks/useProgressiveOverload.ts`, `src/components/progress/{Line,Bar}Chart.tsx`, `src/screens/{History,Progress}Screen.tsx` |
+| **5 – Dashboard, Health & Schedule** | Stats dashboard, health logging, rotation schedules | `src/utils/muscleGroups.ts`, `src/components/progress/MuscleHeatmap.tsx`, `src/screens/{Dashboard,Health,Schedule}Screen.tsx`, `src/database/health.ts` |
