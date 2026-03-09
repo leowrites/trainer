@@ -27,8 +27,7 @@ export function DatabaseProvider({
     seedDefaultExercises(db).catch((error) => {
       console.error('[Seed] Failed to seed default exercises:', error);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [db]);
 
   return (
     <DatabaseContext.Provider value={db}>{children}</DatabaseContext.Provider>

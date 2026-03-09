@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { Text, View } from 'react-native';
 
-import { DatabaseProvider } from '@core/database/provider';
+import { DatabaseProvider } from '@core/database';
 
 function AppContent(): React.JSX.Element {
   return (
