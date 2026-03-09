@@ -5,6 +5,7 @@ import React from 'react';
 import { HistoryScreen } from '@features/analytics';
 import { ProfileScreen } from '@features/health-tracking';
 import { RoutinesScreen } from '@features/routines';
+import { ScheduleScreen } from '@features/schedule';
 import { WorkoutScreen } from '@features/workout-mode';
 import { colors } from '@core/theme';
 
@@ -13,6 +14,7 @@ import { colors } from '@core/theme';
 export type RootTabParamList = {
   Workout: undefined;
   Routines: undefined;
+  Schedule: undefined;
   History: undefined;
   Profile: undefined;
 };
@@ -23,7 +25,7 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 
 /**
  * Root bottom-tab navigator.
- * Wraps all four primary app tabs: Workout, Routines, History, Profile.
+ * Wraps all five primary app tabs: Workout, Routines, Schedule, History, Profile.
  */
 export function RootNavigator(): React.JSX.Element {
   return (
@@ -41,6 +43,7 @@ export function RootNavigator(): React.JSX.Element {
       >
         <Tab.Screen name="Workout" component={WorkoutScreen} />
         <Tab.Screen name="Routines" component={RoutinesScreen} />
+        <Tab.Screen name="Schedule" component={ScheduleScreen} />
         <Tab.Screen name="History" component={HistoryScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
