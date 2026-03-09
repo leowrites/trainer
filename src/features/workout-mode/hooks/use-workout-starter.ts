@@ -1,4 +1,5 @@
 import { Q } from '@nozbe/watermelondb';
+import type { Collection } from '@nozbe/watermelondb';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';
@@ -8,11 +9,9 @@ import type { Schedule } from '@core/database/models/schedule';
 import type { ScheduleEntry } from '@core/database/models/schedule-entry';
 import type { WorkoutSession } from '@core/database/models/workout-session';
 import type { WorkoutSet } from '@core/database/models/workout-set';
-import {
-  getNextPosition,
-  selectNextRoutineId,
-} from '@features/schedule/domain/schedule-rotation';
-import { buildRoutineSnapshot } from '@features/routines/domain/routine-snapshot';
+import { getNextPosition, selectNextRoutineId } from '@features/schedule';
+import { buildRoutineSnapshot } from '@features/routines';
+import type { WorkoutSnapshotInput } from '@features/routines';
 import { useWorkoutStore } from '../store';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -21,6 +20,36 @@ export interface NextRoutinePreview {
   routineId: string;
   routineName: string;
   scheduleName: string;
+}
+
+/** Minimal interface satisfied by RxJS/WatermelonDB subscription objects. */
+interface Subscription {
+  unsubscribe: () => void;
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Builds an array of `prepareCreate` calls for WorkoutSet placeholders derived
+ * from a routine snapshot. Calling `db.batch(...preparePlaceholderSets(...))`
+ * writes them all in a single SQLite transaction.
+ */
+function preparePlaceholderSets(
+  sessionId: string,
+  snapshot: WorkoutSnapshotInput,
+  collection: Collection<WorkoutSet>,
+): WorkoutSet[] {
+  return snapshot.exercises.flatMap((exercise) =>
+    Array.from({ length: exercise.targetSets }, () =>
+      collection.prepareCreate((record) => {
+        record.sessionId = sessionId;
+        record.exerciseId = exercise.exerciseId;
+        record.weight = 0;
+        record.reps = exercise.targetReps;
+        record.isCompleted = false;
+      }),
+    ),
+  );
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -46,23 +75,18 @@ export function useWorkoutStarter(): {
     null,
   );
 
-  // Reactively observe the active schedule so the preview always reflects the
-  // current state (e.g., if the user changes the active schedule or adds entries).
+  // Reactively observe both the active schedule AND its entries so that any
+  // change (activating a different schedule, adding/removing/reordering entries)
+  // immediately updates the next-routine preview.
   useEffect(() => {
+    // Inner subscription reference — recreated whenever the active schedule changes.
+    let entriesSubscription: Subscription | null = null;
+
     const updatePreview = async (
-      activeSchedules: Schedule[],
+      schedule: Schedule,
+      entries: ScheduleEntry[],
     ): Promise<void> => {
       try {
-        if (activeSchedules.length === 0) {
-          setNextRoutine(null);
-          return;
-        }
-        const schedule = activeSchedules[0];
-        const entries = await db.collections
-          .get<ScheduleEntry>('schedule_entries')
-          .query(Q.where('schedule_id', schedule.id))
-          .fetch();
-
         const routineId = selectNextRoutineId(
           entries.map((e) => ({
             position: e.position,
@@ -89,15 +113,37 @@ export function useWorkoutStarter(): {
       }
     };
 
-    const subscription = db.collections
+    const scheduleSubscription = db.collections
       .get<Schedule>('schedules')
       .query(Q.where('is_active', true))
       .observe()
       .subscribe((activeSchedules) => {
-        void updatePreview(activeSchedules);
+        // Tear down the previous entries subscription before re-subscribing.
+        entriesSubscription?.unsubscribe();
+        entriesSubscription = null;
+
+        if (activeSchedules.length === 0) {
+          setNextRoutine(null);
+          return;
+        }
+
+        const schedule = activeSchedules[0];
+
+        // Subscribe to the active schedule's entries so any add/remove/reorder
+        // also triggers a preview refresh.
+        entriesSubscription = db.collections
+          .get<ScheduleEntry>('schedule_entries')
+          .query(Q.where('schedule_id', schedule.id))
+          .observe()
+          .subscribe((entries) => {
+            void updatePreview(schedule, entries);
+          });
       });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      scheduleSubscription.unsubscribe();
+      entriesSubscription?.unsubscribe();
+    };
   }, [db]);
 
   const startWorkoutFromSchedule = useCallback(async (): Promise<
@@ -155,20 +201,16 @@ export function useWorkoutStarter(): {
           record.endTime = null;
         });
 
-      // Eagerly create placeholder WorkoutSets from the snapshot.
-      // Doing this now ensures that routine edits cannot affect this session.
-      for (const exercise of snapshot.exercises) {
-        for (let setIndex = 0; setIndex < exercise.targetSets; setIndex++) {
-          await db.collections
-            .get<WorkoutSet>('workout_sets')
-            .create((record) => {
-              record.sessionId = session.id;
-              record.exerciseId = exercise.exerciseId;
-              record.weight = 0;
-              record.reps = exercise.targetReps;
-              record.isCompleted = false;
-            });
-        }
+      // Eagerly batch-create placeholder WorkoutSets from the snapshot so that
+      // routine edits cannot affect this session.
+      const preparedSets = preparePlaceholderSets(
+        session.id,
+        snapshot,
+        db.collections.get<WorkoutSet>('workout_sets'),
+      );
+
+      if (preparedSets.length > 0) {
+        await db.batch(...preparedSets);
       }
 
       // Advance the schedule's position so the next call picks the next routine.
