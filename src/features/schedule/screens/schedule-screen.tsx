@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { useSchedules } from '../hooks/use-schedules';
-import { useRoutines } from '@features/routines/hooks/use-routines';
+import { useRoutines } from '@features/routines';
 import type { Schedule } from '@core/database/models/schedule';
 
 // ─── Schedule row ──────────────────────────────────────────────────────────────
