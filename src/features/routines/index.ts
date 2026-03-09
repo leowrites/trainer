@@ -6,3 +6,10 @@
  * Schedules and can be queued automatically by the Schedule Engine.
  */
 export { RoutinesScreen } from './screens/routines-screen';
+export { useExercises } from './hooks/use-exercises';
+export { useRoutines } from './hooks/use-routines';
+export { buildRoutineSnapshot } from './domain/routine-snapshot';
+export type {
+  RoutineExerciseData,
+  WorkoutSnapshotInput,
+} from './domain/routine-snapshot';

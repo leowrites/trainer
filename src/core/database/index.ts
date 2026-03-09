@@ -10,6 +10,8 @@ export type {
   Exercise,
   Routine,
   RoutineExercise,
+  Schedule,
+  ScheduleEntry,
   WorkoutSession,
   WorkoutSet,
 } from './types';
