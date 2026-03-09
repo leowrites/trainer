@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { useWorkoutStore } from '../store';
 
@@ -13,23 +13,27 @@ export function WorkoutScreen(): React.JSX.Element {
         {isWorkoutActive ? 'Session in progress' : 'No active session'}
       </Text>
       {isWorkoutActive ? (
-        <Text
-          accessible
+        <Pressable
           accessibilityRole="button"
-          className="text-primary-400 text-base"
+          className="px-6 py-3 rounded-lg bg-surface-elevated"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           onPress={endWorkout}
         >
-          End Workout
-        </Text>
+          <Text className="text-primary-400 text-base font-semibold">
+            End Workout
+          </Text>
+        </Pressable>
       ) : (
-        <Text
-          accessible
+        <Pressable
           accessibilityRole="button"
-          className="text-primary-400 text-base"
+          className="px-6 py-3 rounded-lg bg-primary-600"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           onPress={() => startWorkout('demo-session-1')}
         >
-          Start Workout
-        </Text>
+          <Text className="text-white text-base font-semibold">
+            Start Workout
+          </Text>
+        </Pressable>
       )}
     </View>
   );

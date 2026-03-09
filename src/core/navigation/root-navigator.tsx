@@ -2,10 +2,10 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import React from 'react';
 
-import { HistoryScreen } from '@features/analytics/screens/history-screen';
-import { ProfileScreen } from '@features/health-tracking/screens/profile-screen';
-import { RoutinesScreen } from '@features/routines/screens/routines-screen';
-import { WorkoutScreen } from '@features/workout-mode/screens/workout-screen';
+import { HistoryScreen } from '@features/analytics';
+import { ProfileScreen } from '@features/health-tracking';
+import { RoutinesScreen } from '@features/routines';
+import { WorkoutScreen } from '@features/workout-mode';
 import { colors } from '@core/theme';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────

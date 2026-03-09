@@ -5,3 +5,4 @@
  * rest countdowns, and progressive-overload suggestions during an active session.
  */
 export { useWorkoutStore } from './store';
+export { WorkoutScreen } from './screens/workout-screen';
