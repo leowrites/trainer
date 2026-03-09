@@ -10,20 +10,22 @@ The app is built with an **Offline-First** philosophy: it must be lightning-fast
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | React Native (via Expo) with strict TypeScript |
+| Layer          | Technology                                                 |
+| -------------- | ---------------------------------------------------------- |
+| Framework      | React Native (via Expo) with strict TypeScript             |
 | Local Database | WatermelonDB (observable, reactive SQLite — offline-first) |
-| Global State | Zustand (ephemeral/non-persistent state only) |
-| Design Pattern | Feature-Sliced Design (FSD) |
-| Styling | NativeWind (Tailwind CSS for React Native) |
+| Global State   | Zustand (ephemeral/non-persistent state only)              |
+| Design Pattern | Feature-Sliced Design (FSD)                                |
+| Styling        | NativeWind (Tailwind CSS for React Native)                 |
 
 ---
 
 ## Architecture & Design Patterns
 
 ### Feature-Sliced Design (FSD)
+
 Code is grouped by feature, not by file type:
+
 - `/features/routines`
 - `/features/workout-mode`
 - `/features/analytics`
@@ -33,6 +35,7 @@ Code is grouped by feature, not by file type:
 Each feature slice is self-contained and exposes a clean public API. Avoid creating `utils/`, `helpers/`, or `services/` directories at the root level.
 
 ### Data Flow
+
 - **Persistent data** must always flow through WatermelonDB.
 - **Ephemeral/transient state** (e.g., active rest timers, whether a workout is in progress) lives in Zustand.
 - Never mix these two: do not store WatermelonDB records in Zustand, and do not use Zustand for anything that needs to survive an app restart.
@@ -52,25 +55,30 @@ Each feature slice is self-contained and exposes a clean public API. Avoid creat
 ## Development Guidelines & Guardrails
 
 ### Local-First, Always
+
 - Never block a user action waiting for a network request.
 - All reads and writes happen against the local WatermelonDB instance.
 - Cloud syncing (e.g., via Supabase) is a future phase — do not introduce network dependencies in core data paths.
 
 ### Type Safety
+
 - `any` types are **strictly forbidden**.
 - All database schemas, API responses, and component props must have rigorous TypeScript definitions.
 - Prefer explicit return types on functions.
 
 ### Extensibility
+
 - The progressive overload logic and schedule tracking must be built as **decoupled modules** so they can be swapped or upgraded independently.
 - Avoid hard-coding business logic inside React components — extract it into domain modules within the relevant feature slice.
 
 ### Styling
+
 - Use NativeWind (Tailwind) utility classes for all styling.
 - Avoid inline `StyleSheet.create` objects unless NativeWind cannot express the style.
 - Follow a mobile-first, thumb-friendly UI approach.
 
 ### Testing
+
 - Write unit tests for all domain/business logic (progressive overload algorithms, schedule rotation, 1RM calculations).
 - Write integration tests for WatermelonDB queries and mutations.
 - Keep component tests focused on behavior, not implementation details.
