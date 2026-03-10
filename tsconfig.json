@@ -7,7 +7,6 @@
     "noUnusedParameters": true,
     "experimentalDecorators": true,
     "resolveJsonModule": true,
-    "lib": ["esnext", "dom"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],

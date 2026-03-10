@@ -1,28 +1,17 @@
 /** @type {import('jest').Config} */
 
-// Packages that ship untranspiled ES modules and must be transformed by Babel
-const esModulePackages = [
-  '(jest-)?react-native',
-  '@react-native(-community)?',
-  'expo(nent)?',
-  '@expo(nent)?/.*',
-  '@expo-google-fonts/.*',
-  'react-navigation',
-  '@react-navigation/.*',
-  'nativewind',
-  'tailwind-merge',
-  'react-native-reanimated',
-  'react-native-worklets',
-].join('|');
-
 module.exports = {
   preset: 'jest-expo',
-  transformIgnorePatterns: [`node_modules/(?!(${esModulePackages}))`],
+  testRegex: '.*\\.test\\.[jt]sx?$',
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
-    '^@features/(.*)$': '<rootDir>/src/features/$1',
     '^@core/(.*)$': '<rootDir>/src/core/$1',
+    '^@features/(.*)$': '<rootDir>/src/features/$1',
     '^@shared/(.*)$': '<rootDir>/src/shared/$1',
+    // Map expo-sqlite and its transitive native deps to manual mocks.
+    '^expo-sqlite$': '<rootDir>/__mocks__/expo-sqlite.js',
+    '^expo-asset$': '<rootDir>/__mocks__/expo-asset.js',
   },
-  testMatch: ['**/__tests__/**/*.test.(ts|tsx)'],
+  transformIgnorePatterns: [
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
+  ],
 };

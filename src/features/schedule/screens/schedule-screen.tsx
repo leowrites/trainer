@@ -103,7 +103,9 @@ function ScheduleRow({
             </Text>
           ) : (
             entries.map((entry: ScheduleEntry, idx: number) => {
-              const routine = routines.find((r: Routine) => r.id === entry.routine_id);
+              const routine = routines.find(
+                (r: Routine) => r.id === entry.routine_id,
+              );
               return (
                 <Text key={entry.id} className="text-white/70 text-sm pt-2">
                   {idx + 1}. {routine ? routine.name : entry.routine_id}
@@ -221,9 +223,7 @@ export function ScheduleScreen(): React.JSX.Element {
       >
         <View
           className={`w-5 h-5 rounded mr-3 border items-center justify-center ${
-            selected
-              ? 'bg-primary-500 border-primary-500'
-              : 'border-white/30'
+            selected ? 'bg-primary-500 border-primary-500' : 'border-white/30'
           }`}
         >
           {selected ? (
@@ -248,9 +248,7 @@ export function ScheduleScreen(): React.JSX.Element {
       {/* Inline edit form */}
       {editingSchedule ? (
         <View className="mx-4 mb-4 bg-surface-elevated rounded-lg p-4">
-          <Text className="text-white font-semibold mb-3">
-            Edit Schedule
-          </Text>
+          <Text className="text-white font-semibold mb-3">Edit Schedule</Text>
           <TextInput
             className="bg-surface text-white rounded-md px-3 py-2 mb-4"
             placeholder="Schedule name"
@@ -267,16 +265,22 @@ export function ScheduleScreen(): React.JSX.Element {
               No routines available.
             </Text>
           ) : (
-            routines.map((routine) => {
-              const idx = editRoutineIds.indexOf(routine.id);
-              const selected = idx !== -1;
-              return renderRoutineCheckbox(
-                routine.id,
-                selected,
-                idx,
-                toggleEditRoutine,
+            (() => {
+              // Pre-compute position map for O(1) lookups while preserving order.
+              const idxMap = new Map(
+                editRoutineIds.map((id, i) => [id, i] as const),
               );
-            })
+              return routines.map((routine) => {
+                const idx = idxMap.get(routine.id) ?? -1;
+                const selected = idx !== -1;
+                return renderRoutineCheckbox(
+                  routine.id,
+                  selected,
+                  idx,
+                  toggleEditRoutine,
+                );
+              });
+            })()
           )}
           <View className="flex-row gap-2 mt-4">
             <Pressable
