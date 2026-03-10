@@ -133,4 +133,70 @@ describe('useExercises', () => {
       callsBefore,
     );
   });
+
+  // ── State-update consistency tests ────────────────────────────────────────
+
+  it('updateExercise: exercises list reflects the updated name after save', () => {
+    const db = createMockDb();
+    const original: Exercise = {
+      id: 'e1',
+      name: 'Bench Press',
+      muscle_group: 'Chest',
+    };
+    db.getAllSync.mockReturnValue([original]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useExercises(), { wrapper });
+
+    const updated: Exercise = { ...original, name: 'Incline Press' };
+    db.getAllSync.mockReturnValue([updated]);
+
+    act(() => {
+      result.current.updateExercise('e1', {
+        name: 'Incline Press',
+        muscleGroup: 'Chest',
+      });
+    });
+
+    expect(result.current.exercises[0].name).toBe('Incline Press');
+  });
+
+  it('deleteExercise: exercises list is empty after the only exercise is deleted', () => {
+    const db = createMockDb();
+    const e1: Exercise = {
+      id: 'e1',
+      name: 'Bench Press',
+      muscle_group: 'Chest',
+    };
+    db.getAllSync.mockReturnValue([e1]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useExercises(), { wrapper });
+
+    db.getAllSync.mockReturnValue([]);
+
+    act(() => {
+      result.current.deleteExercise('e1');
+    });
+
+    expect(result.current.exercises).toEqual([]);
+  });
+
+  it('createExercise: exercises list grows and includes the new exercise', () => {
+    const db = createMockDb();
+    db.getAllSync.mockReturnValue([]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useExercises(), { wrapper });
+
+    const created: Exercise = {
+      id: 'e1',
+      name: 'Deadlift',
+      muscle_group: 'Back',
+    };
+    db.getAllSync.mockReturnValue([created]);
+
+    act(() => {
+      result.current.createExercise({ name: 'Deadlift', muscleGroup: 'Back' });
+    });
+
+    expect(result.current.exercises).toEqual([created]);
+  });
 });

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -37,6 +37,14 @@ function ScheduleRow({
 }: ScheduleRowProps): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
+
+  // Re-fetch entries whenever the schedule entry list changes (e.g. after an
+  // edit/update from the parent) while this row is expanded.
+  useEffect(() => {
+    if (expanded) {
+      setEntries(getScheduleEntries(item.id));
+    }
+  }, [item.id, expanded, getScheduleEntries]);
 
   const handleToggleExpand = (): void => {
     if (expanded) {

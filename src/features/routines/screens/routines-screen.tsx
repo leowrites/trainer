@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -347,6 +347,17 @@ function RoutinesSection({
       setEditingId(null);
     }
   };
+
+  // Re-fetch exercises for the currently expanded routine whenever that
+  // specific routine's data changes (e.g. after an updateRoutine call).
+  // We narrow the dependency to the expanded routine's identity so we
+  // don't trigger a redundant query when unrelated routines change.
+  const expandedRoutine = routines.find((r) => r.id === expandedId) ?? null;
+  useEffect(() => {
+    if (expandedId !== null) {
+      setExpandedExercises(getRoutineExercises(expandedId));
+    }
+  }, [expandedRoutine, expandedId, getRoutineExercises]);
 
   const renderRoutine = ({ item }: { item: Routine }): React.JSX.Element => {
     if (editingId === item.id) {
