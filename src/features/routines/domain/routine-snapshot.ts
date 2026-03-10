@@ -38,6 +38,11 @@ export function buildRoutineSnapshot(
 ): WorkoutSnapshotInput {
   return {
     snapshotName: routineName,
-    exercises: [...exercises].sort((a, b) => a.position - b.position),
+    // Shallow-copy each entry so that mutations to the returned snapshot
+    // do not affect the caller's array.  RoutineExerciseData contains only
+    // primitive values, so a single spread is sufficient.
+    exercises: [...exercises]
+      .sort((a, b) => a.position - b.position)
+      .map((e) => ({ ...e })),
   };
 }

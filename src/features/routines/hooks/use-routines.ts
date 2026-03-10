@@ -91,8 +91,9 @@ export function useRoutines(): {
   const deleteRoutine = useCallback(
     (id: string): void => {
       db.withTransactionSync(() => {
-        // Cascade-delete orphaned schedule entries, then routine exercises and the routine.
+        // Cascade-delete schedule entries referencing this routine (prevent orphaned entries).
         db.runSync('DELETE FROM schedule_entries WHERE routine_id = ?', [id]);
+        // Cascade-delete associated routine exercises.
         db.runSync('DELETE FROM routine_exercises WHERE routine_id = ?', [id]);
         db.runSync('DELETE FROM routines WHERE id = ?', [id]);
       });

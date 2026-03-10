@@ -13,7 +13,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutines } from '../hooks/use-routines';
 import type { NewExerciseInput } from '../hooks/use-exercises';
-import type { NewRoutineInput, RoutineExerciseInput } from '../hooks/use-routines';
+import type {
+  NewRoutineInput,
+  RoutineExerciseInput,
+} from '../hooks/use-routines';
 import type { Exercise, Routine, RoutineExercise } from '@core/database/types';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -259,7 +262,9 @@ function RoutinesSection({
   // expandedId: which routine row is showing its exercises
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // expandedExercises: cached exercises for the expanded routine
-  const [expandedExercises, setExpandedExercises] = useState<RoutineExercise[]>([]);
+  const [expandedExercises, setExpandedExercises] = useState<RoutineExercise[]>(
+    [],
+  );
 
   // editingId: which routine row is in edit mode
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -304,7 +309,9 @@ function RoutinesSection({
     const currentExercises = getRoutineExercises(item.id);
     setEditingId(item.id);
     setEditName(item.name);
-    setEditSelectedIds(currentExercises.map((re: RoutineExercise) => re.exercise_id));
+    setEditSelectedIds(
+      currentExercises.map((re: RoutineExercise) => re.exercise_id),
+    );
     // close expand when entering edit mode
     setExpandedId(null);
     setExpandedExercises([]);
@@ -438,7 +445,9 @@ function RoutinesSection({
             >
               <Text className="text-red-400 text-sm">Delete</Text>
             </Pressable>
-            <Text className="text-white/40 text-xs">{isExpanded ? '▲' : '▼'}</Text>
+            <Text className="text-white/40 text-xs">
+              {isExpanded ? '▲' : '▼'}
+            </Text>
           </View>
         </Pressable>
 
@@ -450,11 +459,13 @@ function RoutinesSection({
               </Text>
             ) : (
               expandedExercises.map((re: RoutineExercise) => {
-                const ex = exercises.find((e: Exercise) => e.id === re.exercise_id);
+                const ex = exercises.find(
+                  (e: Exercise) => e.id === re.exercise_id,
+                );
                 return (
                   <Text key={re.id} className="text-white/70 text-sm pt-2">
-                    {ex ? ex.name : re.exercise_id} —{' '}
-                    {re.target_sets} × {re.target_reps}
+                    {ex ? ex.name : re.exercise_id} — {re.target_sets} ×{' '}
+                    {re.target_reps}
                   </Text>
                 );
               })

@@ -102,6 +102,8 @@ export function useSchedules(): {
   const updateSchedule = useCallback(
     (id: string, input: NewScheduleInput): void => {
       db.withTransactionSync(() => {
+        // NOTE: current_position is reset to -1 so that the next workout
+        // always starts from the first entry in the updated rotation order.
         db.runSync(
           'UPDATE schedules SET name = ?, current_position = -1 WHERE id = ?',
           [input.name, id],
