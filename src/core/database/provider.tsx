@@ -1,4 +1,4 @@
-import type { Database } from '@nozbe/watermelondb';
+import type { SQLiteDatabase } from 'expo-sqlite';
 import React, { createContext, useContext, useEffect } from 'react';
 
 import { database } from './database';
@@ -6,16 +6,16 @@ import { seedDefaultExercises } from './seed-exercises';
 
 // ─── React Context ────────────────────────────────────────────────────────────
 
-const DatabaseContext = createContext<Database | null>(null);
+const DatabaseContext = createContext<SQLiteDatabase | null>(null);
 
 interface DatabaseProviderProps {
   children: React.ReactNode;
   /** Override the database instance (useful for testing). */
-  db?: Database;
+  db?: SQLiteDatabase;
 }
 
 /**
- * Provides the WatermelonDB `Database` instance to the component tree.
+ * Provides the expo-sqlite `SQLiteDatabase` instance to the component tree.
  * Also runs the one-time exercise seed on first mount.
  * Wrap your root component (e.g. `<App>`) with this provider.
  */
@@ -24,9 +24,11 @@ export function DatabaseProvider({
   db = database,
 }: DatabaseProviderProps): React.JSX.Element {
   useEffect(() => {
-    seedDefaultExercises(db).catch((error) => {
+    try {
+      seedDefaultExercises(db);
+    } catch (error) {
       console.error('[Seed] Failed to seed default exercises:', error);
-    });
+    }
   }, [db]);
 
   return (
@@ -35,10 +37,10 @@ export function DatabaseProvider({
 }
 
 /**
- * Returns the WatermelonDB `Database` instance from context.
+ * Returns the expo-sqlite `SQLiteDatabase` instance from context.
  * Must be called inside a component wrapped by `<DatabaseProvider>`.
  */
-export function useDatabase(): Database {
+export function useDatabase(): SQLiteDatabase {
   const db = useContext(DatabaseContext);
   if (!db) {
     throw new Error('useDatabase must be used within a <DatabaseProvider>');

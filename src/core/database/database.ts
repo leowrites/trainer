@@ -1,37 +1,21 @@
-import { Database } from '@nozbe/watermelondb';
-import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
+import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 
-import { schema } from './schema';
-import {
-  Exercise,
-  Routine,
-  RoutineExercise,
-  WorkoutSession,
-  WorkoutSet,
-} from './models';
-
-const adapter = new SQLiteAdapter({
-  schema,
-  // TODO: Add migrations array when schema changes (see WatermelonDB migration docs).
-  // Until then the database is dropped and recreated on schema version bump.
-  migrations: undefined,
-  jsi: true,
-  onSetUpError: (error) => {
-    console.error('[Database] Setup error:', error);
-  },
-});
+import { CREATE_TABLES_SQL } from './schema';
 
 /**
- * Singleton WatermelonDB instance.
+ * Open (or create) the SQLite database and ensure all tables exist.
+ *
+ * expo-sqlite stores the file in the app's Documents directory automatically.
+ * The synchronous API avoids the need for async initialisation at startup.
+ */
+function initDatabase(): SQLiteDatabase {
+  const db = openDatabaseSync('trainer.db');
+  db.execSync(CREATE_TABLES_SQL);
+  return db;
+}
+
+/**
+ * Singleton database instance.
  * Import via `@core/database` — never import this file directly in components.
  */
-export const database = new Database({
-  adapter,
-  modelClasses: [
-    Exercise,
-    Routine,
-    RoutineExercise,
-    WorkoutSession,
-    WorkoutSet,
-  ],
-});
+export const database: SQLiteDatabase = initDatabase();
