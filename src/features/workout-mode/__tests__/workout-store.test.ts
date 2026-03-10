@@ -29,13 +29,15 @@ describe('useWorkoutStore', () => {
 
   it('records a start time close to Date.now()', () => {
     jest.useFakeTimers();
-    jest.setSystemTime(1_700_000_000_000);
+    try {
+      jest.setSystemTime(1_700_000_000_000);
 
-    useWorkoutStore.getState().startWorkout('session-abc');
+      useWorkoutStore.getState().startWorkout('session-abc');
 
-    expect(useWorkoutStore.getState().startTime).toBe(1_700_000_000_000);
-
-    jest.useRealTimers();
+      expect(useWorkoutStore.getState().startTime).toBe(1_700_000_000_000);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('resets all state on endWorkout', () => {
