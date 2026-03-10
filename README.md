@@ -156,6 +156,7 @@ This project uses [Husky](https://github.com/typicode/husky) and [lint-staged](h
 | Spellcheck       | cspell                         | Staged `.md`/`.txt` files                  |
 | Type safety      | `tsc --noEmit`                 | Whole project                              |
 | TODO/FIXME check | `grep`                         | Staged `.ts`/`.tsx` files                  |
+| Secret scanning  | secretlint                     | All staged files                           |
 | Dependency audit | `npm audit --audit-level=high` | Only when `package-lock.json` is staged    |
 
 ### What runs on `git commit` (commit message)

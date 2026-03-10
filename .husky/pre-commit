@@ -1,21 +1,26 @@
+#!/usr/bin/env sh
 # Run lint-staged (Prettier + ESLint on staged files, cspell on docs)
 npx lint-staged
 
 # TypeScript type-check
 npm run type-check
 
-# Check for TODO/FIXME markers in staged files
-STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' || true)
-if [ -n "$STAGED" ]; then
-  MATCHES=$(echo "$STAGED" | xargs grep -n "TODO\|FIXME" 2>/dev/null || true)
-  if [ -n "$MATCHES" ]; then
-    echo ""
-    echo "❌ Found TODO/FIXME markers in staged files:"
-    echo "$MATCHES"
-    echo ""
-    echo "Please resolve or remove TODO/FIXME comments before committing."
-    exit 1
-  fi
+# Check for TODO/FIXME markers in staged TypeScript files
+MATCHES=$(git diff --cached --name-only --diff-filter=ACM -z -- '*.ts' '*.tsx' \
+  | xargs -0 grep -nE 'TODO|FIXME' 2>/dev/null || true)
+if [ -n "$MATCHES" ]; then
+  echo ""
+  echo "❌ Found TODO/FIXME markers in staged files:"
+  echo "$MATCHES"
+  echo ""
+  echo "Please resolve or remove TODO/FIXME comments before committing."
+  exit 1
+fi
+
+# Scan staged files for secrets using secretlint
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+if [ -n "$STAGED_FILES" ]; then
+  echo "$STAGED_FILES" | tr '\n' '\0' | xargs -0 npx secretlint || exit 1
 fi
 
 # Check for security vulnerabilities — only when package-lock.json is modified
