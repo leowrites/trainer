@@ -5,7 +5,7 @@ import { create } from 'zustand';
 interface WorkoutState {
   /** Whether there is an active workout session in progress. */
   isWorkoutActive: boolean;
-  /** The WatermelonDB record ID of the active workout session, or null when idle. */
+  /** The database record ID of the active workout session, or null when idle. */
   activeSessionId: string | null;
   /** Unix timestamp (ms) when the current session was started, or null when idle. */
   startTime: number | null;
@@ -34,7 +34,7 @@ const initialState: WorkoutState = {
  * Ephemeral workout session state.
  *
  * This store tracks only transient, in-memory state for the active workout
- * session. Persistent data (sets, reps, weights) must be written to WatermelonDB.
+ * session. Persistent data (sets, reps, weights) must be written to expo-sqlite.
  */
 export const useWorkoutStore = create<WorkoutStore>((set) => ({
   ...initialState,

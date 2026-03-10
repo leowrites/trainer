@@ -10,13 +10,13 @@ The app is built with an **Offline-First** philosophy: it must be lightning-fast
 
 ## Tech Stack
 
-| Layer          | Technology                                                 |
-| -------------- | ---------------------------------------------------------- |
-| Framework      | React Native (via Expo) with strict TypeScript             |
-| Local Database | WatermelonDB (observable, reactive SQLite — offline-first) |
-| Global State   | Zustand (ephemeral/non-persistent state only)              |
-| Design Pattern | Feature-Sliced Design (FSD)                                |
-| Styling        | NativeWind (Tailwind CSS for React Native)                 |
+| Layer          | Technology                                     |
+| -------------- | ---------------------------------------------- |
+| Framework      | React Native (via Expo) with strict TypeScript |
+| Local Database | expo-sqlite (SQLite — offline-first)           |
+| Global State   | Zustand (ephemeral/non-persistent state only)  |
+| Design Pattern | Feature-Sliced Design (FSD)                    |
+| Styling        | NativeWind (Tailwind CSS for React Native)     |
 
 ---
 
@@ -36,9 +36,9 @@ Each feature slice is self-contained and exposes a clean public API. Avoid creat
 
 ### Data Flow
 
-- **Persistent data** must always flow through WatermelonDB.
+- **Persistent data** must always flow through expo-sqlite.
 - **Ephemeral/transient state** (e.g., active rest timers, whether a workout is in progress) lives in Zustand.
-- Never mix these two: do not store WatermelonDB records in Zustand, and do not use Zustand for anything that needs to survive an app restart.
+- Never mix these two: do not store database records in Zustand, and do not use Zustand for anything that needs to survive an app restart.
 
 ---
 
@@ -57,7 +57,7 @@ Each feature slice is self-contained and exposes a clean public API. Avoid creat
 ### Local-First, Always
 
 - Never block a user action waiting for a network request.
-- All reads and writes happen against the local WatermelonDB instance.
+- All reads and writes happen against the local expo-sqlite database.
 - Cloud syncing (e.g., via Supabase) is a future phase — do not introduce network dependencies in core data paths.
 
 ### Type Safety
@@ -80,17 +80,18 @@ Each feature slice is self-contained and exposes a clean public API. Avoid creat
 ### Testing
 
 - Write unit tests for all domain/business logic (progressive overload algorithms, schedule rotation, 1RM calculations).
-- Write integration tests for WatermelonDB queries and mutations.
+- Write integration tests for expo-sqlite queries and mutations.
 - Keep component tests focused on behavior, not implementation details.
 
 ---
 
-## WatermelonDB Conventions
+## Database Conventions
 
-- Define all models in a central `database/` folder, then import them into the relevant feature slices.
-- Use `@writer` and `@reader` decorators for all database operations.
-- Relationships (`belongsTo`, `hasMany`) must be explicitly typed with the correct model class.
-- Never access `database` directly inside a React component — use a custom hook or an observer HOC.
+- Define all types and query helpers in the central `database/` folder, then import them into the relevant feature slices.
+- Use `db.runSync(sql, params)` for INSERT/UPDATE/DELETE operations.
+- Use `db.getAllSync<T>(sql, params)` and `db.getFirstSync<T>(sql, params)` for reads.
+- Wrap multiple mutations in `db.withTransactionSync()` for atomicity.
+- Never access `database` directly inside a React component — use the `useDatabase()` hook.
 
 ---
 
@@ -100,4 +101,4 @@ Each feature slice is self-contained and exposes a clean public API. Avoid creat
 - React components: `PascalCase`
 - Hooks: `camelCase` prefixed with `use` (e.g., `useActiveWorkout`)
 - Zustand stores: `camelCase` suffixed with `Store` (e.g., `workoutSessionStore`)
-- WatermelonDB models: `PascalCase` (e.g., `WorkoutSet`, `Exercise`)
+- Database entity interfaces: `PascalCase` (e.g., `WorkoutSet`, `Exercise`)

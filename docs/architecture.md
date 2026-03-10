@@ -9,9 +9,9 @@ This document describes the overall architecture of the Trainer app — how data
 1. [Philosophy](#philosophy)
 2. [Layer Overview](#layer-overview)
 3. [Feature-Sliced Design](#feature-sliced-design)
-4. [Data Layer — WatermelonDB](#data-layer--watermelondb)
+4. [Data Layer — expo-sqlite](#data-layer--expo-sqlite)
    - [Schema](#schema)
-   - [Models & Relationships](#models--relationships)
+   - [Entity Types](#entity-types)
    - [Database Instance](#database-instance)
    - [DatabaseProvider & useDatabase Hook](#databaseprovider--usedatabase-hook)
    - [Querying & Writing Data](#querying--writing-data)
@@ -27,9 +27,9 @@ This document describes the overall architecture of the Trainer app — how data
 
 Trainer is built around three guiding principles:
 
-1. **Offline-first** — The app must be fully functional without a network connection. All reads and writes go through the local SQLite database (WatermelonDB). Cloud syncing is a future phase and must never block core user actions.
-2. **Type safety** — `any` is forbidden. Every model, schema column, hook return value, and component prop must be explicitly typed.
-3. **Separation of concerns** — Persistent data lives in WatermelonDB; ephemeral/transient state (e.g. an active rest timer, whether a workout is currently in progress) lives in Zustand. The two must never be mixed.
+1. **Offline-first** — The app must be fully functional without a network connection. All reads and writes go through the local SQLite database (expo-sqlite). Cloud syncing is a future phase and must never block core user actions.
+2. **Type safety** — `any` is forbidden. Every entity type, schema column, hook return value, and component prop must be explicitly typed.
+3. **Separation of concerns** — Persistent data lives in expo-sqlite; ephemeral/transient state (e.g. an active rest timer, whether a workout is currently in progress) lives in Zustand. The two must never be mixed.
 
 ---
 
@@ -46,7 +46,7 @@ Trainer is built around three guiding principles:
 │                   Core / Shared                      │
 │  database │ navigation │ theme │ hooks │ constants   │
 ├──────────────────────────────────────────────────────┤
-│              WatermelonDB (SQLite / JSI)              │
+│              expo-sqlite (synchronous SQLite)                │
 │          Zustand (ephemeral in-memory state)         │
 └──────────────────────────────────────────────────────┘
 ```
@@ -67,7 +67,7 @@ src/
 │   └── health-tracking/
 │
 ├── core/               # App-wide infrastructure (not feature-specific)
-│   ├── database/       # WatermelonDB schema, models & provider
+│   ├── database/       # expo-sqlite schema, types & provider
 │   ├── navigation/     # Root navigator and route definitions
 │   └── theme/          # Design tokens (colours, typography)
 │
@@ -86,122 +86,87 @@ src/
 
 ---
 
-## Data Layer — WatermelonDB
+## Data Layer — expo-sqlite
 
-All persistent data flows through [WatermelonDB](https://watermelondb.dev/) — a reactive, observable SQLite ORM built for React Native.
+All persistent data flows through [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/) — Expo's built-in synchronous SQLite API. The synchronous API keeps the data layer simple and avoids async/await boilerplate in query helpers.
 
 ### Schema
 
-Defined in `src/core/database/schema.ts`. The schema is versioned; increment `version` and supply a migration whenever any table or column changes.
+Defined in `src/core/database/schema.ts` as a single SQL string of `CREATE TABLE IF NOT EXISTS` statements. Every table uses a `TEXT PRIMARY KEY` (UUID) for its `id` column.
 
-**Current version: 1**
+**Current version: 1** (`SCHEMA_VERSION` constant in `schema.ts`)
 
 | Table               | Columns                                                                   |
 | ------------------- | ------------------------------------------------------------------------- |
-| `exercises`         | `name` (string), `muscle_group` (string)                                  |
-| `routines`          | `name` (string), `notes` (string, optional)                               |
+| `exercises`         | `name` (TEXT), `muscle_group` (TEXT)                                      |
+| `routines`          | `name` (TEXT), `notes` (TEXT, optional)                                   |
 | `routine_exercises` | `routine_id`\*, `exercise_id`\*, `position`, `target_sets`, `target_reps` |
 | `workout_sessions`  | `routine_id`\* (optional), `start_time`, `end_time` (optional)            |
 | `workout_sets`      | `session_id`\*, `exercise_id`\*, `weight`, `reps`, `is_completed`         |
 
 \* Indexed foreign-key column.
 
-> WatermelonDB automatically adds an `id` column (string UUID) and `_changed` / `_status` columns to every table for sync support.
+> Every table also has an `id TEXT PRIMARY KEY NOT NULL` column (UUID generated with `generateId()` from `@core/database`).
 
-### Models & Relationships
+### Entity Types
 
-Models live in `src/core/database/models/` and are exported from `src/core/database/`.
-
-```
-Exercise
-  ◄── RoutineExercise ──► Routine
-                              └── @children routineExercises
-
-WorkoutSession
-  └── @relation routine ──► Routine (optional — null for ad-hoc workouts)
-  └── @children workoutSets
-        └── @relation exercise ──► Exercise
-        └── @relation session  ──► WorkoutSession
-```
-
-#### `Exercise`
+Plain TypeScript interfaces for every database entity live in `src/core/database/types.ts` and are exported from `src/core/database/`.
 
 ```ts
-class Exercise extends Model {
-  static table = 'exercises';
-  @field('name') name: string;
-  @field('muscle_group') muscleGroup: string;
+export interface Exercise {
+  id: string;
+  name: string;
+  muscle_group: string;
 }
-```
 
-#### `Routine`
-
-```ts
-class Routine extends Model {
-  static table = 'routines';
-  @field('name') name: string;
-  @field('notes') notes: string | null;
-  @children('routine_exercises') routineExercises: Query<RoutineExercise>;
+export interface Routine {
+  id: string;
+  name: string;
+  notes: string | null;
 }
-```
 
-#### `RoutineExercise` (join table)
-
-```ts
-class RoutineExercise extends Model {
-  static table = 'routine_exercises';
-  @field('routine_id') routineId: string;
-  @field('exercise_id') exerciseId: string;
-  @field('position') position: number; // display/execution order within the routine
-  @field('target_sets') targetSets: number;
-  @field('target_reps') targetReps: number;
-  @relation('routines', 'routine_id') routine: Relation<Routine>;
-  @relation('exercises', 'exercise_id') exercise: Relation<Exercise>;
+export interface RoutineExercise {
+  id: string;
+  routine_id: string;
+  exercise_id: string;
+  position: number;
+  target_sets: number;
+  target_reps: number;
 }
-```
 
-#### `WorkoutSession`
-
-```ts
-class WorkoutSession extends Model {
-  static table = 'workout_sessions';
-  @field('routine_id') routineId: string | null; // null for ad-hoc workouts
-  @date('start_time') startTime: Date;
-  @date('end_time') endTime: Date | null;
-  @relation('routines', 'routine_id') routine: Relation<Routine>;
-  @children('workout_sets') workoutSets: Query<WorkoutSet>;
+export interface WorkoutSession {
+  id: string;
+  routine_id: string | null;
+  start_time: number; // Unix timestamp (ms)
+  end_time: number | null;
 }
-```
 
-#### `WorkoutSet`
-
-```ts
-class WorkoutSet extends Model {
-  static table = 'workout_sets';
-  @field('session_id') sessionId: string;
-  @field('exercise_id') exerciseId: string;
-  @field('weight') weight: number;
-  @field('reps') reps: number;
-  @field('is_completed') isCompleted: boolean;
-  @relation('workout_sessions', 'session_id') session: Relation<WorkoutSession>;
-  @relation('exercises', 'exercise_id') exercise: Relation<Exercise>;
+export interface WorkoutSet {
+  id: string;
+  session_id: string;
+  exercise_id: string;
+  weight: number;
+  reps: number;
+  is_completed: number; // SQLite boolean: 0 | 1
 }
 ```
 
 ### Database Instance
 
-A single `Database` instance is created in `src/core/database/database.ts` using the JSI-powered `SQLiteAdapter` for maximum performance. It is configured with:
-
-- The shared `schema` object.
-- All five model classes registered in `modelClasses`.
-- A `migrations` slot (currently `undefined`; populate it when the schema version is bumped — see [Extending the Schema](#extending-the-schema-migrations)).
+A single `SQLiteDatabase` instance is opened in `src/core/database/database.ts` using `openDatabaseSync`. All tables are created (if they don't already exist) synchronously at startup.
 
 ```ts
 // src/core/database/database.ts
-export const database = new Database({
-  adapter: new SQLiteAdapter({ schema, jsi: true, ... }),
-  modelClasses: [Exercise, Routine, RoutineExercise, WorkoutSession, WorkoutSet],
-});
+import { openDatabaseSync } from 'expo-sqlite';
+import { CREATE_TABLES_SQL } from './schema';
+
+function initDatabase(): SQLiteDatabase {
+  const db = openDatabaseSync('trainer.db');
+  db.execSync(CREATE_TABLES_SQL);
+  return db;
+}
+
+export const database: SQLiteDatabase = initDatabase();
 ```
 
 This singleton is **not** imported directly in React components. Use the hook (see below).
@@ -225,93 +190,99 @@ export default function App(): React.JSX.Element {
 
 ```ts
 import { useDatabase } from '@core/database';
+import type { Exercise } from '@core/database';
 
-function useExercises() {
+function useExercises(): Exercise[] {
   const db = useDatabase();
-  return db.get<Exercise>('exercises').query();
+  return db.getAllSync<Exercise>('SELECT * FROM exercises ORDER BY name');
 }
 ```
 
 The `DatabaseProvider` also accepts an optional `db` prop so you can inject a different instance in tests:
 
 ```tsx
-<DatabaseProvider db={mockDatabase}>
+<DatabaseProvider db={mockDb}>
   <ComponentUnderTest />
 </DatabaseProvider>
 ```
 
 ### Querying & Writing Data
 
-Always use WatermelonDB's `@writer` decorator for mutations. Never call `db.write()` directly from a React component — move write logic into a function or class within the relevant feature slice.
+Use the synchronous expo-sqlite API for all database operations. Keep SQL queries inside dedicated helper functions within the relevant feature slice — never write raw SQL inside React components.
+
+| Method                             | Purpose                         | Example                                                                   |
+| ---------------------------------- | ------------------------------- | ------------------------------------------------------------------------- |
+| `db.getAllSync<T>(sql, params?)`   | Read multiple rows              | `db.getAllSync<Exercise>('SELECT * FROM exercises')`                      |
+| `db.getFirstSync<T>(sql, params?)` | Read a single row               | `db.getFirstSync<Routine>('SELECT * FROM routines WHERE id = ?', [id])`   |
+| `db.runSync(sql, params?)`         | INSERT / UPDATE / DELETE        | `db.runSync('INSERT INTO routines (id, name) VALUES (?, ?)', [id, name])` |
+| `db.withTransactionSync(fn)`       | Wrap multiple writes atomically | `db.withTransactionSync(() => { ... })`                                   |
+
+Example write helper:
 
 ```ts
 // src/features/routines/actions/create-routine.ts
-import { database } from '@core/database';
+import { useDatabase, generateId } from '@core/database';
+import type { Routine } from '@core/database';
 
-export async function createRoutine(name: string): Promise<void> {
-  await database.write(async () => {
-    await database.get('routines').create((routine) => {
-      routine.name = name;
-    });
-  });
+export function createRoutine(db: SQLiteDatabase, name: string): Routine {
+  const id = generateId();
+  db.runSync('INSERT INTO routines (id, name, notes) VALUES (?, ?, NULL)', [
+    id,
+    name,
+  ]);
+  return { id, name, notes: null };
 }
 ```
 
-For reactive UI updates, pair queries with `withObservables` (from `@nozbe/with-observables`) or use the observable `Query` object directly:
+Example read helper:
 
 ```ts
-import { withObservables } from '@nozbe/with-observables';
-import { useDatabase, Exercise } from '@core/database';
+// src/features/routines/queries/get-routines.ts
+import type { SQLiteDatabase } from 'expo-sqlite';
+import type { Routine } from '@core/database';
 
-const enhance = withObservables([], ({ database }) => ({
-  exercises: database.get<Exercise>('exercises').query(),
-}));
+export function getRoutines(db: SQLiteDatabase): Routine[] {
+  return db.getAllSync<Routine>('SELECT * FROM routines ORDER BY name');
+}
 ```
 
 ### Extending the Schema (Migrations)
 
 When adding or modifying tables/columns:
 
-1. Increment the `version` number in `src/core/database/schema.ts`.
-2. Create a migration file in `src/core/database/migrations/`.
-3. Register the migration steps in the `migrations` array passed to `SQLiteAdapter` in `database.ts`.
+1. Increment `SCHEMA_VERSION` in `src/core/database/schema.ts`.
+2. Add the new `CREATE TABLE` or `ALTER TABLE` statements to `CREATE_TABLES_SQL` (new tables only — SQLite does not support removing columns via `ALTER TABLE`).
+3. For column additions, run `ALTER TABLE <table> ADD COLUMN <col> <type>` guarded by the `user_version` pragma so it only runs once.
 
-> **Warning:** Bumping the schema version without providing a matching migration will cause WatermelonDB to drop and recreate the database, erasing all local data.
-
-Example migration skeleton:
+Example migration guard in `database.ts`:
 
 ```ts
-// src/core/database/migrations/index.ts
-import {
-  schemaMigrations,
-  addColumns,
-} from '@nozbe/watermelondb/Schema/migrations';
+const db = openDatabaseSync('trainer.db');
+db.execSync(CREATE_TABLES_SQL); // idempotent — CREATE TABLE IF NOT EXISTS
 
-export const migrations = schemaMigrations({
-  migrations: [
-    {
-      toVersion: 2,
-      steps: [
-        addColumns({
-          table: 'exercises',
-          columns: [{ name: 'equipment', type: 'string', isOptional: true }],
-        }),
-      ],
-    },
-  ],
-});
+const row = db.getFirstSync<{ user_version: number }>('PRAGMA user_version');
+const currentVersion = row?.user_version ?? 0;
+
+if (currentVersion < 2) {
+  db.execSync(`
+    ALTER TABLE exercises ADD COLUMN equipment TEXT;
+    PRAGMA user_version = 2;
+  `);
+}
 ```
+
+> **Warning:** Dropping or renaming columns requires creating a new table, copying data, dropping the old table, and renaming the new one. Plan schema changes carefully to avoid data loss.
 
 ---
 
 ## State Management
 
-| Concern                                            | Tool             | Why                                                                 |
-| -------------------------------------------------- | ---------------- | ------------------------------------------------------------------- |
-| Persistent data (exercises, sessions, sets…)       | **WatermelonDB** | Survives app restarts; reactive; offline-first                      |
-| Ephemeral UI state (rest timer, in-progress flag…) | **Zustand**      | Lightweight; no serialisation needed; lost on restart is acceptable |
+| Concern                                            | Tool            | Why                                                                 |
+| -------------------------------------------------- | --------------- | ------------------------------------------------------------------- |
+| Persistent data (exercises, sessions, sets…)       | **expo-sqlite** | Survives app restarts; synchronous API; offline-first               |
+| Ephemeral UI state (rest timer, in-progress flag…) | **Zustand**     | Lightweight; no serialisation needed; lost on restart is acceptable |
 
-**Never** store WatermelonDB `Model` instances in a Zustand store. If you need to share a record ID with transient state, store the `id: string` only and re-fetch the record from the database as needed.
+**Never** store database entity objects in a Zustand store. If you need to share a record ID with transient state, store the `id: string` only and re-fetch the record from the database as needed.
 
 ---
 
@@ -333,6 +304,6 @@ Design tokens (brand colours, font sizes, spacing scale) are defined in `src/cor
 
 1. Create `src/features/<feature-name>/`.
 2. Add an `index.ts` that exports the feature's public API (components, hooks, actions).
-3. If the feature needs new database tables, update `schema.ts`, add model files in `src/core/database/models/`, register the model class in `database.ts`, and provide a migration (see above).
+3. If the feature needs new database tables, update `CREATE_TABLES_SQL` in `schema.ts`, add entity interfaces in `src/core/database/types.ts`, and apply any necessary migration guard in `database.ts`.
 4. Keep business/domain logic in the feature slice — not in React components.
 5. Use `@core/database`'s `useDatabase()` hook for all database access within components.
