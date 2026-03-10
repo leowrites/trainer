@@ -46,10 +46,10 @@ export function useWorkoutStarter(): {
   const [nextRoutine, setNextRoutine] = useState<NextRoutinePreview | null>(
     null,
   );
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
 
   const refreshPreview = useCallback((): void => {
-    setRefreshKey((k) => k + 1);
+    setRefreshKey((k: number) => k + 1);
   }, []);
 
   // Compute the next-routine preview from the active schedule whenever
@@ -70,7 +70,7 @@ export function useWorkoutStarter(): {
     );
 
     const routineId = selectNextRoutineId(
-      entries.map((e) => ({
+      entries.map((e: ScheduleEntry) => ({
         position: e.position,
         routineId: e.routine_id,
       })),
@@ -115,7 +115,7 @@ export function useWorkoutStarter(): {
       );
 
       const routineId = selectNextRoutineId(
-        entries.map((e) => ({
+        entries.map((e: ScheduleEntry) => ({
           position: e.position,
           routineId: e.routine_id,
         })),
@@ -137,7 +137,7 @@ export function useWorkoutStarter(): {
       // Build the snapshot — captures routine name + exercises at this instant.
       const snapshot: WorkoutSnapshotInput = buildRoutineSnapshot(
         routine.name,
-        routineExercises.map((re) => ({
+        routineExercises.map((re: RoutineExercise) => ({
           exerciseId: re.exercise_id,
           position: re.position,
           targetSets: re.target_sets,

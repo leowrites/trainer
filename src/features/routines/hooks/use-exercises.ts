@@ -17,19 +17,21 @@ export interface NewExerciseInput {
  * CRUD hook for exercises using expo-sqlite.
  *
  * Returns the current list of all exercises plus helper functions
- * for creating and deleting them. Re-fetches after every mutation.
+ * for creating, updating, and deleting them. Re-fetches after every mutation.
  */
 export function useExercises(): {
   exercises: Exercise[];
+  refresh: () => void;
   createExercise: (input: NewExerciseInput) => void;
+  updateExercise: (id: string, input: NewExerciseInput) => void;
   deleteExercise: (id: string) => void;
 } {
   const db = useDatabase();
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
 
   const refresh = useCallback((): void => {
-    setRefreshKey((k) => k + 1);
+    setRefreshKey((k: number) => k + 1);
   }, []);
 
   useEffect(() => {
@@ -62,5 +64,16 @@ export function useExercises(): {
     [db, refresh],
   );
 
-  return { exercises, createExercise, deleteExercise };
+  const updateExercise = useCallback(
+    (id: string, input: NewExerciseInput): void => {
+      db.runSync(
+        'UPDATE exercises SET name = ?, muscle_group = ? WHERE id = ?',
+        [input.name, input.muscleGroup, id],
+      );
+      refresh();
+    },
+    [db, refresh],
+  );
+
+  return { exercises, refresh, createExercise, updateExercise, deleteExercise };
 }

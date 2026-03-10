@@ -23,20 +23,23 @@ export interface NewRoutineInput {
  * CRUD hook for routines using expo-sqlite.
  *
  * Returns the current list of routines and helpers for creating,
- * reading exercises of a routine, and deleting routines. Re-fetches after mutations.
+ * updating, reading exercises of a routine, and deleting routines.
+ * Re-fetches after mutations.
  */
 export function useRoutines(): {
   routines: Routine[];
+  refresh: () => void;
   getRoutineExercises: (routineId: string) => RoutineExercise[];
   createRoutine: (input: NewRoutineInput) => Routine;
+  updateRoutine: (id: string, input: NewRoutineInput) => void;
   deleteRoutine: (id: string) => void;
 } {
   const db = useDatabase();
   const [routines, setRoutines] = useState<Routine[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
 
   const refresh = useCallback((): void => {
-    setRefreshKey((k) => k + 1);
+    setRefreshKey((k: number) => k + 1);
   }, []);
 
   useEffect(() => {
@@ -88,7 +91,8 @@ export function useRoutines(): {
   const deleteRoutine = useCallback(
     (id: string): void => {
       db.withTransactionSync(() => {
-        // Cascade-delete associated routine exercises.
+        // Cascade-delete orphaned schedule entries, then routine exercises and the routine.
+        db.runSync('DELETE FROM schedule_entries WHERE routine_id = ?', [id]);
         db.runSync('DELETE FROM routine_exercises WHERE routine_id = ?', [id]);
         db.runSync('DELETE FROM routines WHERE id = ?', [id]);
       });
@@ -97,5 +101,39 @@ export function useRoutines(): {
     [db, refresh],
   );
 
-  return { routines, getRoutineExercises, createRoutine, deleteRoutine };
+  const updateRoutine = useCallback(
+    (id: string, input: NewRoutineInput): void => {
+      db.withTransactionSync(() => {
+        db.runSync('UPDATE routines SET name = ? WHERE id = ?', [
+          input.name,
+          id,
+        ]);
+        db.runSync('DELETE FROM routine_exercises WHERE routine_id = ?', [id]);
+        input.exercises.forEach((entry, i) => {
+          db.runSync(
+            'INSERT INTO routine_exercises (id, routine_id, exercise_id, position, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?)',
+            [
+              generateId(),
+              id,
+              entry.exerciseId,
+              i,
+              entry.targetSets,
+              entry.targetReps,
+            ],
+          );
+        });
+      });
+      refresh();
+    },
+    [db, refresh],
+  );
+
+  return {
+    routines,
+    refresh,
+    getRoutineExercises,
+    createRoutine,
+    updateRoutine,
+    deleteRoutine,
+  };
 }
