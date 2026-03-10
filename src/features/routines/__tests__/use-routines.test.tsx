@@ -238,4 +238,73 @@ describe('useRoutines', () => {
       callsBefore,
     );
   });
+
+  // ── State-update consistency tests ────────────────────────────────────────
+
+  it('updateRoutine: routines list reflects the updated name after save', () => {
+    const db = createMockDb();
+    const original: Routine = { id: 'r1', name: 'Push A', notes: null };
+    db.getAllSync.mockReturnValue([original]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useRoutines(), { wrapper });
+
+    const updated: Routine = { ...original, name: 'Push B' };
+    db.getAllSync.mockReturnValue([updated]);
+
+    act(() => {
+      result.current.updateRoutine('r1', { name: 'Push B', exercises: [] });
+    });
+
+    expect(result.current.routines[0].name).toBe('Push B');
+  });
+
+  it('updateRoutine: getRoutineExercises returns the new exercises after save', () => {
+    const db = createMockDb();
+    db.getAllSync.mockReturnValue([]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useRoutines(), { wrapper });
+
+    const newExercises: RoutineExercise[] = [
+      {
+        id: 're2',
+        routine_id: 'r1',
+        exercise_id: 'e2',
+        position: 0,
+        target_sets: 4,
+        target_reps: 8,
+      },
+    ];
+    db.getAllSync.mockReturnValue(newExercises);
+
+    act(() => {
+      result.current.updateRoutine('r1', {
+        name: 'Push B',
+        exercises: [{ exerciseId: 'e2', targetSets: 4, targetReps: 8 }],
+      });
+    });
+
+    let exercises: RoutineExercise[] = [];
+    act(() => {
+      exercises = result.current.getRoutineExercises('r1');
+    });
+
+    expect(exercises).toEqual(newExercises);
+    expect(exercises[0].exercise_id).toBe('e2');
+  });
+
+  it('deleteRoutine: routines list is empty after the only routine is deleted', () => {
+    const db = createMockDb();
+    const r1: Routine = { id: 'r1', name: 'Push A', notes: null };
+    db.getAllSync.mockReturnValue([r1]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useRoutines(), { wrapper });
+
+    db.getAllSync.mockReturnValue([]);
+
+    act(() => {
+      result.current.deleteRoutine('r1');
+    });
+
+    expect(result.current.routines).toEqual([]);
+  });
 });

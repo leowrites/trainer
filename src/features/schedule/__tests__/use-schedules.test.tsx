@@ -240,4 +240,124 @@ describe('useSchedules', () => {
       callsBefore,
     );
   });
+
+  // ── State-update consistency tests ────────────────────────────────────────
+  // These tests confirm that after a mutation the hook's state immediately
+  // reflects the new DB state, so UI consumers don't show stale data.
+
+  it('createSchedule: schedules list grows and new schedule is in state', () => {
+    const db = createMockDb();
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+
+    const newSchedule: Schedule = {
+      id: 's1',
+      name: 'New',
+      is_active: 0,
+      current_position: -1,
+    };
+    db.getAllSync.mockReturnValue([newSchedule]);
+
+    act(() => {
+      result.current.createSchedule({ name: 'New', routineIds: [] });
+    });
+
+    expect(result.current.schedules).toEqual([newSchedule]);
+  });
+
+  it('updateSchedule: schedules list reflects the updated name after save', () => {
+    const db = createMockDb();
+    // Initial fetch returns original schedule
+    const original: Schedule = {
+      id: 's1',
+      name: 'Old Name',
+      is_active: 0,
+      current_position: -1,
+    };
+    db.getAllSync.mockReturnValue([original]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+
+    // After update, DB returns the renamed schedule
+    const updated: Schedule = { ...original, name: 'New Name' };
+    db.getAllSync.mockReturnValue([updated]);
+
+    act(() => {
+      result.current.updateSchedule('s1', { name: 'New Name', routineIds: [] });
+    });
+
+    expect(result.current.schedules[0].name).toBe('New Name');
+  });
+
+  it('updateSchedule: getScheduleEntries returns new routineIds after save', () => {
+    const db = createMockDb();
+    db.getAllSync.mockReturnValue([]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+
+    const newEntries: ScheduleEntry[] = [
+      { id: 'se2', schedule_id: 's1', routine_id: 'r2', position: 0 },
+      { id: 'se3', schedule_id: 's1', routine_id: 'r3', position: 1 },
+    ];
+    db.getAllSync.mockReturnValue(newEntries);
+
+    act(() => {
+      result.current.updateSchedule('s1', {
+        name: 'Updated',
+        routineIds: ['r2', 'r3'],
+      });
+    });
+
+    let entries: ScheduleEntry[] = [];
+    act(() => {
+      entries = result.current.getScheduleEntries('s1');
+    });
+
+    expect(entries).toEqual(newEntries);
+    expect(entries.map((e) => e.routine_id)).toEqual(['r2', 'r3']);
+  });
+
+  it('deleteSchedule: schedules list is empty after the only schedule is deleted', () => {
+    const db = createMockDb();
+    const s1: Schedule = {
+      id: 's1',
+      name: 'Push/Pull',
+      is_active: 0,
+      current_position: -1,
+    };
+    db.getAllSync.mockReturnValue([s1]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+
+    // After delete, DB returns empty list
+    db.getAllSync.mockReturnValue([]);
+
+    act(() => {
+      result.current.deleteSchedule('s1');
+    });
+
+    expect(result.current.schedules).toEqual([]);
+  });
+
+  it('setActiveSchedule: the targeted schedule is reflected as active in state', () => {
+    const db = createMockDb();
+    const inactive: Schedule = {
+      id: 's1',
+      name: 'Push/Pull',
+      is_active: 0,
+      current_position: -1,
+    };
+    db.getAllSync.mockReturnValue([inactive]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+
+    const active: Schedule = { ...inactive, is_active: 1 };
+    db.getAllSync.mockReturnValue([active]);
+
+    act(() => {
+      result.current.setActiveSchedule('s1');
+    });
+
+    expect(result.current.schedules[0].is_active).toBe(1);
+  });
 });
