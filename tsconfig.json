@@ -9,23 +9,16 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ],
-      "@features/*": [
-        "src/features/*"
-      ],
-      "@core/*": [
-        "src/core/*"
-      ],
-      "@shared/*": [
-        "src/shared/*"
-      ]
+      "@/*": ["src/*"],
+      "@features/*": ["src/features/*"],
+      "@core/*": ["src/core/*"],
+      "@shared/*": ["src/shared/*"]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    ".expo/types/**/*.d.ts"
+    ".expo/types/**/*.d.ts",
+    "nativewind-env.d.ts"
   ]
 }

@@ -28,6 +28,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["@nozbe/watermelondb/expo-plugin"]
+    "plugins": ["expo-sqlite"]
   }
 }

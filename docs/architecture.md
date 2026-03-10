@@ -96,13 +96,13 @@ Defined in `src/core/database/schema.ts`. The schema is versioned; increment `ve
 
 **Current version: 1**
 
-| Table               | Columns                                                                        |
-| ------------------- | ------------------------------------------------------------------------------ |
-| `exercises`         | `name` (string), `muscle_group` (string)                                       |
-| `routines`          | `name` (string), `notes` (string, optional)                                    |
-| `routine_exercises` | `routine_id`\*, `exercise_id`\*, `position`, `target_sets`, `target_reps`      |
-| `workout_sessions`  | `routine_id`\* (optional), `start_time`, `end_time` (optional)                 |
-| `workout_sets`      | `session_id`\*, `exercise_id`\*, `weight`, `reps`, `is_completed`              |
+| Table               | Columns                                                                   |
+| ------------------- | ------------------------------------------------------------------------- |
+| `exercises`         | `name` (string), `muscle_group` (string)                                  |
+| `routines`          | `name` (string), `notes` (string, optional)                               |
+| `routine_exercises` | `routine_id`\*, `exercise_id`\*, `position`, `target_sets`, `target_reps` |
+| `workout_sessions`  | `routine_id`\* (optional), `start_time`, `end_time` (optional)            |
+| `workout_sets`      | `session_id`\*, `exercise_id`\*, `weight`, `reps`, `is_completed`         |
 
 \* Indexed foreign-key column.
 

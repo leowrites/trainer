@@ -35,5 +35,8 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-      - name: Build
-        run: npx expo export --platform all
+      - name: Build (iOS)
+        run: npx expo export --platform ios
+
+      - name: Build (Android)
+        run: npx expo export --platform android
