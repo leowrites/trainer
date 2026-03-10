@@ -10,13 +10,13 @@ The app is built with an **Offline-First** philosophy: it must be lightning-fast
 
 ## Tech Stack
 
-| Layer          | Technology                                                 |
-| -------------- | ---------------------------------------------------------- |
-| Framework      | React Native (via Expo) with strict TypeScript             |
-| Local Database | expo-sqlite (SQLite — offline-first)                       |
-| Global State   | Zustand (ephemeral/non-persistent state only)              |
-| Design Pattern | Feature-Sliced Design (FSD)                                |
-| Styling        | NativeWind (Tailwind CSS for React Native)                 |
+| Layer          | Technology                                     |
+| -------------- | ---------------------------------------------- |
+| Framework      | React Native (via Expo) with strict TypeScript |
+| Local Database | expo-sqlite (SQLite — offline-first)           |
+| Global State   | Zustand (ephemeral/non-persistent state only)  |
+| Design Pattern | Feature-Sliced Design (FSD)                    |
+| Styling        | NativeWind (Tailwind CSS for React Native)     |
 
 ---
 

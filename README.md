@@ -16,13 +16,13 @@ A premium, offline-first mobile fitness application built for serious lifters. T
 
 ## Tech Stack
 
-| Layer          | Technology                                                 |
-| -------------- | ---------------------------------------------------------- |
-| Framework      | React Native (via Expo ~55) with strict TypeScript ~5.9    |
-| Local Database | expo-sqlite (SQLite — offline-first)                       |
-| Global State   | Zustand (ephemeral/non-persistent state only)              |
-| Design Pattern | Feature-Sliced Design (FSD)                                |
-| Styling        | NativeWind v4 (Tailwind CSS for React Native)              |
+| Layer          | Technology                                              |
+| -------------- | ------------------------------------------------------- |
+| Framework      | React Native (via Expo ~55) with strict TypeScript ~5.9 |
+| Local Database | expo-sqlite (SQLite — offline-first)                    |
+| Global State   | Zustand (ephemeral/non-persistent state only)           |
+| Design Pattern | Feature-Sliced Design (FSD)                             |
+| Styling        | NativeWind v4 (Tailwind CSS for React Native)           |
 
 ---
 

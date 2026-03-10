@@ -210,12 +210,12 @@ The `DatabaseProvider` also accepts an optional `db` prop so you can inject a di
 
 Use the synchronous expo-sqlite API for all database operations. Keep SQL queries inside dedicated helper functions within the relevant feature slice — never write raw SQL inside React components.
 
-| Method | Purpose | Example |
-| --- | --- | --- |
-| `db.getAllSync<T>(sql, params?)` | Read multiple rows | `db.getAllSync<Exercise>('SELECT * FROM exercises')` |
-| `db.getFirstSync<T>(sql, params?)` | Read a single row | `db.getFirstSync<Routine>('SELECT * FROM routines WHERE id = ?', [id])` |
-| `db.runSync(sql, params?)` | INSERT / UPDATE / DELETE | `db.runSync('INSERT INTO routines (id, name) VALUES (?, ?)', [id, name])` |
-| `db.withTransactionSync(fn)` | Wrap multiple writes atomically | `db.withTransactionSync(() => { ... })` |
+| Method                             | Purpose                         | Example                                                                   |
+| ---------------------------------- | ------------------------------- | ------------------------------------------------------------------------- |
+| `db.getAllSync<T>(sql, params?)`   | Read multiple rows              | `db.getAllSync<Exercise>('SELECT * FROM exercises')`                      |
+| `db.getFirstSync<T>(sql, params?)` | Read a single row               | `db.getFirstSync<Routine>('SELECT * FROM routines WHERE id = ?', [id])`   |
+| `db.runSync(sql, params?)`         | INSERT / UPDATE / DELETE        | `db.runSync('INSERT INTO routines (id, name) VALUES (?, ?)', [id, name])` |
+| `db.withTransactionSync(fn)`       | Wrap multiple writes atomically | `db.withTransactionSync(() => { ... })`                                   |
 
 Example write helper:
 
@@ -226,10 +226,10 @@ import type { Routine } from '@core/database';
 
 export function createRoutine(db: SQLiteDatabase, name: string): Routine {
   const id = generateId();
-  db.runSync(
-    'INSERT INTO routines (id, name, notes) VALUES (?, ?, NULL)',
-    [id, name],
-  );
+  db.runSync('INSERT INTO routines (id, name, notes) VALUES (?, ?, NULL)', [
+    id,
+    name,
+  ]);
   return { id, name, notes: null };
 }
 ```
