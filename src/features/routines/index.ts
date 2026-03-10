@@ -8,6 +8,10 @@
 export { RoutinesScreen } from './screens/routines-screen';
 export { useExercises } from './hooks/use-exercises';
 export { useRoutines } from './hooks/use-routines';
+export type {
+  NewRoutineInput,
+  RoutineExerciseInput,
+} from './hooks/use-routines';
 export { buildRoutineSnapshot } from './domain/routine-snapshot';
 export type {
   RoutineExerciseData,

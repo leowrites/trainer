@@ -1,14 +1,22 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+
+import { useFocusEffect } from '@react-navigation/native';
 
 import { useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
 
 export function WorkoutScreen(): React.JSX.Element {
   const { isWorkoutActive, endWorkout } = useWorkoutStore();
-  const { nextRoutine, startWorkoutFromSchedule, startFreeWorkout } =
+  const { nextRoutine, startWorkoutFromSchedule, startFreeWorkout, refreshPreview } =
     useWorkoutStarter();
   const [starting, setStarting] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshPreview();
+    }, [refreshPreview]),
+  );
 
   const handleStartScheduled = (): void => {
     if (starting) return;
@@ -42,7 +50,7 @@ export function WorkoutScreen(): React.JSX.Element {
           <Pressable
             accessibilityRole="button"
             className="px-6 py-3 rounded-lg bg-surface-elevated"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            style={({ pressed }: { pressed: boolean }) => ({ opacity: pressed ? 0.7 : 1 })}
             onPress={endWorkout}
           >
             <Text className="text-primary-400 text-base font-semibold">
@@ -71,7 +79,7 @@ export function WorkoutScreen(): React.JSX.Element {
             <Pressable
               accessibilityRole="button"
               className="px-6 py-3 rounded-lg bg-primary-600 mb-3"
-              style={({ pressed }) => ({
+              style={({ pressed }: { pressed: boolean }) => ({
                 opacity: pressed || starting ? 0.7 : 1,
               })}
               disabled={starting}
@@ -86,7 +94,7 @@ export function WorkoutScreen(): React.JSX.Element {
           <Pressable
             accessibilityRole="button"
             className="px-6 py-3 rounded-lg bg-surface-elevated"
-            style={({ pressed }) => ({
+            style={({ pressed }: { pressed: boolean }) => ({
               opacity: pressed || starting ? 0.7 : 1,
             })}
             disabled={starting}

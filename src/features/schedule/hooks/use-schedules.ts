@@ -18,21 +18,24 @@ export interface NewScheduleInput {
  * CRUD hook for schedules using expo-sqlite.
  *
  * Returns the current list of all schedules and helpers for creating,
- * activating, reading entries, and deleting them. Re-fetches after mutations.
+ * updating, activating, reading entries, and deleting them.
+ * Re-fetches after mutations.
  */
 export function useSchedules(): {
   schedules: Schedule[];
+  refresh: () => void;
   getScheduleEntries: (scheduleId: string) => ScheduleEntry[];
   createSchedule: (input: NewScheduleInput) => Schedule;
+  updateSchedule: (id: string, input: NewScheduleInput) => void;
   setActiveSchedule: (id: string) => void;
   deleteSchedule: (id: string) => void;
 } {
   const db = useDatabase();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
 
   const refresh = useCallback((): void => {
-    setRefreshKey((k) => k + 1);
+    setRefreshKey((k: number) => k + 1);
   }, []);
 
   useEffect(() => {
@@ -96,10 +99,32 @@ export function useSchedules(): {
     [db, refresh],
   );
 
+  const updateSchedule = useCallback(
+    (id: string, input: NewScheduleInput): void => {
+      db.withTransactionSync(() => {
+        db.runSync(
+          'UPDATE schedules SET name = ?, current_position = -1 WHERE id = ?',
+          [input.name, id],
+        );
+        db.runSync('DELETE FROM schedule_entries WHERE schedule_id = ?', [id]);
+        input.routineIds.forEach((routineId, i) => {
+          db.runSync(
+            'INSERT INTO schedule_entries (id, schedule_id, routine_id, position) VALUES (?, ?, ?, ?)',
+            [generateId(), id, routineId, i],
+          );
+        });
+      });
+      refresh();
+    },
+    [db, refresh],
+  );
+
   return {
     schedules,
+    refresh,
     getScheduleEntries,
     createSchedule,
+    updateSchedule,
     setActiveSchedule,
     deleteSchedule,
   };
