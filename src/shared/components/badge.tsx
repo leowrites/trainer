@@ -80,7 +80,7 @@ function PulseDot({ variant }: { variant: BadgeVariant }): React.JSX.Element {
       className={`w-1.5 h-1.5 rounded-full ${dotColourClass}`}
       style={{ opacity }}
       accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
+      importantForAccessibility="no"
     />
   );
 }

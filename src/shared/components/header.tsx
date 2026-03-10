@@ -57,7 +57,7 @@ export function Header({
       {/* Left — logo / title */}
       <View>
         <Text
-          className="text-[36px] font-bold text-[#e8e8e8] leading-tight"
+          className="text-[36px] font-bold text-foreground leading-tight"
           accessibilityRole="header"
         >
           {title}

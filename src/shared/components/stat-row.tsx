@@ -62,7 +62,7 @@ export function StatRow({
 
       <View className="flex-row items-baseline gap-1">
         <Text
-          className="text-[42px] font-bold leading-none text-[#e8e8e8]"
+          className="text-[42px] font-bold leading-none text-foreground"
           accessibilityLabel={a11yLabel}
           accessibilityRole="text"
         >
