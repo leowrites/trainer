@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Type-check, Lint, Format & Build
+    name: Type-check, Lint, Format, Test & Build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,6 +34,9 @@ jobs:
 
       - name: Check formatting
         run: npm run format:check
+
+      - name: Test
+        run: npm test
 
       - name: Build (iOS)
         run: npx expo export --platform ios
