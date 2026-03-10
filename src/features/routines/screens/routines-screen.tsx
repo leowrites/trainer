@@ -10,8 +10,8 @@ import {
 
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutines } from '../hooks/use-routines';
-import type { Exercise } from '@core/database/models/exercise';
-import type { Routine } from '@core/database/models/routine';
+import type { Exercise } from '@core/database/types';
+import type { Routine } from '@core/database/types';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -29,13 +29,13 @@ function ExercisesSection(): React.JSX.Element {
   const [muscleGroup, setMuscleGroup] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const handleCreate = async (): Promise<void> => {
+  const handleCreate = (): void => {
     const trimmedName = name.trim();
     const trimmedGroup = muscleGroup.trim();
     if (!trimmedName || !trimmedGroup) return;
     setSaving(true);
     try {
-      await createExercise({ name: trimmedName, muscleGroup: trimmedGroup });
+      createExercise({ name: trimmedName, muscleGroup: trimmedGroup });
       setName('');
       setMuscleGroup('');
       setShowForm(false);
@@ -48,12 +48,14 @@ function ExercisesSection(): React.JSX.Element {
     <View className="flex-row items-center justify-between bg-surface-elevated px-4 py-3 rounded-lg mb-2">
       <View className="flex-1">
         <Text className="text-white font-medium">{item.name}</Text>
-        <Text className="text-white/50 text-xs mt-0.5">{item.muscleGroup}</Text>
+        <Text className="text-white/50 text-xs mt-0.5">
+          {item.muscle_group}
+        </Text>
       </View>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Delete ${item.name}`}
-        onPress={() => void deleteExercise(item.id)}
+        onPress={() => deleteExercise(item.id)}
         hitSlop={8}
       >
         <Text className="text-red-400 text-sm">Delete</Text>
@@ -98,7 +100,7 @@ function ExercisesSection(): React.JSX.Element {
                 <Pressable
                   accessibilityRole="button"
                   className="flex-1 bg-primary-600 rounded-md py-2 items-center"
-                  onPress={() => void handleCreate()}
+                  onPress={handleCreate}
                   disabled={saving}
                 >
                   {saving ? (
@@ -153,12 +155,12 @@ function RoutinesSection(): React.JSX.Element {
     );
   };
 
-  const handleCreate = async (): Promise<void> => {
+  const handleCreate = (): void => {
     const trimmedName = routineName.trim();
     if (!trimmedName) return;
     setSaving(true);
     try {
-      await createRoutine({
+      createRoutine({
         name: trimmedName,
         exercises: selectedExerciseIds.map((exerciseId) => ({
           exerciseId,
@@ -180,7 +182,7 @@ function RoutinesSection(): React.JSX.Element {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Delete ${item.name}`}
-        onPress={() => void deleteRoutine(item.id)}
+        onPress={() => deleteRoutine(item.id)}
         hitSlop={8}
       >
         <Text className="text-red-400 text-sm">Delete</Text>
@@ -238,7 +240,7 @@ function RoutinesSection(): React.JSX.Element {
                     />
                     <Text className="text-white">{ex.name}</Text>
                     <Text className="text-white/40 text-xs ml-2">
-                      {ex.muscleGroup}
+                      {ex.muscle_group}
                     </Text>
                   </Pressable>
                 ))
@@ -247,7 +249,7 @@ function RoutinesSection(): React.JSX.Element {
                 <Pressable
                   accessibilityRole="button"
                   className="flex-1 bg-primary-600 rounded-md py-2 items-center"
-                  onPress={() => void handleCreate()}
+                  onPress={handleCreate}
                   disabled={saving}
                 >
                   {saving ? (

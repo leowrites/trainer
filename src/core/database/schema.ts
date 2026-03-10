@@ -35,15 +35,38 @@ export const CREATE_TABLES_SQL = `
   CREATE INDEX IF NOT EXISTS idx_routine_exercises_exercise
     ON routine_exercises (exercise_id);
 
+  CREATE TABLE IF NOT EXISTS schedules (
+    id               TEXT PRIMARY KEY NOT NULL,
+    name             TEXT NOT NULL,
+    is_active        INTEGER NOT NULL DEFAULT 0,
+    current_position INTEGER NOT NULL DEFAULT -1
+  );
+
+  CREATE TABLE IF NOT EXISTS schedule_entries (
+    id          TEXT PRIMARY KEY NOT NULL,
+    schedule_id TEXT NOT NULL,
+    routine_id  TEXT NOT NULL,
+    position    INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_schedule_entries_schedule
+    ON schedule_entries (schedule_id);
+  CREATE INDEX IF NOT EXISTS idx_schedule_entries_routine
+    ON schedule_entries (routine_id);
+
   CREATE TABLE IF NOT EXISTS workout_sessions (
-    id         TEXT PRIMARY KEY NOT NULL,
-    routine_id TEXT,
-    start_time INTEGER NOT NULL,
-    end_time   INTEGER
+    id            TEXT PRIMARY KEY NOT NULL,
+    routine_id    TEXT,
+    schedule_id   TEXT,
+    snapshot_name TEXT,
+    start_time    INTEGER NOT NULL,
+    end_time      INTEGER
   );
 
   CREATE INDEX IF NOT EXISTS idx_workout_sessions_routine
     ON workout_sessions (routine_id);
+  CREATE INDEX IF NOT EXISTS idx_workout_sessions_schedule
+    ON workout_sessions (schedule_id);
 
   CREATE TABLE IF NOT EXISTS workout_sets (
     id           TEXT PRIMARY KEY NOT NULL,

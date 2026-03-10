@@ -10,7 +10,7 @@ import {
 
 import { useSchedules } from '../hooks/use-schedules';
 import { useRoutines } from '@features/routines';
-import type { Schedule } from '@core/database/models/schedule';
+import type { Schedule } from '@core/database/types';
 
 // ─── Schedule row ──────────────────────────────────────────────────────────────
 
@@ -28,14 +28,14 @@ function ScheduleRow({
       <View className="flex-row items-center justify-between">
         <View className="flex-1">
           <Text className="text-white font-medium">{item.name}</Text>
-          {item.isActive ? (
+          {item.is_active ? (
             <Text className="text-primary-400 text-xs mt-0.5">● Active</Text>
           ) : (
             <Text className="text-white/40 text-xs mt-0.5">Inactive</Text>
           )}
         </View>
         <View className="flex-row gap-3">
-          {!item.isActive && (
+          {!item.is_active && (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Set ${item.name} as active`}
@@ -77,12 +77,12 @@ export function ScheduleScreen(): React.JSX.Element {
     );
   };
 
-  const handleCreate = async (): Promise<void> => {
+  const handleCreate = (): void => {
     const trimmedName = scheduleName.trim();
     if (!trimmedName) return;
     setSaving(true);
     try {
-      await createSchedule({
+      createSchedule({
         name: trimmedName,
         routineIds: orderedRoutineIds,
       });
@@ -111,8 +111,8 @@ export function ScheduleScreen(): React.JSX.Element {
           renderItem={({ item }) => (
             <ScheduleRow
               item={item}
-              onActivate={(id) => void setActiveSchedule(id)}
-              onDelete={(id) => void deleteSchedule(id)}
+              onActivate={(id) => setActiveSchedule(id)}
+              onDelete={(id) => deleteSchedule(id)}
             />
           )}
           ListEmptyComponent={
@@ -175,7 +175,7 @@ export function ScheduleScreen(): React.JSX.Element {
                   <Pressable
                     accessibilityRole="button"
                     className="flex-1 bg-primary-600 rounded-md py-2 items-center"
-                    onPress={() => void handleCreate()}
+                    onPress={handleCreate}
                     disabled={saving}
                   >
                     {saving ? (
