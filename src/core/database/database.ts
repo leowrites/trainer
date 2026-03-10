@@ -15,9 +15,9 @@ import { CREATE_TABLES_SQL, DROP_TABLES_SQL, SCHEMA_VERSION } from './schema';
 function initDatabase(): SQLiteDatabase {
   const db = openDatabaseSync('trainer.db');
 
-  const currentVersion = db.getFirstSync<{ user_version: number }>(
-    'PRAGMA user_version',
-  )?.user_version ?? 0;
+  const currentVersion =
+    db.getFirstSync<{ user_version: number }>('PRAGMA user_version')
+      ?.user_version ?? 0;
 
   if (currentVersion !== SCHEMA_VERSION) {
     console.log(

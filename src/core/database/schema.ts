@@ -96,4 +96,3 @@ export const DROP_TABLES_SQL = `
   DROP TABLE IF EXISTS routines;
   DROP TABLE IF EXISTS exercises;
 `;
-
