@@ -54,7 +54,7 @@ export function Heading({
 }: TypographyProps): React.JSX.Element {
   return (
     <Text
-      className={`text-2xl font-bold text-[#e8e8e8] ${className}`}
+      className={`text-2xl font-bold text-foreground ${className}`}
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
@@ -78,7 +78,7 @@ export function Body({
 }: TypographyProps): React.JSX.Element {
   return (
     <Text
-      className={`text-sm text-[#e8e8e8] leading-relaxed ${className}`}
+      className={`text-sm text-foreground leading-relaxed ${className}`}
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
@@ -177,7 +177,7 @@ export function StatValue({
 }: TypographyProps): React.JSX.Element {
   return (
     <Text
-      className={`text-[42px] font-bold leading-none text-[#e8e8e8] ${className}`}
+      className={`text-[42px] font-bold leading-none text-foreground ${className}`}
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}

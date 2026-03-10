@@ -6,6 +6,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // ── Foreground / primary text ─────────────────────────────────────────
+        // Maps to CSS --text (#e8e8e8) — the main off-white text colour
+        foreground: {
+          DEFAULT: '#e8e8e8',
+        },
+
         // ── Primary (green) ────────────────────────────────────────────────────
         primary: {
           50: '#f0fdf4',
@@ -63,7 +69,6 @@ module.exports = {
       },
       fontFamily: {
         sans: ['System'],
-        mono: ['System'],
       },
     },
   },
