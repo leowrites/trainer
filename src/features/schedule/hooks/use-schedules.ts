@@ -24,6 +24,8 @@ export interface NewScheduleInput {
 export function useSchedules(): {
   schedules: Schedule[];
   refresh: () => void;
+  /** Increments on every mutation, useful for invalidating derived state. */
+  version: number;
   getScheduleEntries: (scheduleId: string) => ScheduleEntry[];
   createSchedule: (input: NewScheduleInput) => Schedule;
   updateSchedule: (id: string, input: NewScheduleInput) => void;
@@ -124,6 +126,7 @@ export function useSchedules(): {
   return {
     schedules,
     refresh,
+    version: refreshKey,
     getScheduleEntries,
     createSchedule,
     updateSchedule,

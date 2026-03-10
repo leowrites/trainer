@@ -21,6 +21,8 @@ import type { Routine } from '@core/database/types';
 interface ScheduleRowProps {
   item: Schedule;
   routines: Routine[];
+  /** Bumped by the parent on every mutation so the expanded list auto-refreshes. */
+  entriesVersion: number;
   getScheduleEntries: (scheduleId: string) => ScheduleEntry[];
   onActivate: (id: string) => void;
   onEdit: (item: Schedule) => void;
@@ -30,6 +32,7 @@ interface ScheduleRowProps {
 function ScheduleRow({
   item,
   routines,
+  entriesVersion,
   getScheduleEntries,
   onActivate,
   onEdit,
@@ -38,13 +41,15 @@ function ScheduleRow({
   const [expanded, setExpanded] = useState(false);
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
 
-  // Re-fetch entries whenever the schedule entry list changes (e.g. after an
-  // edit/update from the parent) while this row is expanded.
+  // Re-fetch entries whenever the mutation version changes (covers
+  // updateSchedule, deleteSchedule, setActiveSchedule, etc.) or the
+  // user toggles the row open. Using `item.id` alone is insufficient
+  // because the schedule ID doesn't change when only entries change.
   useEffect(() => {
     if (expanded) {
       setEntries(getScheduleEntries(item.id));
     }
-  }, [item.id, expanded, getScheduleEntries]);
+  }, [item.id, expanded, entriesVersion, getScheduleEntries]);
 
   const handleToggleExpand = (): void => {
     if (expanded) {
@@ -133,6 +138,7 @@ export function ScheduleScreen(): React.JSX.Element {
   const {
     schedules,
     refresh: refreshSchedules,
+    version: scheduleVersion,
     getScheduleEntries,
     createSchedule,
     updateSchedule,
@@ -322,6 +328,7 @@ export function ScheduleScreen(): React.JSX.Element {
             <ScheduleRow
               item={item}
               routines={routines}
+              entriesVersion={scheduleVersion}
               getScheduleEntries={getScheduleEntries}
               onActivate={(id) => setActiveSchedule(id)}
               onEdit={handleStartEdit}
