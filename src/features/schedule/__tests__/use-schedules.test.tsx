@@ -241,6 +241,80 @@ describe('useSchedules', () => {
     );
   });
 
+  it('version starts at 0 and increments on refresh()', () => {
+    const db = createMockDb();
+    db.getAllSync.mockReturnValue([]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+    expect(result.current.version).toBe(0);
+
+    act(() => {
+      result.current.refresh();
+    });
+    expect(result.current.version).toBe(1);
+
+    act(() => {
+      result.current.refresh();
+    });
+    expect(result.current.version).toBe(2);
+  });
+
+  it('version increments after createSchedule', () => {
+    const db = createMockDb();
+    db.getAllSync.mockReturnValue([]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+    const versionBefore = result.current.version;
+
+    act(() => {
+      result.current.createSchedule({ name: 'New', routineIds: [] });
+    });
+
+    expect(result.current.version).toBeGreaterThan(versionBefore);
+  });
+
+  it('version increments after updateSchedule', () => {
+    const db = createMockDb();
+    db.getAllSync.mockReturnValue([]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+    const versionBefore = result.current.version;
+
+    act(() => {
+      result.current.updateSchedule('s1', { name: 'Updated', routineIds: [] });
+    });
+
+    expect(result.current.version).toBeGreaterThan(versionBefore);
+  });
+
+  it('version increments after deleteSchedule', () => {
+    const db = createMockDb();
+    db.getAllSync.mockReturnValue([]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+    const versionBefore = result.current.version;
+
+    act(() => {
+      result.current.deleteSchedule('s1');
+    });
+
+    expect(result.current.version).toBeGreaterThan(versionBefore);
+  });
+
+  it('version increments after setActiveSchedule', () => {
+    const db = createMockDb();
+    db.getAllSync.mockReturnValue([]);
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+    const versionBefore = result.current.version;
+
+    act(() => {
+      result.current.setActiveSchedule('s1');
+    });
+
+    expect(result.current.version).toBeGreaterThan(versionBefore);
+  });
+
   // ── State-update consistency tests ────────────────────────────────────────
   // These tests confirm that after a mutation the hook's state immediately
   // reflects the new DB state, so UI consumers don't show stale data.
