@@ -1,60 +1,61 @@
-import { appSchema, tableSchema } from '@nozbe/watermelondb';
-
 /**
- * WatermelonDB schema — version 1
+ * Database schema — SQL CREATE TABLE statements.
  *
- * Defines the SQLite tables for all core entities. Increment the version
- * number and add a migration whenever the schema changes.
+ * Each table uses a TEXT primary key `id` (UUID) to match the previous
+ * WatermelonDB behaviour. Add new tables or columns here and bump the
+ * user_version pragma in database.ts when the schema changes.
  */
-export const schema = appSchema({
-  version: 1,
-  tables: [
-    tableSchema({
-      name: 'exercises',
-      columns: [
-        { name: 'name', type: 'string' },
-        { name: 'muscle_group', type: 'string' },
-      ],
-    }),
-    tableSchema({
-      name: 'routines',
-      columns: [
-        { name: 'name', type: 'string' },
-        { name: 'notes', type: 'string', isOptional: true },
-      ],
-    }),
-    tableSchema({
-      name: 'routine_exercises',
-      columns: [
-        { name: 'routine_id', type: 'string', isIndexed: true },
-        { name: 'exercise_id', type: 'string', isIndexed: true },
-        { name: 'position', type: 'number' },
-        { name: 'target_sets', type: 'number' },
-        { name: 'target_reps', type: 'number' },
-      ],
-    }),
-    tableSchema({
-      name: 'workout_sessions',
-      columns: [
-        {
-          name: 'routine_id',
-          type: 'string',
-          isIndexed: true,
-          isOptional: true,
-        },
-        { name: 'start_time', type: 'number' },
-        { name: 'end_time', type: 'number', isOptional: true },
-      ],
-    }),
-    tableSchema({
-      name: 'workout_sets',
-      columns: [
-        { name: 'session_id', type: 'string', isIndexed: true },
-        { name: 'exercise_id', type: 'string', isIndexed: true },
-        { name: 'weight', type: 'number' },
-        { name: 'reps', type: 'number' },
-        { name: 'is_completed', type: 'boolean' },
-      ],
-    }),
-  ],
-});
+
+export const SCHEMA_VERSION = 1;
+
+export const CREATE_TABLES_SQL = `
+  CREATE TABLE IF NOT EXISTS exercises (
+    id   TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    muscle_group TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS routines (
+    id    TEXT PRIMARY KEY NOT NULL,
+    name  TEXT NOT NULL,
+    notes TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS routine_exercises (
+    id          TEXT PRIMARY KEY NOT NULL,
+    routine_id  TEXT NOT NULL,
+    exercise_id TEXT NOT NULL,
+    position    INTEGER NOT NULL,
+    target_sets INTEGER NOT NULL,
+    target_reps INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_routine_exercises_routine
+    ON routine_exercises (routine_id);
+  CREATE INDEX IF NOT EXISTS idx_routine_exercises_exercise
+    ON routine_exercises (exercise_id);
+
+  CREATE TABLE IF NOT EXISTS workout_sessions (
+    id         TEXT PRIMARY KEY NOT NULL,
+    routine_id TEXT,
+    start_time INTEGER NOT NULL,
+    end_time   INTEGER
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_workout_sessions_routine
+    ON workout_sessions (routine_id);
+
+  CREATE TABLE IF NOT EXISTS workout_sets (
+    id           TEXT PRIMARY KEY NOT NULL,
+    session_id   TEXT NOT NULL,
+    exercise_id  TEXT NOT NULL,
+    weight       REAL NOT NULL,
+    reps         INTEGER NOT NULL,
+    is_completed INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_workout_sets_session
+    ON workout_sets (session_id);
+  CREATE INDEX IF NOT EXISTS idx_workout_sets_exercise
+    ON workout_sets (exercise_id);
+`;

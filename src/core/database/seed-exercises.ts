@@ -1,7 +1,7 @@
-import type { Database } from '@nozbe/watermelondb';
+import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { Exercise } from './models';
 import exerciseSeedData from './seed-data/default-exercises.json';
+import { generateId } from './utils';
 
 interface ExerciseSeedEntry {
   name: string;
@@ -15,28 +15,24 @@ const defaultExercises: ExerciseSeedEntry[] = exerciseSeedData;
  *
  * This is a one-time operation: if the table already contains any records
  * the function returns immediately without modifying the database.
- * The emptiness check is performed inside the write transaction to prevent
- * concurrent calls from inserting duplicate rows.
  *
- * @param db - The WatermelonDB `Database` instance to seed.
+ * @param db - The expo-sqlite `SQLiteDatabase` instance to seed.
  */
-export async function seedDefaultExercises(db: Database): Promise<void> {
-  const exercisesCollection = db.get<Exercise>(Exercise.table);
+export function seedDefaultExercises(db: SQLiteDatabase): void {
+  const row = db.getFirstSync<{ count: number }>(
+    'SELECT COUNT(*) as count FROM exercises',
+  );
 
-  await db.write(async () => {
-    const count = await exercisesCollection.query().fetchCount();
+  if (row && row.count > 0) {
+    return;
+  }
 
-    if (count > 0) {
-      return;
+  db.withTransactionSync(() => {
+    for (const entry of defaultExercises) {
+      db.runSync(
+        'INSERT INTO exercises (id, name, muscle_group) VALUES (?, ?, ?)',
+        [generateId(), entry.name, entry.muscleGroup],
+      );
     }
-
-    const batch = defaultExercises.map((entry) =>
-      exercisesCollection.prepareCreate((record: Exercise) => {
-        record.name = entry.name;
-        record.muscleGroup = entry.muscleGroup;
-      }),
-    );
-
-    await db.batch(...batch);
   });
 }
