@@ -35,6 +35,9 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
+      - name: Test
+        run: npm test
+
       - name: Build (iOS)
         run: npx expo export --platform ios
 
