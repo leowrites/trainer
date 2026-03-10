@@ -1,9 +1,8 @@
-import { Q } from '@nozbe/watermelondb';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';
-import type { Schedule } from '@core/database/models/schedule';
-import type { ScheduleEntry } from '@core/database/models/schedule-entry';
+import type { Schedule, ScheduleEntry } from '@core/database/types';
+import { generateId } from '@core/database/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,102 +15,85 @@ export interface NewScheduleInput {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
- * Reactive CRUD hook for schedules.
+ * CRUD hook for schedules using expo-sqlite.
  *
- * Returns a live-updating list of all schedules and helpers for creating,
- * activating, reading entries, and deleting them.
+ * Returns the current list of all schedules and helpers for creating,
+ * activating, reading entries, and deleting them. Re-fetches after mutations.
  */
 export function useSchedules(): {
   schedules: Schedule[];
-  getScheduleEntries: (scheduleId: string) => Promise<ScheduleEntry[]>;
-  createSchedule: (input: NewScheduleInput) => Promise<Schedule>;
-  setActiveSchedule: (id: string) => Promise<void>;
-  deleteSchedule: (id: string) => Promise<void>;
+  getScheduleEntries: (scheduleId: string) => ScheduleEntry[];
+  createSchedule: (input: NewScheduleInput) => Schedule;
+  setActiveSchedule: (id: string) => void;
+  deleteSchedule: (id: string) => void;
 } {
   const db = useDatabase();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refresh = useCallback((): void => {
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
-    const subscription = db.collections
-      .get<Schedule>('schedules')
-      .query()
-      .observe()
-      .subscribe(setSchedules);
-    return () => subscription.unsubscribe();
-  }, [db]);
+    const rows = db.getAllSync<Schedule>(
+      'SELECT id, name, is_active, current_position FROM schedules ORDER BY name ASC',
+    );
+    setSchedules(rows);
+  }, [db, refreshKey]);
 
   const getScheduleEntries = useCallback(
-    async (scheduleId: string): Promise<ScheduleEntry[]> => {
-      return db.collections
-        .get<ScheduleEntry>('schedule_entries')
-        .query(Q.where('schedule_id', scheduleId), Q.sortBy('position', Q.asc))
-        .fetch();
+    (scheduleId: string): ScheduleEntry[] => {
+      return db.getAllSync<ScheduleEntry>(
+        'SELECT id, schedule_id, routine_id, position FROM schedule_entries WHERE schedule_id = ? ORDER BY position ASC',
+        [scheduleId],
+      );
     },
     [db],
   );
 
   const createSchedule = useCallback(
-    async (input: NewScheduleInput): Promise<Schedule> => {
-      return db.write(async () => {
-        const schedule = await db.collections
-          .get<Schedule>('schedules')
-          .create((record) => {
-            record.name = input.name;
-            record.isActive = false;
-            record.currentPosition = -1;
-          });
-
-        for (let i = 0; i < input.routineIds.length; i++) {
-          await db.collections
-            .get<ScheduleEntry>('schedule_entries')
-            .create((record) => {
-              record.scheduleId = schedule.id;
-              record.routineId = input.routineIds[i];
-              record.position = i;
-            });
-        }
-
-        return schedule;
+    (input: NewScheduleInput): Schedule => {
+      const id = generateId();
+      db.withTransactionSync(() => {
+        db.runSync(
+          'INSERT INTO schedules (id, name, is_active, current_position) VALUES (?, ?, 0, -1)',
+          [id, input.name],
+        );
+        input.routineIds.forEach((routineId, i) => {
+          db.runSync(
+            'INSERT INTO schedule_entries (id, schedule_id, routine_id, position) VALUES (?, ?, ?, ?)',
+            [generateId(), id, routineId, i],
+          );
+        });
       });
+      refresh();
+      return { id, name: input.name, is_active: 0, current_position: -1 };
     },
-    [db],
+    [db, refresh],
   );
 
   const setActiveSchedule = useCallback(
-    async (id: string): Promise<void> => {
-      await db.write(async () => {
+    (id: string): void => {
+      db.withTransactionSync(() => {
         // Deactivate all other schedules first.
-        const allSchedules = await db.collections
-          .get<Schedule>('schedules')
-          .query()
-          .fetch();
-        await Promise.all(
-          allSchedules
-            .filter((s) => s.id !== id && s.isActive)
-            .map((s) => s.update((record) => (record.isActive = false))),
-        );
-        const target = await db.collections.get<Schedule>('schedules').find(id);
-        await target.update((record) => (record.isActive = true));
+        db.runSync('UPDATE schedules SET is_active = 0 WHERE id != ?', [id]);
+        db.runSync('UPDATE schedules SET is_active = 1 WHERE id = ?', [id]);
       });
+      refresh();
     },
-    [db],
+    [db, refresh],
   );
 
   const deleteSchedule = useCallback(
-    async (id: string): Promise<void> => {
-      await db.write(async () => {
-        const schedule = await db.collections
-          .get<Schedule>('schedules')
-          .find(id);
-        const entries = await db.collections
-          .get<ScheduleEntry>('schedule_entries')
-          .query(Q.where('schedule_id', id))
-          .fetch();
-        await Promise.all(entries.map((e) => e.destroyPermanently()));
-        await schedule.destroyPermanently();
+    (id: string): void => {
+      db.withTransactionSync(() => {
+        db.runSync('DELETE FROM schedule_entries WHERE schedule_id = ?', [id]);
+        db.runSync('DELETE FROM schedules WHERE id = ?', [id]);
       });
+      refresh();
     },
-    [db],
+    [db, refresh],
   );
 
   return {

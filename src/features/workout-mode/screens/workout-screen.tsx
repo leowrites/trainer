@@ -10,21 +10,21 @@ export function WorkoutScreen(): React.JSX.Element {
     useWorkoutStarter();
   const [starting, setStarting] = useState(false);
 
-  const handleStartScheduled = async (): Promise<void> => {
+  const handleStartScheduled = (): void => {
     if (starting) return;
     setStarting(true);
     try {
-      await startWorkoutFromSchedule();
+      startWorkoutFromSchedule();
     } finally {
       setStarting(false);
     }
   };
 
-  const handleStartFree = async (): Promise<void> => {
+  const handleStartFree = (): void => {
     if (starting) return;
     setStarting(true);
     try {
-      await startFreeWorkout();
+      startFreeWorkout();
     } finally {
       setStarting(false);
     }
@@ -75,7 +75,7 @@ export function WorkoutScreen(): React.JSX.Element {
                 opacity: pressed || starting ? 0.7 : 1,
               })}
               disabled={starting}
-              onPress={() => void handleStartScheduled()}
+              onPress={handleStartScheduled}
             >
               <Text className="text-white text-base font-semibold">
                 Start {nextRoutine.routineName}
@@ -90,7 +90,7 @@ export function WorkoutScreen(): React.JSX.Element {
               opacity: pressed || starting ? 0.7 : 1,
             })}
             disabled={starting}
-            onPress={() => void handleStartFree()}
+            onPress={handleStartFree}
           >
             <Text className="text-white/60 text-base font-semibold">
               Free Workout

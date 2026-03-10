@@ -23,9 +23,30 @@ export interface RoutineExercise {
   target_reps: number;
 }
 
+export interface Schedule {
+  id: string;
+  name: string;
+  /** SQLite stores booleans as 0/1 integers. */
+  is_active: number;
+  /**
+   * Zero-based index of the last routine that was used.
+   * Starts at -1 (meaning no workout has been started yet).
+   */
+  current_position: number;
+}
+
+export interface ScheduleEntry {
+  id: string;
+  schedule_id: string;
+  routine_id: string;
+  position: number;
+}
+
 export interface WorkoutSession {
   id: string;
   routine_id: string | null;
+  schedule_id: string | null;
+  snapshot_name: string | null;
   start_time: number;
   end_time: number | null;
 }

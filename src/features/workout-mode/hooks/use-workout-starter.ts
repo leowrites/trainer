@@ -1,14 +1,13 @@
-import { Q } from '@nozbe/watermelondb';
-import type { Collection } from '@nozbe/watermelondb';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';
-import type { Routine } from '@core/database/models/routine';
-import type { RoutineExercise } from '@core/database/models/routine-exercise';
-import type { Schedule } from '@core/database/models/schedule';
-import type { ScheduleEntry } from '@core/database/models/schedule-entry';
-import type { WorkoutSession } from '@core/database/models/workout-session';
-import type { WorkoutSet } from '@core/database/models/workout-set';
+import type {
+  Routine,
+  RoutineExercise,
+  Schedule,
+  ScheduleEntry,
+} from '@core/database/types';
+import { generateId } from '@core/database/utils';
 import { getNextPosition, selectNextRoutineId } from '@features/schedule';
 import { buildRoutineSnapshot } from '@features/routines';
 import type { WorkoutSnapshotInput } from '@features/routines';
@@ -22,36 +21,6 @@ export interface NextRoutinePreview {
   scheduleName: string;
 }
 
-/** Minimal interface satisfied by RxJS/WatermelonDB subscription objects. */
-interface Subscription {
-  unsubscribe: () => void;
-}
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Builds an array of `prepareCreate` calls for WorkoutSet placeholders derived
- * from a routine snapshot. Calling `db.batch(...preparePlaceholderSets(...))`
- * writes them all in a single SQLite transaction.
- */
-function preparePlaceholderSets(
-  sessionId: string,
-  snapshot: WorkoutSnapshotInput,
-  collection: Collection<WorkoutSet>,
-): WorkoutSet[] {
-  return snapshot.exercises.flatMap((exercise) =>
-    Array.from({ length: exercise.targetSets }, () =>
-      collection.prepareCreate((record) => {
-        record.sessionId = sessionId;
-        record.exerciseId = exercise.exerciseId;
-        record.weight = 0;
-        record.reps = exercise.targetReps;
-        record.isCompleted = false;
-      }),
-    ),
-  );
-}
-
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -61,185 +30,191 @@ function preparePlaceholderSets(
  *   active schedule or the schedule is empty).
  * - `startWorkoutFromSchedule()`: creates a WorkoutSession with a routine
  *   snapshot and eagerly creates WorkoutSet placeholders; advances the
- *   schedule's `currentPosition`; updates ephemeral Zustand state.
+ *   schedule's `current_position`; updates ephemeral Zustand state.
  * - `startFreeWorkout()`: creates a session without a routine/schedule.
+ * - `refreshPreview()`: manually refreshes the next-routine preview (call
+ *   after schedule changes).
  */
 export function useWorkoutStarter(): {
   nextRoutine: NextRoutinePreview | null;
-  startWorkoutFromSchedule: () => Promise<string | null>;
-  startFreeWorkout: () => Promise<string>;
+  startWorkoutFromSchedule: () => string | null;
+  startFreeWorkout: () => string;
+  refreshPreview: () => void;
 } {
   const db = useDatabase();
   const { startWorkout } = useWorkoutStore();
   const [nextRoutine, setNextRoutine] = useState<NextRoutinePreview | null>(
     null,
   );
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Reactively observe both the active schedule AND its entries so that any
-  // change (activating a different schedule, adding/removing/reordering entries)
-  // immediately updates the next-routine preview.
+  const refreshPreview = useCallback((): void => {
+    setRefreshKey((k) => k + 1);
+  }, []);
+
+  // Compute the next-routine preview from the active schedule whenever
+  // the db reference or refreshKey changes.
   useEffect(() => {
-    // Inner subscription reference — recreated whenever the active schedule changes.
-    let entriesSubscription: Subscription | null = null;
+    const activeSchedule = db.getFirstSync<Schedule>(
+      'SELECT id, name, is_active, current_position FROM schedules WHERE is_active = 1 LIMIT 1',
+    );
 
-    const updatePreview = async (
-      schedule: Schedule,
-      entries: ScheduleEntry[],
-    ): Promise<void> => {
-      try {
-        const routineId = selectNextRoutineId(
-          entries.map((e) => ({
-            position: e.position,
-            routineId: e.routineId,
-          })),
-          schedule.currentPosition,
-        );
+    if (!activeSchedule) {
+      setNextRoutine(null);
+      return;
+    }
 
-        if (!routineId) {
-          setNextRoutine(null);
-          return;
-        }
+    const entries = db.getAllSync<ScheduleEntry>(
+      'SELECT id, schedule_id, routine_id, position FROM schedule_entries WHERE schedule_id = ? ORDER BY position ASC',
+      [activeSchedule.id],
+    );
 
-        const routine = await db.collections
-          .get<Routine>('routines')
-          .find(routineId);
-        setNextRoutine({
-          routineId,
-          routineName: routine.name,
-          scheduleName: schedule.name,
-        });
-      } catch {
-        setNextRoutine(null);
-      }
-    };
+    const routineId = selectNextRoutineId(
+      entries.map((e) => ({
+        position: e.position,
+        routineId: e.routine_id,
+      })),
+      activeSchedule.current_position,
+    );
 
-    const scheduleSubscription = db.collections
-      .get<Schedule>('schedules')
-      .query(Q.where('is_active', true))
-      .observe()
-      .subscribe((activeSchedules) => {
-        // Tear down the previous entries subscription before re-subscribing.
-        entriesSubscription?.unsubscribe();
-        entriesSubscription = null;
+    if (!routineId) {
+      setNextRoutine(null);
+      return;
+    }
 
-        if (activeSchedules.length === 0) {
-          setNextRoutine(null);
-          return;
-        }
+    const routine = db.getFirstSync<Routine>(
+      'SELECT id, name, notes FROM routines WHERE id = ? LIMIT 1',
+      [routineId],
+    );
 
-        const schedule = activeSchedules[0];
+    if (!routine) {
+      setNextRoutine(null);
+      return;
+    }
 
-        // Subscribe to the active schedule's entries so any add/remove/reorder
-        // also triggers a preview refresh.
-        entriesSubscription = db.collections
-          .get<ScheduleEntry>('schedule_entries')
-          .query(Q.where('schedule_id', schedule.id))
-          .observe()
-          .subscribe((entries) => {
-            void updatePreview(schedule, entries);
-          });
-      });
+    setNextRoutine({
+      routineId,
+      routineName: routine.name,
+      scheduleName: activeSchedule.name,
+    });
+  }, [db, refreshKey]);
 
-    return () => {
-      scheduleSubscription.unsubscribe();
-      entriesSubscription?.unsubscribe();
-    };
-  }, [db]);
+  const startWorkoutFromSchedule = useCallback((): string | null => {
+    let sessionId: string | null = null;
 
-  const startWorkoutFromSchedule = useCallback(async (): Promise<
-    string | null
-  > => {
-    return db.write(async () => {
-      // Re-fetch the active schedule inside the write transaction.
-      const activeSchedules = await db.collections
-        .get<Schedule>('schedules')
-        .query(Q.where('is_active', true))
-        .fetch();
+    db.withTransactionSync(() => {
+      // Re-fetch the active schedule inside the transaction.
+      const activeSchedule = db.getFirstSync<Schedule>(
+        'SELECT id, name, is_active, current_position FROM schedules WHERE is_active = 1 LIMIT 1',
+      );
+      if (!activeSchedule) return;
 
-      if (activeSchedules.length === 0) return null;
-      const schedule = activeSchedules[0];
-
-      const entries = await db.collections
-        .get<ScheduleEntry>('schedule_entries')
-        .query(Q.where('schedule_id', schedule.id))
-        .fetch();
+      const entries = db.getAllSync<ScheduleEntry>(
+        'SELECT id, schedule_id, routine_id, position FROM schedule_entries WHERE schedule_id = ? ORDER BY position ASC',
+        [activeSchedule.id],
+      );
 
       const routineId = selectNextRoutineId(
-        entries.map((e) => ({ position: e.position, routineId: e.routineId })),
-        schedule.currentPosition,
+        entries.map((e) => ({
+          position: e.position,
+          routineId: e.routine_id,
+        })),
+        activeSchedule.current_position,
       );
-      if (!routineId) return null;
+      if (!routineId) return;
 
-      const routine = await db.collections
-        .get<Routine>('routines')
-        .find(routineId);
+      const routine = db.getFirstSync<Routine>(
+        'SELECT id, name, notes FROM routines WHERE id = ? LIMIT 1',
+        [routineId],
+      );
+      if (!routine) return;
 
-      const routineExercises = await db.collections
-        .get<RoutineExercise>('routine_exercises')
-        .query(Q.where('routine_id', routineId))
-        .fetch();
+      const routineExercises = db.getAllSync<RoutineExercise>(
+        'SELECT id, routine_id, exercise_id, position, target_sets, target_reps FROM routine_exercises WHERE routine_id = ?',
+        [routineId],
+      );
 
       // Build the snapshot — captures routine name + exercises at this instant.
-      const snapshot = buildRoutineSnapshot(
+      const snapshot: WorkoutSnapshotInput = buildRoutineSnapshot(
         routine.name,
         routineExercises.map((re) => ({
-          exerciseId: re.exerciseId,
+          exerciseId: re.exercise_id,
           position: re.position,
-          targetSets: re.targetSets,
-          targetReps: re.targetReps,
+          targetSets: re.target_sets,
+          targetReps: re.target_reps,
         })),
       );
 
-      // Create the workout session with the snapshot data.
-      const session = await db.collections
-        .get<WorkoutSession>('workout_sessions')
-        .create((record) => {
-          record.routineId = routineId;
-          record.scheduleId = schedule.id;
-          record.snapshotName = snapshot.snapshotName;
-          record.startTime = new Date();
-          record.endTime = null;
-        });
-
-      // Eagerly batch-create placeholder WorkoutSets from the snapshot so that
-      // routine edits cannot affect this session.
-      const preparedSets = preparePlaceholderSets(
-        session.id,
-        snapshot,
-        db.collections.get<WorkoutSet>('workout_sets'),
+      // Create the workout session with snapshot data.
+      sessionId = generateId();
+      const now = Date.now();
+      db.runSync(
+        'INSERT INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
+        [
+          sessionId,
+          routineId,
+          activeSchedule.id,
+          snapshot.snapshotName,
+          now,
+          null,
+        ],
       );
 
-      if (preparedSets.length > 0) {
-        await db.batch(...preparedSets);
+      // Eagerly create placeholder WorkoutSets from the snapshot so that
+      // routine edits cannot affect this session.
+      for (const exercise of snapshot.exercises) {
+        for (let i = 0; i < exercise.targetSets; i++) {
+          db.runSync(
+            'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed) VALUES (?, ?, ?, ?, ?, ?)',
+            [
+              generateId(),
+              sessionId,
+              exercise.exerciseId,
+              0,
+              exercise.targetReps,
+              0,
+            ],
+          );
+        }
       }
 
       // Advance the schedule's position so the next call picks the next routine.
-      const nextPos = getNextPosition(schedule.currentPosition, entries.length);
-      await schedule.update((record) => {
-        record.currentPosition = nextPos;
-      });
-
-      // Sync ephemeral Zustand state.
-      startWorkout(session.id);
-      return session.id;
+      const nextPos = getNextPosition(
+        activeSchedule.current_position,
+        entries.length,
+      );
+      db.runSync('UPDATE schedules SET current_position = ? WHERE id = ?', [
+        nextPos,
+        activeSchedule.id,
+      ]);
     });
+
+    if (sessionId) {
+      startWorkout(sessionId);
+      refreshPreview();
+    }
+
+    return sessionId;
+  }, [db, startWorkout, refreshPreview]);
+
+  const startFreeWorkout = useCallback((): string => {
+    const sessionId = generateId();
+    const now = Date.now();
+    db.runSync(
+      'INSERT INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
+      [sessionId, null, null, null, now, null],
+    );
+    startWorkout(sessionId);
+    return sessionId;
   }, [db, startWorkout]);
 
-  const startFreeWorkout = useCallback(async (): Promise<string> => {
-    return db.write(async () => {
-      const session = await db.collections
-        .get<WorkoutSession>('workout_sessions')
-        .create((record) => {
-          record.routineId = null;
-          record.scheduleId = null;
-          record.snapshotName = null;
-          record.startTime = new Date();
-          record.endTime = null;
-        });
-      startWorkout(session.id);
-      return session.id;
-    });
-  }, [db, startWorkout]);
-
-  return { nextRoutine, startWorkoutFromSchedule, startFreeWorkout };
+  return {
+    nextRoutine,
+    startWorkoutFromSchedule,
+    startFreeWorkout,
+    refreshPreview,
+  };
 }
+
+// Keep backward-compatible type alias used in workout-screen.tsx
+export type { NextRoutinePreview as WorkoutStarterNextRoutine };
