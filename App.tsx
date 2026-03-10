@@ -4,12 +4,15 @@ import React from 'react';
 
 import { DatabaseProvider } from '@core/database';
 import { RootNavigator } from '@core/navigation';
+import { ThemeProvider } from '@core/theme/theme-context';
 
 export default function App(): React.JSX.Element {
   return (
-    <DatabaseProvider>
-      <StatusBar style="light" />
-      <RootNavigator />
-    </DatabaseProvider>
+    <ThemeProvider>
+      <DatabaseProvider>
+        <StatusBar style="light" />
+        <RootNavigator />
+      </DatabaseProvider>
+    </ThemeProvider>
   );
 }
