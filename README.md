@@ -143,6 +143,69 @@ import type { RecordId } from '@shared/types';
 
 ---
 
+## Pre-Commit Hooks
+
+This project uses [Husky](https://github.com/typicode/husky) and [lint-staged](https://github.com/okonet/lint-staged) to automatically enforce code quality on every commit.
+
+### What runs on `git commit`
+
+| Check            | Tool                           | Scope                                      |
+| ---------------- | ------------------------------ | ------------------------------------------ |
+| Code formatting  | Prettier                       | Staged `.ts`, `.tsx`, `.json`, `.md` files |
+| Linting          | ESLint                         | Staged `.ts`/`.tsx` files                  |
+| Spellcheck       | cspell                         | Staged `.md`/`.txt` files                  |
+| Type safety      | `tsc --noEmit`                 | Whole project                              |
+| TODO/FIXME check | `grep`                         | Staged `.ts`/`.tsx` files                  |
+| Dependency audit | `npm audit --audit-level=high` | Only when `package-lock.json` is staged    |
+
+### What runs on `git commit` (commit message)
+
+Commit messages are validated by [commitlint](https://commitlint.js.org/) using the [Conventional Commits](https://www.conventionalcommits.org/) spec.
+
+**Format:** `<type>(<optional scope>): <subject>`
+
+| Type       | When to use                                 |
+| ---------- | ------------------------------------------- |
+| `feat`     | A new feature                               |
+| `fix`      | A bug fix                                   |
+| `docs`     | Documentation changes only                  |
+| `style`    | Formatting, whitespace — no logic change    |
+| `refactor` | Code restructure — no feature or bug change |
+| `perf`     | Performance improvements                    |
+| `test`     | Adding or updating tests                    |
+| `build`    | Build system or dependency changes          |
+| `ci`       | CI configuration changes                    |
+| `chore`    | Maintenance tasks (e.g. updating configs)   |
+| `revert`   | Reverting a previous commit                 |
+
+**Examples:**
+
+```
+feat(workout): add progressive overload suggestions
+fix(database): handle missing schedule_id gracefully
+docs: update architecture overview
+chore: update husky to v9
+```
+
+### Setup
+
+Hooks are installed automatically when you run `npm install` (via the `prepare` lifecycle script). No additional steps are needed.
+
+If hooks do not run after cloning, re-run:
+
+```bash
+npm run prepare
+```
+
+### Bypassing hooks (use sparingly)
+
+```bash
+# Skip pre-commit checks for a single commit (not recommended)
+git commit --no-verify -m "chore: emergency hotfix"
+```
+
+---
+
 ## Code Style
 
 - **TypeScript strict mode** is enabled. `any` is forbidden — use explicit types.

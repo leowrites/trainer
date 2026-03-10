@@ -1,0 +1,24 @@
+# Run lint-staged (Prettier + ESLint on staged files, cspell on docs)
+npx lint-staged
+
+# TypeScript type-check
+npm run type-check
+
+# Check for TODO/FIXME markers in staged files
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' || true)
+if [ -n "$STAGED" ]; then
+  MATCHES=$(echo "$STAGED" | xargs grep -n "TODO\|FIXME" 2>/dev/null || true)
+  if [ -n "$MATCHES" ]; then
+    echo ""
+    echo "❌ Found TODO/FIXME markers in staged files:"
+    echo "$MATCHES"
+    echo ""
+    echo "Please resolve or remove TODO/FIXME comments before committing."
+    exit 1
+  fi
+fi
+
+# Check for security vulnerabilities — only when package-lock.json is modified
+if git diff --cached --name-only | grep -q "package-lock.json"; then
+  npm audit --audit-level=high
+fi
