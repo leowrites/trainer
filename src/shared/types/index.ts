@@ -8,7 +8,7 @@
 /** Unit system preference */
 export type WeightUnit = 'kg' | 'lbs';
 
-/** Generic ID type — matches WatermelonDB string IDs */
+/** Generic ID type — UUID string used as the primary key for all database entities */
 export type RecordId = string;
 
 /** A nullable value */

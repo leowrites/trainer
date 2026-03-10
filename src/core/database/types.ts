@@ -1,6 +1,5 @@
 /**
  * Plain TypeScript interfaces for every database entity.
- * These replace WatermelonDB's decorator-based Model classes.
  */
 
 export interface Exercise {

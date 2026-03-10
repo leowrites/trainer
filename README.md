@@ -19,7 +19,7 @@ A premium, offline-first mobile fitness application built for serious lifters. T
 | Layer          | Technology                                                 |
 | -------------- | ---------------------------------------------------------- |
 | Framework      | React Native (via Expo ~55) with strict TypeScript ~5.9    |
-| Local Database | WatermelonDB (observable, reactive SQLite — offline-first) |
+| Local Database | expo-sqlite (SQLite — offline-first)                       |
 | Global State   | Zustand (ephemeral/non-persistent state only)              |
 | Design Pattern | Feature-Sliced Design (FSD)                                |
 | Styling        | NativeWind v4 (Tailwind CSS for React Native)              |
@@ -83,7 +83,7 @@ trainer/
 │   │   └── health-tracking/    # Body weight, steps, misc activities
 │   │
 │   ├── core/                   # App-wide infrastructure
-│   │   ├── database/           # WatermelonDB schema, models & migrations
+│   │   ├── database/           # expo-sqlite schema, types & provider
 │   │   ├── navigation/         # Root navigator and route definitions
 │   │   └── theme/              # Design tokens (colours, typography)
 │   │
@@ -159,8 +159,8 @@ npm run lint && npm run type-check
 
 ## Architecture Guidelines
 
-- **Offline-first**: All reads and writes go through WatermelonDB. Never block a user action on a network request.
-- **State separation**: Persistent data lives in WatermelonDB; ephemeral/transient state (e.g. active rest timers, in-progress workout flag) lives in Zustand. Never store WatermelonDB records in Zustand.
+- **Offline-first**: All reads and writes go through expo-sqlite. Never block a user action on a network request.
+- **State separation**: Persistent data lives in expo-sqlite; ephemeral/transient state (e.g. active rest timers, in-progress workout flag) lives in Zustand. Never store database records in Zustand.
 - **Decoupled modules**: Progressive overload logic and schedule tracking are built as decoupled modules so they can be swapped or upgraded independently of the UI.
 - **No business logic in components**: Extract domain logic into modules within the relevant feature slice.
 
