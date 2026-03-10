@@ -6,7 +6,7 @@
  * database.ts when the schema changes.
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS exercises (
@@ -82,3 +82,18 @@ export const CREATE_TABLES_SQL = `
   CREATE INDEX IF NOT EXISTS idx_workout_sets_exercise
     ON workout_sets (exercise_id);
 `;
+
+/**
+ * Drops all tables in reverse-dependency order.
+ * Used by initDatabase() when the schema version changes during development.
+ */
+export const DROP_TABLES_SQL = `
+  DROP TABLE IF EXISTS workout_sets;
+  DROP TABLE IF EXISTS workout_sessions;
+  DROP TABLE IF EXISTS schedule_entries;
+  DROP TABLE IF EXISTS schedules;
+  DROP TABLE IF EXISTS routine_exercises;
+  DROP TABLE IF EXISTS routines;
+  DROP TABLE IF EXISTS exercises;
+`;
+
