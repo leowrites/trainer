@@ -1,21 +1,18 @@
 /**
  * GlassView
  *
- * A platform-aware surface that renders iOS 26 "Liquid Glass" — a frosted,
- * translucent container — and degrades gracefully on older iOS versions and
- * Android.
+ * A platform-aware surface backed by `@callstack/liquid-glass`.  On iOS 26+
+ * it renders native liquid glass via `LiquidGlassView`; on older iOS it falls
+ * back to an `rgba` approximation; on Android / Web it uses a solid
+ * `glassFallback` fill.
  *
  * ## Rendering tiers
  *
- * | Tier                  | Condition          | Visual                        |
- * |-----------------------|--------------------|-------------------------------|
- * | **Liquid Glass**      | iOS 26+            | `rgba` fill + glass border    |
- * | **Glass (legacy iOS)**| iOS 13–25          | `rgba` fill + glass border    |
- * | **Solid fallback**    | Android / Web      | Opaque `glassFallback` fill   |
- *
- * > **Upgrading to native blur:** install `expo-blur` (`npx expo install
- * > expo-blur`) then replace the inner `View` with `BlurView` when
- * > `isLiquidGlass` is `true`.  The component's public API is unchanged.
+ * | Tier                  | Condition          | Visual                                |
+ * |-----------------------|--------------------|---------------------------------------|
+ * | **Liquid Glass**      | iOS 26+            | Native `LiquidGlassView` (real blur)  |
+ * | **Glass (legacy iOS)**| iOS 13–25          | `rgba` fill + glass border            |
+ * | **Solid fallback**    | Android / Web      | Opaque `glassFallback` fill           |
  *
  * ## Props
  *
@@ -35,8 +32,12 @@
  */
 
 import React from 'react';
-import { View } from 'react-native';
 import type { ViewProps } from 'react-native';
+
+import {
+  isLiquidGlassSupported,
+  LiquidGlassView,
+} from '@callstack/liquid-glass';
 
 import { useTheme } from '@core/theme/theme-context';
 
@@ -66,6 +67,17 @@ export interface GlassViewProps extends Pick<
   className?: string;
 }
 
+// ─── Intensity maps ───────────────────────────────────────────────────────────
+
+// `medium` and `heavy` both use the 'regular' blur material; the visual
+// distinction between them on iOS 26+ comes from the tintColor overlay
+// applied to the 'heavy' tier (see GlassView render below).
+const EFFECT_MAP = {
+  light: 'clear',
+  medium: 'regular',
+  heavy: 'regular',
+} as const;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function GlassView({
@@ -76,9 +88,29 @@ export function GlassView({
   style,
   accessibilityRole = 'none',
 }: GlassViewProps): React.JSX.Element {
-  const { tokens } = useTheme();
+  const { tokens, colorMode } = useTheme();
   const { isSupported } = useGlassSupport();
 
+  // On iOS 26+ the native module handles the visual; we only supply the
+  // effect variant and an optional tint for the heavy tier.  colorScheme
+  // mirrors the active theme so glass adapts to light/dark mode.
+  if (isLiquidGlassSupported) {
+    return (
+      <LiquidGlassView
+        effect={EFFECT_MAP[intensity]}
+        tintColor={intensity === 'heavy' ? tokens.glassFillHeavy : undefined}
+        colorScheme={colorMode}
+        className={className}
+        style={[{ borderRadius, overflow: 'hidden' }, style]}
+        accessibilityRole={accessibilityRole}
+      >
+        {children}
+      </LiquidGlassView>
+    );
+  }
+
+  // iOS < 26: rgba approximation with a subtle glass border.
+  // Android / Web: solid opaque fallback.
   const fill = isSupported
     ? {
         light: tokens.glassFillLight,
@@ -90,7 +122,7 @@ export function GlassView({
   const borderColor = isSupported ? tokens.glassBorder : 'transparent';
 
   return (
-    <View
+    <LiquidGlassView
       className={className}
       style={[
         {
@@ -105,6 +137,6 @@ export function GlassView({
       accessibilityRole={accessibilityRole}
     >
       {children}
-    </View>
+    </LiquidGlassView>
   );
 }

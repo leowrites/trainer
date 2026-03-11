@@ -2,6 +2,11 @@
  * useGlassSupport
  *
  * Returns platform capability flags that drive the liquid glass UI system.
+ * The `isLiquidGlass` flag is derived from `isLiquidGlassSupported` exported
+ * by `@callstack/liquid-glass` (set to `true` by the native module on iOS 26+)
+ * and falls back to a `Platform.Version` check so that the hook continues to
+ * work correctly in test environments and Expo Go where the native module is
+ * not loaded.
  *
  * | Platform        | isSupported | isLiquidGlass |
  * |-----------------|-------------|---------------|
@@ -12,25 +17,9 @@
  * **isSupported** — true on iOS 13+ where semi-transparent glass surfaces
  * (simulated via `rgba` backgrounds) are visually effective.
  *
- * **isLiquidGlass** — true on iOS 26+, Apple's "Liquid Glass" release.  At
- * this tier the full native blur is available via `expo-blur`'s `BlurView`
- * and the system renders authentic real-time backdrop sampling.  When false,
- * `GlassView` falls back to a high-quality `rgba` approximation.
- *
- * **Integration note — `expo-blur`:**
- * To upgrade from the rgba approximation to native backdrop blur, add
- * `expo-blur` to your project (`npx expo install expo-blur`) and replace the
- * plain `View` inside `GlassView` with `BlurView` when `isLiquidGlass` is
- * true:
- *
- * ```tsx
- * import { BlurView } from 'expo-blur';
- *
- * // Inside GlassView render:
- * if (glassSupport.isLiquidGlass) {
- *   return <BlurView intensity={blurIntensity} tint="dark" style={...} />;
- * }
- * ```
+ * **isLiquidGlass** — true on iOS 26+, Apple's "Liquid Glass" release.
+ * `GlassView` automatically uses `LiquidGlassView` from
+ * `@callstack/liquid-glass` when this flag is active.
  *
  * @example
  * ```tsx
@@ -39,6 +28,8 @@
  */
 
 import { Platform } from 'react-native';
+
+import { isLiquidGlassSupported } from '@callstack/liquid-glass';
 
 export interface GlassSupportResult {
   /**
@@ -49,7 +40,8 @@ export interface GlassSupportResult {
 
   /**
    * `true` on iOS 26+ (Apple's "Liquid Glass" OS release).
-   * Enables native backdrop blur via `expo-blur` `BlurView`.
+   * `GlassView` uses the native `LiquidGlassView` from `@callstack/liquid-glass`
+   * when this is active.
    */
   isLiquidGlass: boolean;
 }
@@ -67,6 +59,9 @@ export function useGlassSupport(): GlassSupportResult {
 
   return {
     isSupported: isIOS,
-    isLiquidGlass: isIOS && iosVersion >= 26,
+    // isLiquidGlassSupported is set to true by the native module on iOS 26+.
+    // The Platform.Version fallback ensures the flag is correct in test
+    // environments and Expo Go where the native module is not available.
+    isLiquidGlass: isLiquidGlassSupported || (isIOS && iosVersion >= 26),
   };
 }
