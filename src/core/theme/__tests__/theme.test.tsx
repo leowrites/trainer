@@ -76,6 +76,55 @@ describe('typography scale', () => {
   });
 });
 
+// ─── Token ↔ Tailwind config consistency ──────────────────────────────────────
+// Ensures the `palette` / `darkTokens` values don't silently diverge from the
+// static values baked into tailwind.config.js.
+
+const tw = require('../../../../tailwind.config.js');
+
+const twColors = tw.theme.extend.colors as Record<
+  string,
+  Record<string, string>
+>;
+
+describe('palette ↔ tailwind.config.js consistency', () => {
+  it('accent.DEFAULT matches palette.lime', () => {
+    expect(twColors.accent.DEFAULT).toBe(palette.lime);
+  });
+
+  it('secondary.DEFAULT matches palette.amber', () => {
+    expect(twColors.secondary.DEFAULT).toBe(palette.amber);
+  });
+
+  it('error.DEFAULT matches palette.red', () => {
+    expect(twColors.error.DEFAULT).toBe(palette.red);
+  });
+
+  it('surface.DEFAULT matches palette.bg', () => {
+    expect(twColors.surface.DEFAULT).toBe(palette.bg);
+  });
+
+  it('surface.card matches palette.surface', () => {
+    expect(twColors.surface.card).toBe(palette.surface);
+  });
+
+  it('surface.elevated matches palette.surface2', () => {
+    expect(twColors.surface.elevated).toBe(palette.surface2);
+  });
+
+  it('surface.border matches palette.border', () => {
+    expect(twColors.surface.border).toBe(palette.border);
+  });
+
+  it('muted.DEFAULT matches palette.muted', () => {
+    expect(twColors.muted.DEFAULT).toBe(palette.muted);
+  });
+
+  it('foreground.DEFAULT matches palette.text', () => {
+    expect(twColors.foreground.DEFAULT).toBe(palette.text);
+  });
+});
+
 // ─── ThemeProvider + useTheme ─────────────────────────────────────────────────
 
 describe('useTheme', () => {

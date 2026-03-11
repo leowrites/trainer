@@ -31,6 +31,9 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 
+import type { ThemeTokens } from '@core/theme';
+import { useTheme } from '@core/theme/theme-context';
+
 export type BadgeVariant = 'accent' | 'error' | 'warning' | 'muted';
 
 export interface BadgeProps {
@@ -44,7 +47,7 @@ export interface BadgeProps {
 
 // ── Pulse dot ─────────────────────────────────────────────────────────────────
 
-function PulseDot({ variant }: { variant: BadgeVariant }): React.JSX.Element {
+function PulseDot({ color }: { color: string }): React.JSX.Element {
   const opacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -66,46 +69,69 @@ function PulseDot({ variant }: { variant: BadgeVariant }): React.JSX.Element {
     return () => animation.stop();
   }, [opacity]);
 
-  const dotColourClass =
-    variant === 'error'
-      ? 'bg-error'
-      : variant === 'warning'
-        ? 'bg-secondary'
-        : variant === 'muted'
-          ? 'bg-muted'
-          : 'bg-accent';
-
   return (
     <Animated.View
-      className={`w-1.5 h-1.5 rounded-full ${dotColourClass}`}
-      style={{ opacity }}
+      className="w-1.5 h-1.5 rounded-full"
+      style={{ opacity, backgroundColor: color }}
       accessibilityElementsHidden
       importantForAccessibility="no"
     />
   );
 }
 
-// ── Variant styles ────────────────────────────────────────────────────────────
+// ── Variant token helper ──────────────────────────────────────────────────────
 
-const variantStyles: Record<BadgeVariant, { container: string; text: string }> =
-  {
-    accent: {
-      container: 'bg-accent-subtle border border-accent-border',
-      text: 'text-accent',
-    },
-    error: {
-      container: 'bg-error-subtle border border-error-border',
-      text: 'text-error',
-    },
-    warning: {
-      container: 'bg-secondary-subtle border border-secondary-border',
-      text: 'text-secondary',
-    },
-    muted: {
-      container: 'bg-surface-elevated border border-surface-border',
-      text: 'text-muted',
-    },
-  };
+function resolveVariantStyles(
+  variant: BadgeVariant,
+  tokens: ThemeTokens,
+): {
+  containerStyle: object;
+  textColor: string;
+  dotColor: string;
+} {
+  switch (variant) {
+    case 'error':
+      return {
+        containerStyle: {
+          backgroundColor: tokens.errorSubtle,
+          borderWidth: 1,
+          borderColor: tokens.errorBorder,
+        },
+        textColor: tokens.error,
+        dotColor: tokens.error,
+      };
+    case 'warning':
+      return {
+        containerStyle: {
+          backgroundColor: tokens.secondarySubtle,
+          borderWidth: 1,
+          borderColor: tokens.secondaryBorder,
+        },
+        textColor: tokens.secondary,
+        dotColor: tokens.secondary,
+      };
+    case 'muted':
+      return {
+        containerStyle: {
+          backgroundColor: tokens.bgElevated,
+          borderWidth: 1,
+          borderColor: tokens.bgBorder,
+        },
+        textColor: tokens.textMuted,
+        dotColor: tokens.textMuted,
+      };
+    default: // accent
+      return {
+        containerStyle: {
+          backgroundColor: tokens.accentSubtle,
+          borderWidth: 1,
+          borderColor: tokens.accentBorder,
+        },
+        textColor: tokens.accent,
+        dotColor: tokens.accent,
+      };
+  }
+}
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
 
@@ -117,15 +143,21 @@ export function Badge({
   accessibilityLabel,
   className = '',
 }: BadgeProps): React.JSX.Element {
-  const { container, text } = variantStyles[variant];
+  const { tokens } = useTheme();
+  const { containerStyle, textColor, dotColor } = resolveVariantStyles(
+    variant,
+    tokens,
+  );
 
   const inner = (
     <View
-      className={`flex-row items-center gap-1 px-2 py-0.5 ${container} ${className}`}
+      className={`flex-row items-center gap-1 px-2 py-0.5 ${className}`}
+      style={containerStyle}
     >
-      {pulse ? <PulseDot variant={variant} /> : null}
+      {pulse ? <PulseDot color={dotColor} /> : null}
       <Text
-        className={`text-[10px] uppercase tracking-wider font-medium ${text}`}
+        className="text-[10px] uppercase tracking-wider font-medium"
+        style={{ color: textColor }}
       >
         {children}
       </Text>

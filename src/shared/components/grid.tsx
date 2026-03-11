@@ -50,7 +50,7 @@ export function Grid({
   return (
     <View
       className={`flex-row flex-wrap ${className}`}
-      style={[{ gap, margin: -(gap / 2) }, style]}
+      style={[{ margin: -(gap / 2) }, style]}
       accessibilityRole="none"
       // Provide columns via context so GridItem can consume it
     >

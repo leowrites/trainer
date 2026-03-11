@@ -38,6 +38,9 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 
+import type { ThemeTokens } from '@core/theme';
+import { useTheme } from '@core/theme/theme-context';
+
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
@@ -52,21 +55,23 @@ export interface ButtonProps {
   accessibilityLabel?: string;
 }
 
-// ── Style maps ────────────────────────────────────────────────────────────────
+// ── Colour helpers ────────────────────────────────────────────────────────────
 
-const containerVariant: Record<ButtonVariant, string> = {
-  primary: 'bg-accent',
-  secondary: 'bg-secondary',
-  ghost: 'bg-surface-elevated',
-  danger: 'bg-error',
-};
-
-const textVariant: Record<ButtonVariant, string> = {
-  primary: 'text-black',
-  secondary: 'text-black',
-  ghost: 'text-muted',
-  danger: 'text-white',
-};
+function resolveVariantColours(
+  variant: ButtonVariant,
+  tokens: ThemeTokens,
+): { bg: string; fg: string } {
+  switch (variant) {
+    case 'secondary':
+      return { bg: tokens.secondary, fg: tokens.secondaryForeground };
+    case 'ghost':
+      return { bg: tokens.bgElevated, fg: tokens.textMuted };
+    case 'danger':
+      return { bg: tokens.error, fg: tokens.errorForeground };
+    default: // primary
+      return { bg: tokens.accent, fg: tokens.accentForeground };
+  }
+}
 
 const containerSize: Record<ButtonSize, string> = {
   sm: 'px-3 py-1.5 rounded',
@@ -92,21 +97,15 @@ export function Button({
   className = '',
   accessibilityLabel,
 }: ButtonProps): React.JSX.Element {
+  const { tokens } = useTheme();
   const isInteractive = !disabled && !loading;
-
-  // Spinner colour mirrors text colour
-  const spinnerColour =
-    variant === 'primary' || variant === 'secondary' ? '#000000' : '#ffffff';
+  const { bg, fg } = resolveVariantColours(variant, tokens);
 
   return (
     <Pressable
-      className={`
-        flex-row items-center justify-center
-        ${containerVariant[variant]}
-        ${containerSize[size]}
-        ${className}
-      `}
+      className={`flex-row items-center justify-center ${containerSize[size]} ${className}`}
       style={({ pressed }) => ({
+        backgroundColor: bg,
         opacity: !isInteractive ? 0.5 : pressed ? 0.75 : 1,
       })}
       onPress={isInteractive ? onPress : undefined}
@@ -118,12 +117,13 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={spinnerColour}
+          color={fg}
           accessibilityLabel="Loading"
         />
       ) : (
         <Text
-          className={`font-semibold ${textVariant[variant]} ${textSize[size]}`}
+          className={`font-semibold ${textSize[size]}`}
+          style={{ color: fg }}
         >
           {children}
         </Text>

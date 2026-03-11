@@ -29,6 +29,8 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 
+import { useTheme } from '@core/theme/theme-context';
+
 export interface HeaderProps {
   title: string;
   /** Optional suffix rendered in the accent (`#c8f542`) colour. */
@@ -49,24 +51,33 @@ export function Header({
   metaDetail,
   className = '',
 }: HeaderProps): React.JSX.Element {
+  const { tokens } = useTheme();
+
   return (
     <View
-      className={`flex-row items-end justify-between border-b border-surface-border pb-6 mb-8 ${className}`}
+      className={`flex-row items-end justify-between pb-6 mb-8 ${className}`}
+      style={{ borderBottomWidth: 1, borderBottomColor: tokens.bgBorder }}
       accessibilityRole="header"
     >
       {/* Left — logo / title */}
       <View>
         <Text
-          className="text-[36px] font-bold text-foreground leading-tight"
+          className="text-[36px] font-bold leading-tight"
+          style={{ color: tokens.textPrimary }}
           accessibilityRole="header"
         >
           {title}
           {titleAccent !== undefined && titleAccent !== '' ? (
-            <Text className="text-accent">{titleAccent}</Text>
+            <Text style={{ color: tokens.accent }}>{titleAccent}</Text>
           ) : null}
         </Text>
         {subtitle !== undefined && subtitle !== '' ? (
-          <Text className="text-[11px] text-muted mt-0.5">{subtitle}</Text>
+          <Text
+            className="text-[11px] mt-0.5"
+            style={{ color: tokens.textMuted }}
+          >
+            {subtitle}
+          </Text>
         ) : null}
       </View>
 
@@ -75,12 +86,20 @@ export function Header({
       (metaDetail !== undefined && metaDetail !== '') ? (
         <View className="items-end">
           {metaLabel !== undefined && metaLabel !== '' ? (
-            <Text className="text-[13px] text-secondary font-semibold">
+            <Text
+              className="text-[13px] font-semibold"
+              style={{ color: tokens.secondary }}
+            >
               {metaLabel}
             </Text>
           ) : null}
           {metaDetail !== undefined && metaDetail !== '' ? (
-            <Text className="text-[11px] text-muted mt-0.5">{metaDetail}</Text>
+            <Text
+              className="text-[11px] mt-0.5"
+              style={{ color: tokens.textMuted }}
+            >
+              {metaDetail}
+            </Text>
           ) : null}
         </View>
       ) : null}

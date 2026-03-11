@@ -34,6 +34,9 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 
+import type { ThemeTokens } from '@core/theme';
+import { useTheme } from '@core/theme/theme-context';
+
 export type ProgressBarVariant = 'accent' | 'secondary' | 'error';
 
 export interface ProgressBarProps {
@@ -49,11 +52,19 @@ export interface ProgressBarProps {
   className?: string;
 }
 
-const fillColour: Record<ProgressBarVariant, string> = {
-  accent: 'bg-accent',
-  secondary: 'bg-secondary',
-  error: 'bg-error',
-};
+function resolveFillColour(
+  variant: ProgressBarVariant,
+  tokens: ThemeTokens,
+): string {
+  switch (variant) {
+    case 'secondary':
+      return tokens.secondary;
+    case 'error':
+      return tokens.error;
+    default:
+      return tokens.accent;
+  }
+}
 
 export function ProgressBar({
   progress,
@@ -63,33 +74,40 @@ export function ProgressBar({
   label,
   className = '',
 }: ProgressBarProps): React.JSX.Element {
+  const { tokens } = useTheme();
   // Clamp progress to [0, 1]
   const clamped = Math.min(1, Math.max(0, progress));
   const percentage = Math.round(clamped * 100);
+  const fillColor = resolveFillColour(variant, tokens);
 
   return (
     <View className={`w-full ${className}`}>
       {label !== undefined && label !== '' ? (
         <View className="flex-row justify-between mb-1">
-          <Text className="text-[10px] text-muted">{label}</Text>
+          <Text className="text-[10px]" style={{ color: tokens.textMuted }}>
+            {label}
+          </Text>
           {showLabel ? (
-            <Text className="text-[10px] text-muted">{percentage}%</Text>
+            <Text
+              className="text-[10px]"
+              style={{ color: tokens.textMuted }}
+            >{`${percentage}%`}</Text>
           ) : null}
         </View>
       ) : null}
 
       {/* Track */}
       <View
-        className="w-full bg-surface-elevated overflow-hidden"
-        style={{ height }}
+        className="w-full overflow-hidden"
+        style={{ height, backgroundColor: tokens.bgElevated }}
         accessible={true}
         accessibilityRole="progressbar"
         accessibilityValue={{ min: 0, max: 100, now: percentage }}
       >
         {/* Fill */}
         <View
-          className={`h-full ${fillColour[variant]}`}
-          style={{ width: `${percentage}%` }}
+          className="h-full"
+          style={{ width: `${percentage}%`, backgroundColor: fillColor }}
           accessible={false}
         />
       </View>

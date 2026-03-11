@@ -16,7 +16,7 @@
  */
 
 import React, { createContext, useContext, useMemo } from 'react';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, View } from 'react-native';
 
 import {
   darkTokens,
@@ -86,7 +86,17 @@ export function ThemeProvider({
   const value = useMemo(() => ({ tokens, colorMode }), [tokens, colorMode]);
 
   return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>
+      {/*
+       * Apply the NativeWind `dark` class when the active colour mode is dark.
+       * This activates all `dark:` prefixed utility classes within the subtree,
+       * so components can define both light and dark variants:
+       *   <View className="bg-white dark:bg-surface" />
+       */}
+      <View className={`flex-1 ${colorMode === 'dark' ? 'dark' : ''}`}>
+        {children}
+      </View>
+    </ThemeContext.Provider>
   );
 }
 

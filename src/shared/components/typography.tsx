@@ -31,6 +31,8 @@ import React from 'react';
 import { Text } from 'react-native';
 import type { TextProps } from 'react-native';
 
+import { useTheme } from '@core/theme/theme-context';
+
 interface TypographyProps extends Pick<
   TextProps,
   'numberOfLines' | 'accessibilityRole' | 'accessibilityLabel'
@@ -52,9 +54,11 @@ export function Heading({
   accessibilityRole = 'header',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
+  const { tokens } = useTheme();
   return (
     <Text
-      className={`text-2xl font-bold text-foreground ${className}`}
+      className={`text-2xl font-bold ${className}`}
+      style={{ color: tokens.textPrimary }}
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
@@ -67,7 +71,7 @@ export function Heading({
 // ─── Body ─────────────────────────────────────────────────────────────────────
 
 /**
- * Default body text — `13px` regular.
+ * Default body text — `13px` regular (matches `--font-size: 13px` in the design spec).
  */
 export function Body({
   children,
@@ -76,9 +80,11 @@ export function Body({
   accessibilityRole = 'text',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
+  const { tokens } = useTheme();
   return (
     <Text
-      className={`text-sm text-foreground leading-relaxed ${className}`}
+      className={`text-[13px] leading-relaxed ${className}`}
+      style={{ color: tokens.textPrimary }}
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
@@ -101,9 +107,11 @@ export function Label({
   accessibilityRole = 'text',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
+  const { tokens } = useTheme();
   return (
     <Text
-      className={`text-[10px] uppercase tracking-widest text-muted ${className}`}
+      className={`text-[10px] uppercase tracking-widest ${className}`}
+      style={{ color: tokens.textMuted }}
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
@@ -125,9 +133,11 @@ export function Caption({
   accessibilityRole = 'text',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
+  const { tokens } = useTheme();
   return (
     <Text
-      className={`text-[10px] text-muted ${className}`}
+      className={`text-[10px] ${className}`}
+      style={{ color: tokens.textMuted }}
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
@@ -140,8 +150,8 @@ export function Caption({
 // ─── Muted ────────────────────────────────────────────────────────────────────
 
 /**
- * De-emphasised body text — same size as `Body` but coloured with the muted
- * token.
+ * De-emphasised body text — `13px` (same size as `Body`) but coloured with the
+ * muted token.
  */
 export function Muted({
   children,
@@ -150,9 +160,11 @@ export function Muted({
   accessibilityRole = 'text',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
+  const { tokens } = useTheme();
   return (
     <Text
-      className={`text-sm text-muted ${className}`}
+      className={`text-[13px] ${className}`}
+      style={{ color: tokens.textMuted }}
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
@@ -166,7 +178,8 @@ export function Muted({
 
 /**
  * Large metric / stat value — maps to `.stat-value` in the design spec.
- * `42px` bold by default; shrinks to `32px` on small screens via NativeWind.
+ * Always renders at `42px` bold; pass `className` to override the size
+ * (e.g. `className="text-[32px]"` for a smaller layout slot).
  */
 export function StatValue({
   children,
@@ -175,9 +188,11 @@ export function StatValue({
   accessibilityRole = 'text',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
+  const { tokens } = useTheme();
   return (
     <Text
-      className={`text-[42px] font-bold leading-none text-foreground ${className}`}
+      className={`text-[42px] font-bold leading-none ${className}`}
+      style={{ color: tokens.textPrimary }}
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
