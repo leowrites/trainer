@@ -6,4 +6,10 @@
  */
 export { useWorkoutStore } from './store';
 export { useWorkoutStarter } from './hooks/use-workout-starter';
+export { useWorkoutSession } from './hooks/use-workout-session';
+export type {
+  ExerciseGroup,
+  AddSetInput,
+  UpdateSetInput,
+} from './hooks/use-workout-session';
 export { WorkoutScreen } from './screens/workout-screen';
