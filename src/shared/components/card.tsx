@@ -25,6 +25,8 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { ViewProps } from 'react-native';
 
+import { useTheme } from '@core/theme/theme-context';
+
 export interface CardProps extends Pick<ViewProps, 'style'> {
   label?: string;
   children: React.ReactNode;
@@ -42,14 +44,28 @@ export function Card({
   onPress,
   accessibilityLabel,
 }: CardProps): React.JSX.Element {
+  const { tokens } = useTheme();
+
+  const cardStyle = {
+    backgroundColor: tokens.bgCard,
+    borderWidth: 1,
+    borderColor: tokens.bgBorder,
+  };
+
   const content = (
     <>
       {label !== undefined && label !== '' ? (
         <View className="flex-row items-center mb-3">
-          <Text className="text-[10px] uppercase tracking-widest text-muted">
+          <Text
+            className="text-[10px] uppercase tracking-widest"
+            style={{ color: tokens.textMuted }}
+          >
             {label}
           </Text>
-          <View className="flex-1 h-px bg-surface-border ml-2" />
+          <View
+            className="flex-1 h-px ml-2"
+            style={{ backgroundColor: tokens.bgBorder }}
+          />
         </View>
       ) : null}
       {children}
@@ -59,8 +75,12 @@ export function Card({
   if (onPress) {
     return (
       <Pressable
-        className={`bg-surface-card border border-surface-border p-5 ${className}`}
-        style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }, style]}
+        className={`p-5 ${className}`}
+        style={({ pressed }) => [
+          cardStyle,
+          { opacity: pressed ? 0.85 : 1 },
+          style,
+        ]}
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
@@ -72,8 +92,8 @@ export function Card({
 
   return (
     <View
-      className={`bg-surface-card border border-surface-border p-5 ${className}`}
-      style={style}
+      className={`p-5 ${className}`}
+      style={[cardStyle, style]}
       accessibilityRole="none"
     >
       {content}

@@ -30,6 +30,8 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 
+import { useTheme } from '@core/theme/theme-context';
+
 export interface StatRowProps {
   value: string | number;
   unit?: string;
@@ -45,6 +47,7 @@ export function StatRow({
   sub,
   className = '',
 }: StatRowProps): React.JSX.Element {
+  const { tokens } = useTheme();
   const valueStr = String(value);
   const a11yLabel =
     unit !== undefined && unit !== '' ? `${valueStr} ${unit}` : valueStr;
@@ -53,16 +56,23 @@ export function StatRow({
     <View className={`${className}`} accessibilityRole="none">
       {label !== undefined && label !== '' ? (
         <View className="flex-row items-center mb-3">
-          <Text className="text-[10px] uppercase tracking-widest text-muted">
+          <Text
+            className="text-[10px] uppercase tracking-widest"
+            style={{ color: tokens.textMuted }}
+          >
             {label}
           </Text>
-          <View className="flex-1 h-px bg-surface-border ml-2" />
+          <View
+            className="flex-1 h-px ml-2"
+            style={{ backgroundColor: tokens.bgBorder }}
+          />
         </View>
       ) : null}
 
       <View className="flex-row items-baseline gap-1">
         <Text
-          className="text-[42px] font-bold leading-none text-foreground"
+          className="text-[42px] font-bold leading-none"
+          style={{ color: tokens.textPrimary }}
           accessibilityLabel={a11yLabel}
           accessibilityRole="text"
         >
@@ -70,7 +80,8 @@ export function StatRow({
         </Text>
         {unit !== undefined && unit !== '' ? (
           <Text
-            className="text-sm text-muted"
+            className="text-sm"
+            style={{ color: tokens.textMuted }}
             accessibilityRole="text"
             accessible={false}
           >
@@ -80,7 +91,11 @@ export function StatRow({
       </View>
 
       {sub !== undefined && sub !== '' ? (
-        <Text className="text-[11px] text-muted mt-1" accessibilityRole="text">
+        <Text
+          className="text-[11px] mt-1"
+          style={{ color: tokens.textMuted }}
+          accessibilityRole="text"
+        >
           {sub}
         </Text>
       ) : null}

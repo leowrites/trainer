@@ -4,19 +4,21 @@
  * A background-surface primitive that maps the design-system's layering tokens
  * (`bgBase` → `bgCard` → `bgElevated`) to a `View` container.
  *
- * | variant     | Tailwind class     | Hex      |
- * |-------------|-------------------|----------|
- * | `default`   | `bg-surface`       | #0e0e0e  |
- * | `card`      | `bg-surface-card`  | #161616  |
- * | `elevated`  | `bg-surface-elevated` | #1e1e1e |
- * | `push`      | accent left border | #1e1e1e  |
- * | `pull`      | secondary left border | #1e1e1e |
- * | `rest`      | muted / dimmed     | #1e1e1e  |
+ * Colours respond to the active colour mode via `useTheme()` tokens.
+ *
+ * | variant     | Background token | Border accent          |
+ * |-------------|-----------------|------------------------|
+ * | `default`   | `bgBase`         | —                      |
+ * | `card`      | `bgCard`         | —                      |
+ * | `elevated`  | `bgElevated`     | —                      |
+ * | `push`      | `bgElevated`     | `accent` (left, 2px)   |
+ * | `pull`      | `bgElevated`     | `secondary` (left, 2px)|
+ * | `rest`      | `bgElevated`     | `textMuted` (left, 2px, 50% opacity) |
  *
  * Props:
  * - `variant`   — surface level / semantic role
  * - `children`  — content rendered inside the surface
- * - `className` — additional NativeWind overrides
+ * - `className` — additional NativeWind overrides (layout only)
  * - `style`     — escape-hatch inline styles
  *
  * @example
@@ -30,6 +32,9 @@
 import React from 'react';
 import { View } from 'react-native';
 import type { ViewProps } from 'react-native';
+
+import type { ThemeTokens } from '@core/theme';
+import { useTheme } from '@core/theme/theme-context';
 
 export type SurfaceVariant =
   | 'default'
@@ -45,14 +50,50 @@ export interface SurfaceProps extends Pick<ViewProps, 'style'> {
   className?: string;
 }
 
-const variantClasses: Record<SurfaceVariant, string> = {
-  default: 'bg-surface',
-  card: 'bg-surface-card',
-  elevated: 'bg-surface-elevated',
-  push: 'bg-surface-elevated border-l-2 border-l-accent',
-  pull: 'bg-surface-elevated border-l-2 border-l-secondary',
-  rest: 'bg-surface-elevated border-l-2 border-l-muted opacity-50',
-};
+type SurfaceStyleMap = Record<
+  SurfaceVariant,
+  {
+    container: object;
+    /** NativeWind classes for layout-only concerns (border-width, opacity). */
+    layoutClass: string;
+  }
+>;
+
+function buildVariantMap(tokens: ThemeTokens): SurfaceStyleMap {
+  return {
+    default: { container: { backgroundColor: tokens.bgBase }, layoutClass: '' },
+    card: { container: { backgroundColor: tokens.bgCard }, layoutClass: '' },
+    elevated: {
+      container: { backgroundColor: tokens.bgElevated },
+      layoutClass: '',
+    },
+    push: {
+      container: {
+        backgroundColor: tokens.bgElevated,
+        borderLeftWidth: 2,
+        borderLeftColor: tokens.accent,
+      },
+      layoutClass: '',
+    },
+    pull: {
+      container: {
+        backgroundColor: tokens.bgElevated,
+        borderLeftWidth: 2,
+        borderLeftColor: tokens.secondary,
+      },
+      layoutClass: '',
+    },
+    rest: {
+      container: {
+        backgroundColor: tokens.bgElevated,
+        borderLeftWidth: 2,
+        borderLeftColor: tokens.textMuted,
+        opacity: 0.5,
+      },
+      layoutClass: '',
+    },
+  };
+}
 
 export function Surface({
   variant = 'default',
@@ -60,10 +101,13 @@ export function Surface({
   className = '',
   style,
 }: SurfaceProps): React.JSX.Element {
+  const { tokens } = useTheme();
+  const { container, layoutClass } = buildVariantMap(tokens)[variant];
+
   return (
     <View
-      className={`${variantClasses[variant]} ${className}`}
-      style={style}
+      className={`${layoutClass} ${className}`}
+      style={[container, style]}
       accessibilityRole="none"
     >
       {children}
