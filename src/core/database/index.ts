@@ -14,6 +14,9 @@ export type {
   ScheduleEntry,
   WorkoutSession,
   WorkoutSet,
+  BodyWeightLog,
+  StepCountLog,
+  ActivityLog,
 } from './types';
 export { DatabaseProvider, useDatabase } from './provider';
 export { seedDefaultExercises } from './seed-exercises';

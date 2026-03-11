@@ -6,7 +6,7 @@
  * database.ts when the schema changes.
  */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS exercises (
@@ -81,6 +81,35 @@ export const CREATE_TABLES_SQL = `
     ON workout_sets (session_id);
   CREATE INDEX IF NOT EXISTS idx_workout_sets_exercise
     ON workout_sets (exercise_id);
+
+  CREATE TABLE IF NOT EXISTS body_weight_logs (
+    id         TEXT PRIMARY KEY NOT NULL,
+    date       TEXT NOT NULL,
+    weight_kg  REAL NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_body_weight_logs_date
+    ON body_weight_logs (date);
+
+  CREATE TABLE IF NOT EXISTS step_count_logs (
+    id          TEXT PRIMARY KEY NOT NULL,
+    date        TEXT NOT NULL,
+    step_count  INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_step_count_logs_date
+    ON step_count_logs (date);
+
+  CREATE TABLE IF NOT EXISTS activity_logs (
+    id                 TEXT PRIMARY KEY NOT NULL,
+    date               TEXT NOT NULL,
+    activity_type      TEXT NOT NULL,
+    duration_minutes   INTEGER NOT NULL,
+    notes              TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_activity_logs_date
+    ON activity_logs (date);
 `;
 
 /**
@@ -88,6 +117,9 @@ export const CREATE_TABLES_SQL = `
  * Used by initDatabase() when the schema version changes during development.
  */
 export const DROP_TABLES_SQL = `
+  DROP TABLE IF EXISTS activity_logs;
+  DROP TABLE IF EXISTS step_count_logs;
+  DROP TABLE IF EXISTS body_weight_logs;
   DROP TABLE IF EXISTS workout_sets;
   DROP TABLE IF EXISTS workout_sessions;
   DROP TABLE IF EXISTS schedule_entries;
