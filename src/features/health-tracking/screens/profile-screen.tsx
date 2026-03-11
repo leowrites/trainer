@@ -1,13 +1,12 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+
+import { Container, Heading, Muted } from '@shared/components';
 
 export function ProfileScreen(): React.JSX.Element {
   return (
-    <View className="flex-1 items-center justify-center bg-surface">
-      <Text className="text-white text-2xl font-bold mb-2">Profile</Text>
-      <Text className="text-white/60 text-sm">
-        Track your health &amp; analytics
-      </Text>
-    </View>
+    <Container className="items-center justify-center">
+      <Heading>Profile</Heading>
+      <Muted className="mt-2">Track your health &amp; analytics</Muted>
+    </Container>
   );
 }
