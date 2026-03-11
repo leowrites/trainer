@@ -16,6 +16,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@callstack/liquid-glass": "^0.7.0",
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/native": "^7.1.33",
     "expo": "~55.0.5",

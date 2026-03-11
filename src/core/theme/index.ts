@@ -11,6 +11,33 @@
 // ─── Raw Palette ───────────────────────────────────────────────────────────────
 
 /** All concrete colour values used in the design system. */
+// ─── Glass / Liquid Glass palette ─────────────────────────────────────────────
+
+/**
+ * Liquid Glass palette
+ *
+ * Translucent white layers used to simulate iOS 26's liquid glass treatment.
+ * Values are RGBA strings with low alpha so underlying content (or a blur
+ * layer) shows through.  Intensity levels map to the `GlassView` component's
+ * `intensity` prop.
+ */
+export const glassPalette = {
+  // Dark-mode glass fills (white-over-dark)
+  darkLight: 'rgba(255, 255, 255, 0.06)',
+  darkMedium: 'rgba(255, 255, 255, 0.10)',
+  darkHeavy: 'rgba(255, 255, 255, 0.18)',
+  darkBorder: 'rgba(255, 255, 255, 0.14)',
+
+  // Light-mode glass fills (white-over-light)
+  lightLight: 'rgba(255, 255, 255, 0.55)',
+  lightMedium: 'rgba(255, 255, 255, 0.70)',
+  lightHeavy: 'rgba(255, 255, 255, 0.85)',
+  lightBorder: 'rgba(255, 255, 255, 0.45)',
+
+  // Android / pre-iOS-26 solid fallback
+  androidFallback: 'rgba(30, 30, 30, 0.94)',
+} as const;
+
 export const palette = {
   // Greens (primary)
   green50: '#f0fdf4',
@@ -89,6 +116,18 @@ export interface ThemeTokens {
   errorSubtle: string;
   errorBorder: string;
   errorForeground: string;
+
+  // Glass / Liquid Glass
+  /** Translucent fill for a light-intensity glass surface. */
+  glassFillLight: string;
+  /** Translucent fill for a medium-intensity glass surface. */
+  glassFillMedium: string;
+  /** Translucent fill for a heavy-intensity glass surface. */
+  glassFillHeavy: string;
+  /** Semi-transparent border that separates glass from its backdrop. */
+  glassBorder: string;
+  /** Solid fallback background used on platforms without glass support. */
+  glassFallback: string;
 }
 
 /**
@@ -123,6 +162,13 @@ export const darkTokens: ThemeTokens = {
   errorSubtle: palette.redSubtle,
   errorBorder: palette.redBorder,
   errorForeground: palette.white,
+
+  // Glass / Liquid Glass
+  glassFillLight: glassPalette.darkLight,
+  glassFillMedium: glassPalette.darkMedium,
+  glassFillHeavy: glassPalette.darkHeavy,
+  glassBorder: glassPalette.darkBorder,
+  glassFallback: glassPalette.androidFallback,
 };
 
 /**
@@ -157,6 +203,13 @@ export const lightTokens: ThemeTokens = {
   errorSubtle: 'rgba(217,48,37,0.1)',
   errorBorder: 'rgba(217,48,37,0.25)',
   errorForeground: palette.white,
+
+  // Glass / Liquid Glass
+  glassFillLight: glassPalette.lightLight,
+  glassFillMedium: glassPalette.lightMedium,
+  glassFillHeavy: glassPalette.lightHeavy,
+  glassBorder: glassPalette.lightBorder,
+  glassFallback: '#f0f0f0',
 };
 
 export type ColorMode = 'dark' | 'light';

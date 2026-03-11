@@ -3,6 +3,8 @@ import { Pressable, Text, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
+import { GlassCard, GlassView } from '@shared/components';
+
 import { useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
 
@@ -53,28 +55,33 @@ export function WorkoutScreen(): React.JSX.Element {
           </Text>
           <Pressable
             accessibilityRole="button"
-            className="px-6 py-3 rounded-lg bg-surface-elevated"
             style={({ pressed }) => ({
               opacity: pressed ? 0.7 : 1,
             })}
             onPress={endWorkout}
           >
-            <Text className="text-primary-400 text-base font-semibold">
-              End Workout
-            </Text>
+            <GlassView className="px-6 py-3 items-center" borderRadius={8}>
+              <Text className="text-primary-400 text-base font-semibold">
+                End Workout
+              </Text>
+            </GlassView>
           </Pressable>
         </>
       ) : (
         <>
           {nextRoutine ? (
-            <View className="items-center mb-6">
+            <GlassCard
+              className="items-center mb-6 w-full"
+              intensity="medium"
+              borderRadius={12}
+            >
               <Text className="text-white/60 text-xs mb-1 uppercase tracking-wider">
                 Up next · {nextRoutine.scheduleName}
               </Text>
               <Text className="text-white text-lg font-semibold">
                 {nextRoutine.routineName}
               </Text>
-            </View>
+            </GlassCard>
           ) : (
             <Text className="text-white/60 text-sm mb-6">
               No active schedule — start a free workout
@@ -99,16 +106,17 @@ export function WorkoutScreen(): React.JSX.Element {
 
           <Pressable
             accessibilityRole="button"
-            className="px-6 py-3 rounded-lg bg-surface-elevated"
             style={({ pressed }) => ({
               opacity: pressed || starting ? 0.7 : 1,
             })}
             disabled={starting}
             onPress={handleStartFree}
           >
-            <Text className="text-white/60 text-base font-semibold">
-              Free Workout
-            </Text>
+            <GlassView className="px-6 py-3 items-center" borderRadius={8}>
+              <Text className="text-white/60 text-base font-semibold">
+                Free Workout
+              </Text>
+            </GlassView>
           </Pressable>
         </>
       )}
