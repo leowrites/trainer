@@ -1,20 +1,27 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { FlatList, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
-import { useSchedules } from '../hooks/use-schedules';
-import type { NewScheduleInput } from '../hooks/use-schedules';
+import {
+  Badge,
+  Body,
+  Button,
+  Caption,
+  Card,
+  Checkbox,
+  Container,
+  Heading,
+  Input,
+  Label,
+  Muted,
+  Surface,
+} from '@shared/components';
 import { useRoutines } from '@features/routines';
 import type { Schedule, ScheduleEntry } from '@core/database/types';
 import type { Routine } from '@core/database/types';
+import { useSchedules } from '../hooks/use-schedules';
+import type { NewScheduleInput } from '../hooks/use-schedules';
 
 // ─── Schedule row ──────────────────────────────────────────────────────────────
 
@@ -62,73 +69,72 @@ function ScheduleRow({
   };
 
   return (
-    <View className="bg-surface-elevated rounded-lg mb-2">
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${item.name}`}
-        className="flex-row items-center justify-between px-4 py-3"
-        onPress={handleToggleExpand}
-      >
+    <Card
+      className="mb-2 rounded-xl p-0 overflow-hidden"
+      onPress={handleToggleExpand}
+      accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${item.name}`}
+    >
+      <View className="flex-row items-center justify-between px-4 py-3">
         <View className="flex-1">
-          <Text className="text-white font-medium">{item.name}</Text>
+          <Body className="font-medium">{item.name}</Body>
           {item.is_active ? (
-            <Text className="text-primary-400 text-xs mt-0.5">● Active</Text>
+            <Badge variant="accent" className="mt-1 self-start">
+              Active
+            </Badge>
           ) : (
-            <Text className="text-white/40 text-xs mt-0.5">Inactive</Text>
+            <Caption className="mt-0.5">Inactive</Caption>
           )}
         </View>
         <View className="flex-row gap-3 items-center">
           {!item.is_active && (
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              variant="ghost"
+              size="sm"
               accessibilityLabel={`Set ${item.name} as active`}
               onPress={() => onActivate(item.id)}
-              hitSlop={8}
             >
-              <Text className="text-primary-400 text-sm">Set Active</Text>
-            </Pressable>
+              Set Active
+            </Button>
           )}
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            variant="ghost"
+            size="sm"
             accessibilityLabel={`Edit ${item.name}`}
             onPress={() => onEdit(item)}
-            hitSlop={8}
           >
-            <Text className="text-primary-400 text-sm">Edit</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
+            Edit
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
             accessibilityLabel={`Delete ${item.name}`}
             onPress={() => onDelete(item.id)}
-            hitSlop={8}
           >
-            <Text className="text-red-400 text-sm">Delete</Text>
-          </Pressable>
-          <Text className="text-white/40 text-xs">{expanded ? '▲' : '▼'}</Text>
+            Delete
+          </Button>
+          <Caption>{expanded ? '▲' : '▼'}</Caption>
         </View>
-      </Pressable>
+      </View>
 
       {expanded && (
-        <View className="px-4 pb-3 border-t border-white/10">
+        <Surface variant="elevated" className="px-4 pb-3 pt-2">
           {entries.length === 0 ? (
-            <Text className="text-white/40 text-sm pt-2">
-              No routines in this schedule.
-            </Text>
+            <Muted className="pt-1">No routines in this schedule.</Muted>
           ) : (
             entries.map((entry: ScheduleEntry, idx: number) => {
               const routine = routines.find(
                 (r: Routine) => r.id === entry.routine_id,
               );
               return (
-                <Text key={entry.id} className="text-white/70 text-sm pt-2">
+                <Body key={entry.id} className="pt-2">
                   {idx + 1}. {routine ? routine.name : entry.routine_id}
-                </Text>
+                </Body>
               );
             })
           )}
-        </View>
+        </Surface>
       )}
-    </View>
+    </Card>
   );
 }
 
@@ -220,64 +226,29 @@ export function ScheduleScreen(): React.JSX.Element {
     }
   };
 
-  const renderRoutineCheckbox = (
-    routineId: string,
-    selected: boolean,
-    idx: number,
-    onToggle: (id: string) => void,
-  ): React.JSX.Element => {
-    const routine = routines.find((r: Routine) => r.id === routineId);
-    return (
-      <Pressable
-        key={routineId}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: selected }}
-        className="flex-row items-center py-2"
-        onPress={() => onToggle(routineId)}
-      >
-        <View
-          className={`w-5 h-5 rounded mr-3 border items-center justify-center ${
-            selected ? 'bg-primary-500 border-primary-500' : 'border-white/30'
-          }`}
-        >
-          {selected ? (
-            <Text className="text-white text-xs font-bold">{idx + 1}</Text>
-          ) : null}
-        </View>
-        <Text className="text-white">{routine ? routine.name : routineId}</Text>
-      </Pressable>
-    );
-  };
-
   return (
-    <View className="flex-1 bg-surface">
+    <Container className="pt-14">
       {/* Header */}
-      <View className="pt-14 pb-4 px-4">
-        <Text className="text-white text-2xl font-bold">Schedules</Text>
-        <Text className="text-white/50 text-sm mt-1">
+      <View className="pb-4">
+        <Heading>Schedules</Heading>
+        <Muted className="mt-1">
           Arrange routines into a rotating schedule (A → B → C → A)
-        </Text>
+        </Muted>
       </View>
 
       {/* Inline edit form */}
       {editingSchedule ? (
-        <View className="mx-4 mb-4 bg-surface-elevated rounded-lg p-4">
-          <Text className="text-white font-semibold mb-3">Edit Schedule</Text>
-          <TextInput
-            className="bg-surface text-white rounded-md px-3 py-2 mb-4"
+        <Card label="Edit Schedule" className="mb-4 rounded-xl">
+          <Input
+            className="mb-4"
             placeholder="Schedule name"
-            placeholderTextColor="rgba(255,255,255,0.3)"
             value={editName}
             onChangeText={setEditName}
             autoCapitalize="words"
           />
-          <Text className="text-white/60 text-xs uppercase tracking-wider mb-2">
-            Select Routines (in rotation order)
-          </Text>
+          <Label className="mb-2">Select Routines (in rotation order)</Label>
           {routines.length === 0 ? (
-            <Text className="text-white/40 text-sm mb-4">
-              No routines available.
-            </Text>
+            <Muted className="mb-4">No routines available.</Muted>
           ) : (
             (() => {
               // Pre-compute position map for O(1) lookups while preserving order.
@@ -287,150 +258,122 @@ export function ScheduleScreen(): React.JSX.Element {
               return routines.map((routine) => {
                 const idx = idxMap.get(routine.id) ?? -1;
                 const selected = idx !== -1;
-                return renderRoutineCheckbox(
-                  routine.id,
-                  selected,
-                  idx,
-                  toggleEditRoutine,
+                return (
+                  <Checkbox
+                    key={routine.id}
+                    checked={selected}
+                    onToggle={() => toggleEditRoutine(routine.id)}
+                    label={routine.name}
+                    badgeText={selected ? String(idx + 1) : undefined}
+                  />
                 );
               });
             })()
           )}
           <View className="flex-row gap-2 mt-4">
-            <Pressable
-              accessibilityRole="button"
-              className="flex-1 bg-primary-600 rounded-md py-2 items-center"
+            <Button
+              className="flex-1"
               onPress={handleSaveEdit}
+              loading={editSaving}
               disabled={editSaving}
             >
-              {editSaving ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-white font-semibold">Save</Text>
-              )}
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              className="flex-1 bg-surface rounded-md py-2 items-center"
+              Save
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex-1"
               onPress={() => setEditingSchedule(null)}
             >
-              <Text className="text-white/60 font-semibold">Cancel</Text>
-            </Pressable>
+              Cancel
+            </Button>
           </View>
-        </View>
+        </Card>
       ) : null}
 
-      <View className="flex-1 px-4">
-        <FlatList
-          data={schedules}
-          keyExtractor={(item: Schedule) => item.id}
-          renderItem={({ item }: { item: Schedule }) => (
-            <ScheduleRow
-              item={item}
-              routines={routines}
-              entriesVersion={scheduleVersion}
-              getScheduleEntries={getScheduleEntries}
-              onActivate={(id) => setActiveSchedule(id)}
-              onEdit={handleStartEdit}
-              onDelete={(id) => deleteSchedule(id)}
-            />
-          )}
-          ListEmptyComponent={
-            <Text className="text-white/40 text-center mt-8">
-              No schedules yet. Create one below.
-            </Text>
-          }
-          ListFooterComponent={
-            showForm ? (
-              <View className="mt-4 bg-surface-elevated rounded-lg p-4">
-                <Text className="text-white font-semibold mb-3">
-                  New Schedule
-                </Text>
-                <TextInput
-                  className="bg-surface text-white rounded-md px-3 py-2 mb-4"
-                  placeholder="Schedule name (e.g. Push/Pull Split)"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={scheduleName}
-                  onChangeText={setScheduleName}
-                  autoCapitalize="words"
-                />
-                <Text className="text-white/60 text-xs uppercase tracking-wider mb-2">
-                  Select Routines (in rotation order)
-                </Text>
-                {routines.length === 0 ? (
-                  <Text className="text-white/40 text-sm mb-4">
-                    No routines available — create some in the Routines screen.
-                  </Text>
-                ) : (
-                  routines.map((routine) => {
-                    const idx = orderedRoutineIds.indexOf(routine.id);
-                    const selected = idx !== -1;
-                    return (
-                      <Pressable
-                        key={routine.id}
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: selected }}
-                        className="flex-row items-center py-2"
-                        onPress={() => toggleRoutine(routine.id)}
-                      >
-                        <View
-                          className={`w-5 h-5 rounded mr-3 border items-center justify-center ${
-                            selected
-                              ? 'bg-primary-500 border-primary-500'
-                              : 'border-white/30'
-                          }`}
-                        >
-                          {selected ? (
-                            <Text className="text-white text-xs font-bold">
-                              {idx + 1}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <Text className="text-white">{routine.name}</Text>
-                      </Pressable>
-                    );
-                  })
-                )}
-                <View className="flex-row gap-2 mt-4">
-                  <Pressable
-                    accessibilityRole="button"
-                    className="flex-1 bg-primary-600 rounded-md py-2 items-center"
-                    onPress={handleCreate}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <ActivityIndicator color="white" />
-                    ) : (
-                      <Text className="text-white font-semibold">Save</Text>
-                    )}
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    className="flex-1 bg-surface rounded-md py-2 items-center"
-                    onPress={() => {
-                      setShowForm(false);
-                      setScheduleName('');
-                      setOrderedRoutineIds([]);
-                    }}
-                  >
-                    <Text className="text-white/60 font-semibold">Cancel</Text>
-                  </Pressable>
-                </View>
+      <FlatList
+        data={schedules}
+        keyExtractor={(item: Schedule) => item.id}
+        renderItem={({ item }: { item: Schedule }) => (
+          <ScheduleRow
+            item={item}
+            routines={routines}
+            entriesVersion={scheduleVersion}
+            getScheduleEntries={getScheduleEntries}
+            onActivate={(id) => setActiveSchedule(id)}
+            onEdit={handleStartEdit}
+            onDelete={(id) => deleteSchedule(id)}
+          />
+        )}
+        ListEmptyComponent={
+          <Muted className="text-center mt-8">
+            No schedules yet. Create one below.
+          </Muted>
+        }
+        ListFooterComponent={
+          showForm ? (
+            <Card label="New Schedule" className="mt-4 rounded-xl">
+              <Input
+                className="mb-4"
+                placeholder="Schedule name (e.g. Push/Pull Split)"
+                value={scheduleName}
+                onChangeText={setScheduleName}
+                autoCapitalize="words"
+              />
+              <Label className="mb-2">
+                Select Routines (in rotation order)
+              </Label>
+              {routines.length === 0 ? (
+                <Muted className="mb-4">
+                  No routines available — create some in the Routines screen.
+                </Muted>
+              ) : (
+                routines.map((routine) => {
+                  const idx = orderedRoutineIds.indexOf(routine.id);
+                  const selected = idx !== -1;
+                  return (
+                    <Checkbox
+                      key={routine.id}
+                      checked={selected}
+                      onToggle={() => toggleRoutine(routine.id)}
+                      label={routine.name}
+                      badgeText={selected ? String(idx + 1) : undefined}
+                    />
+                  );
+                })
+              )}
+              <View className="flex-row gap-2 mt-4">
+                <Button
+                  className="flex-1"
+                  onPress={handleCreate}
+                  loading={saving}
+                  disabled={saving}
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-1"
+                  onPress={() => {
+                    setShowForm(false);
+                    setScheduleName('');
+                    setOrderedRoutineIds([]);
+                  }}
+                >
+                  Cancel
+                </Button>
               </View>
-            ) : (
-              <Pressable
-                accessibilityRole="button"
-                className="mt-4 bg-surface-elevated rounded-lg py-3 items-center"
-                onPress={() => setShowForm(true)}
-              >
-                <Text className="text-primary-400 font-semibold">
-                  + New Schedule
-                </Text>
-              </Pressable>
-            )
-          }
-        />
-      </View>
-    </View>
+            </Card>
+          ) : (
+            <Button
+              variant="ghost"
+              className="mt-4 w-full"
+              onPress={() => setShowForm(true)}
+            >
+              + New Schedule
+            </Button>
+          )
+        }
+      />
+    </Container>
   );
 }
