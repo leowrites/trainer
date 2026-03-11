@@ -10,6 +10,8 @@ import {
 
 import { useFocusEffect } from '@react-navigation/native';
 
+import { GlassView } from '@shared/components';
+
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutines } from '../hooks/use-routines';
 import type { NewExerciseInput } from '../hooks/use-exercises';
@@ -87,7 +89,7 @@ function ExercisesSection({
   const renderExercise = ({ item }: { item: Exercise }): React.JSX.Element => {
     if (editingId === item.id) {
       return (
-        <View className="bg-surface-elevated px-4 py-3 rounded-lg mb-2">
+        <GlassView className="px-4 py-3 mb-2" borderRadius={8}>
           <TextInput
             className="bg-surface text-white rounded-md px-3 py-2 mb-2"
             placeholder="Exercise name"
@@ -125,12 +127,15 @@ function ExercisesSection({
               <Text className="text-white/60 font-semibold">Cancel</Text>
             </Pressable>
           </View>
-        </View>
+        </GlassView>
       );
     }
 
     return (
-      <View className="flex-row items-center justify-between bg-surface-elevated px-4 py-3 rounded-lg mb-2">
+      <GlassView
+        className="flex-row items-center justify-between px-4 py-3 mb-2"
+        borderRadius={8}
+      >
         <View className="flex-1">
           <Text className="text-white font-medium">{item.name}</Text>
           <Text className="text-white/50 text-xs mt-0.5">
@@ -155,7 +160,7 @@ function ExercisesSection({
             <Text className="text-red-400 text-sm">Delete</Text>
           </Pressable>
         </View>
-      </View>
+      </GlassView>
     );
   };
 
@@ -172,7 +177,7 @@ function ExercisesSection({
         }
         ListFooterComponent={
           showForm ? (
-            <View className="mt-4 bg-surface-elevated rounded-lg p-4">
+            <GlassView className="mt-4 p-4" borderRadius={8}>
               <Text className="text-white font-semibold mb-3">
                 New Exercise
               </Text>
@@ -217,16 +222,17 @@ function ExercisesSection({
                   <Text className="text-white/60 font-semibold">Cancel</Text>
                 </Pressable>
               </View>
-            </View>
+            </GlassView>
           ) : (
             <Pressable
               accessibilityRole="button"
-              className="mt-4 bg-surface-elevated rounded-lg py-3 items-center"
               onPress={() => setShowForm(true)}
             >
-              <Text className="text-primary-400 font-semibold">
-                + New Exercise
-              </Text>
+              <GlassView className="mt-4 py-3 items-center" borderRadius={8}>
+                <Text className="text-primary-400 font-semibold">
+                  + New Exercise
+                </Text>
+              </GlassView>
             </Pressable>
           )
         }
@@ -362,7 +368,7 @@ function RoutinesSection({
   const renderRoutine = ({ item }: { item: Routine }): React.JSX.Element => {
     if (editingId === item.id) {
       return (
-        <View className="bg-surface-elevated px-4 py-3 rounded-lg mb-2">
+        <GlassView className="px-4 py-3 mb-2" borderRadius={8}>
           <TextInput
             className="bg-surface text-white rounded-md px-3 py-2 mb-4"
             placeholder="Routine name"
@@ -424,14 +430,14 @@ function RoutinesSection({
               <Text className="text-white/60 font-semibold">Cancel</Text>
             </Pressable>
           </View>
-        </View>
+        </GlassView>
       );
     }
 
     const isExpanded = expandedId === item.id;
 
     return (
-      <View className="bg-surface-elevated rounded-lg mb-2">
+      <GlassView className="mb-2" borderRadius={8}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${item.name}`}
@@ -483,7 +489,7 @@ function RoutinesSection({
             )}
           </View>
         )}
-      </View>
+      </GlassView>
     );
   };
 
@@ -500,7 +506,7 @@ function RoutinesSection({
         }
         ListFooterComponent={
           showForm ? (
-            <View className="mt-4 bg-surface-elevated rounded-lg p-4">
+            <GlassView className="mt-4 p-4" borderRadius={8}>
               <Text className="text-white font-semibold mb-3">New Routine</Text>
               <TextInput
                 className="bg-surface text-white rounded-md px-3 py-2 mb-4"
@@ -567,16 +573,17 @@ function RoutinesSection({
                   <Text className="text-white/60 font-semibold">Cancel</Text>
                 </Pressable>
               </View>
-            </View>
+            </GlassView>
           ) : (
             <Pressable
               accessibilityRole="button"
-              className="mt-4 bg-surface-elevated rounded-lg py-3 items-center"
               onPress={() => setShowForm(true)}
             >
-              <Text className="text-primary-400 font-semibold">
-                + New Routine
-              </Text>
+              <GlassView className="mt-4 py-3 items-center" borderRadius={8}>
+                <Text className="text-primary-400 font-semibold">
+                  + New Routine
+                </Text>
+              </GlassView>
             </Pressable>
           )
         }
@@ -622,7 +629,7 @@ export function RoutinesScreen(): React.JSX.Element {
       </View>
 
       {/* Section tabs */}
-      <View className="flex-row mx-4 mb-2 bg-surface-elevated rounded-lg p-1">
+      <GlassView className="flex-row mx-4 mb-2 p-1" borderRadius={8}>
         {(['exercises', 'routines'] as const).map((s) => (
           <Pressable
             key={s}
@@ -642,7 +649,7 @@ export function RoutinesScreen(): React.JSX.Element {
             </Text>
           </Pressable>
         ))}
-      </View>
+      </GlassView>
 
       {/* Active section */}
       {section === 'exercises' ? (

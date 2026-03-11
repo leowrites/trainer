@@ -10,6 +10,8 @@ import {
 
 import { useFocusEffect } from '@react-navigation/native';
 
+import { GlassView } from '@shared/components';
+
 import { useSchedules } from '../hooks/use-schedules';
 import type { NewScheduleInput } from '../hooks/use-schedules';
 import { useRoutines } from '@features/routines';
@@ -62,7 +64,7 @@ function ScheduleRow({
   };
 
   return (
-    <View className="bg-surface-elevated rounded-lg mb-2">
+    <GlassView className="mb-2" borderRadius={8}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${item.name}`}
@@ -128,7 +130,7 @@ function ScheduleRow({
           )}
         </View>
       )}
-    </View>
+    </GlassView>
   );
 }
 
@@ -261,7 +263,7 @@ export function ScheduleScreen(): React.JSX.Element {
 
       {/* Inline edit form */}
       {editingSchedule ? (
-        <View className="mx-4 mb-4 bg-surface-elevated rounded-lg p-4">
+        <GlassView className="mx-4 mb-4 p-4" borderRadius={8}>
           <Text className="text-white font-semibold mb-3">Edit Schedule</Text>
           <TextInput
             className="bg-surface text-white rounded-md px-3 py-2 mb-4"
@@ -317,7 +319,7 @@ export function ScheduleScreen(): React.JSX.Element {
               <Text className="text-white/60 font-semibold">Cancel</Text>
             </Pressable>
           </View>
-        </View>
+        </GlassView>
       ) : null}
 
       <View className="flex-1 px-4">
@@ -342,7 +344,7 @@ export function ScheduleScreen(): React.JSX.Element {
           }
           ListFooterComponent={
             showForm ? (
-              <View className="mt-4 bg-surface-elevated rounded-lg p-4">
+              <GlassView className="mt-4 p-4" borderRadius={8}>
                 <Text className="text-white font-semibold mb-3">
                   New Schedule
                 </Text>
@@ -416,16 +418,17 @@ export function ScheduleScreen(): React.JSX.Element {
                     <Text className="text-white/60 font-semibold">Cancel</Text>
                   </Pressable>
                 </View>
-              </View>
+              </GlassView>
             ) : (
               <Pressable
                 accessibilityRole="button"
-                className="mt-4 bg-surface-elevated rounded-lg py-3 items-center"
                 onPress={() => setShowForm(true)}
               >
-                <Text className="text-primary-400 font-semibold">
-                  + New Schedule
-                </Text>
+                <GlassView className="mt-4 py-3 items-center" borderRadius={8}>
+                  <Text className="text-primary-400 font-semibold">
+                    + New Schedule
+                  </Text>
+                </GlassView>
               </Pressable>
             )
           }
