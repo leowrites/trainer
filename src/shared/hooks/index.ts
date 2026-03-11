@@ -4,4 +4,5 @@
  * Custom React hooks that are not tied to a specific feature.
  * e.g., useDebounce, useColorScheme, useAppState.
  */
-export {};
+export { useGlassSupport } from './use-glass-support';
+export type { GlassSupportResult } from './use-glass-support';

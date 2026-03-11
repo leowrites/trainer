@@ -8,6 +8,8 @@
  *  - Container    — full-screen layout wrapper with consistent padding
  *  - Surface      — layered background surfaces (default / card / elevated / push / pull / rest)
  *  - Card         — bordered surface card with optional label strip
+ *  - GlassView    — iOS 26 liquid-glass surface with Android fallback
+ *  - GlassCard    — glass variant of Card (translucent, frosted)
  *  - Header       — app-level header bar with logo and meta slots
  *  - Grid / GridItem — 12-column flex grid layout
  *  - Heading, Body, Label, Caption, Muted, StatValue — typography scale
@@ -26,6 +28,13 @@ export type { SurfaceProps, SurfaceVariant } from './surface';
 
 export { Grid, GridItem } from './grid';
 export type { GridProps, GridItemProps, ColSpan } from './grid';
+
+// ── Glass / Liquid Glass ──────────────────────────────────────────────────────
+export { GlassView } from './glass-view';
+export type { GlassViewProps, GlassIntensity } from './glass-view';
+
+export { GlassCard } from './glass-card';
+export type { GlassCardProps } from './glass-card';
 
 // ── Composite blocks ──────────────────────────────────────────────────────────
 export { Card } from './card';
