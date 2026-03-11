@@ -65,7 +65,7 @@ export function useWorkoutSession(sessionId: string): {
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
   const refresh = useCallback((): void => {
-    setRefreshKey((k: number) => k + 1);
+    setRefreshKey((k) => k + 1);
   }, []);
 
   // Load session metadata, grouped sets, and available exercises whenever

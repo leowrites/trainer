@@ -265,9 +265,11 @@ function ActiveWorkoutView({
   const [elapsed, setElapsed] = useState<number>(0);
   const [showPicker, setShowPicker] = useState(false);
 
-  // Tick the elapsed timer every second
+  // Tick the elapsed timer every second; skip if startTime is not yet set
   useEffect(() => {
-    const origin = startTime ?? Date.now();
+    if (startTime === null) return;
+
+    const origin = startTime;
     setElapsed(Date.now() - origin);
 
     const id = setInterval(() => {

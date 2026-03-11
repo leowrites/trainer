@@ -329,7 +329,7 @@ describe('useWorkoutStarter', () => {
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useWorkoutStarter(), { wrapper });
 
-    let sessionId: string | null = undefined as unknown as null;
+    let sessionId: string | null = null;
     act(() => {
       sessionId = result.current.startWorkoutFromSchedule();
     });
