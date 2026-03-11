@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
+import { palette } from '@core/theme';
 import { BarChart } from '../components/bar-chart';
 import { formatHours, maxHours } from '../domain/hours-over-time';
 import { formatVolume, maxVolume } from '../domain/volume-over-time';
@@ -30,7 +31,7 @@ export function HistoryScreen(): React.JSX.Element {
           data={volumeData.map((p) => ({ label: p.label, value: p.volume }))}
           maxValue={maxVolume(volumeData)}
           formatValue={formatVolume}
-          barClassName="bg-primary-400"
+          barColor={palette.green400}
           emptyMessage="Complete workouts to see volume trends"
         />
       </View>
@@ -49,7 +50,7 @@ export function HistoryScreen(): React.JSX.Element {
           data={hoursData.map((p) => ({ label: p.label, value: p.hours }))}
           maxValue={maxHours(hoursData)}
           formatValue={formatHours}
-          barClassName="bg-secondary"
+          barColor={palette.amber}
           emptyMessage="Complete workouts to see duration trends"
         />
       </View>

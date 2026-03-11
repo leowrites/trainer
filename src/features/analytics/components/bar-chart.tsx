@@ -1,5 +1,8 @@
 import React from 'react';
 import { Text, View } from 'react-native';
+import { BarChart as GiftedBarChart } from 'react-native-gifted-charts';
+
+import { palette } from '@core/theme';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -11,24 +14,33 @@ export interface BarChartDataPoint {
 interface BarChartProps {
   data: BarChartDataPoint[];
   maxValue: number;
-  /** Formats the value displayed above each bar. Defaults to rounding to 1 decimal place. */
+  /** Formats the value displayed as a top label on each bar. */
   formatValue?: (value: number) => string;
-  /** Tailwind background colour class for the bars, e.g. `'bg-primary-400'`. */
-  barClassName?: string;
+  /** Hex colour for the bars. Defaults to the primary-400 green. */
+  barColor?: string;
   emptyMessage?: string;
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+// gifted-charts requires plain style objects (no NativeWind) for its own text elements.
+const topLabelStyle = {
+  color: palette.mutedForeground,
+  fontSize: 8,
+  marginBottom: 2,
+} as const;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 /**
- * Simple vertical bar chart built with NativeWind / React Native Views.
- * No external charting library required.
+ * Bar chart wrapper around `react-native-gifted-charts`.
+ * Applies app design-token colours and handles the empty state.
  */
 export function BarChart({
   data,
   maxValue,
   formatValue = (v: number): string => v.toFixed(1),
-  barClassName = 'bg-primary-400',
+  barColor = palette.green400,
   emptyMessage = 'No data yet',
 }: BarChartProps): React.JSX.Element {
   if (data.length === 0) {
@@ -39,34 +51,30 @@ export function BarChart({
     );
   }
 
-  const safeMax = maxValue > 0 ? maxValue : 1;
+  const chartData = data.map((point) => ({
+    value: point.value,
+    label: point.label,
+    topLabelComponent: (): React.JSX.Element => (
+      <Text style={topLabelStyle} numberOfLines={1}>
+        {point.value > 0 ? formatValue(point.value) : ''}
+      </Text>
+    ),
+  }));
 
   return (
-    <View className="flex-row items-end h-36 gap-1">
-      {data.map((point, i) => {
-        const heightFraction = point.value / safeMax;
-        return (
-          <View key={i} className="flex-1 items-center justify-end gap-0.5">
-            {point.value > 0 && (
-              <Text
-                className="text-muted-foreground text-[8px]"
-                numberOfLines={1}
-              >
-                {formatValue(point.value)}
-              </Text>
-            )}
-            <View
-              className={`w-full rounded-t-sm ${barClassName}`}
-              style={{
-                height: `${Math.max(heightFraction * 100, point.value > 0 ? 4 : 0)}%`,
-              }}
-            />
-            <Text className="text-muted text-[8px]" numberOfLines={1}>
-              {point.label}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
+    <GiftedBarChart
+      data={chartData}
+      maxValue={maxValue > 0 ? maxValue : 1}
+      frontColor={barColor}
+      barBorderRadius={3}
+      noOfSections={3}
+      yAxisTextStyle={{ color: palette.muted, fontSize: 9 }}
+      xAxisLabelTextStyle={{ color: palette.muted, fontSize: 8 }}
+      backgroundColor={palette.surface}
+      yAxisColor={palette.border}
+      xAxisColor={palette.border}
+      rulesColor={palette.border}
+      isAnimated
+    />
   );
 }
