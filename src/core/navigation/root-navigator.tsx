@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import React from 'react';
 
 import { HistoryScreen } from '@features/analytics';
-import { ProfileScreen } from '@features/health-tracking';
+import { HealthScreen } from '@features/health-tracking';
 import { RoutinesScreen } from '@features/routines';
 import { ScheduleScreen } from '@features/schedule';
 import { WorkoutScreen } from '@features/workout-mode';
@@ -45,7 +45,7 @@ export function RootNavigator(): React.JSX.Element {
         <Tab.Screen name="Routines" component={RoutinesScreen} />
         <Tab.Screen name="Schedule" component={ScheduleScreen} />
         <Tab.Screen name="History" component={HistoryScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
+        <Tab.Screen name="Profile" component={HealthScreen} />
       </Tab.Navigator>
     </NavigationContainer>
   );

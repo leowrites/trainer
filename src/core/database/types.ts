@@ -59,3 +59,26 @@ export interface WorkoutSet {
   reps: number;
   is_completed: number; // SQLite uses 0/1 for booleans
 }
+
+export interface BodyWeightLog {
+  id: string;
+  /** ISO date string: YYYY-MM-DD */
+  date: string;
+  weight_kg: number;
+}
+
+export interface StepCountLog {
+  id: string;
+  /** ISO date string: YYYY-MM-DD */
+  date: string;
+  step_count: number;
+}
+
+export interface ActivityLog {
+  id: string;
+  /** ISO date string: YYYY-MM-DD */
+  date: string;
+  activity_type: string;
+  duration_minutes: number;
+  notes: string | null;
+}
