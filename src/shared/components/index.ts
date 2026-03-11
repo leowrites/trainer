@@ -15,6 +15,8 @@
  *  - Badge        — semantic colour tag with optional pulse animation
  *  - Button       — pressable CTA with variants (primary / secondary / ghost / danger)
  *  - ProgressBar  — horizontal fill indicator with variants
+ *  - Input        — theme-aware text input field
+ *  - Checkbox     — toggle row with label and optional sub-label
  */
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -50,3 +52,10 @@ export type { ButtonProps, ButtonVariant, ButtonSize } from './button';
 // ── Data visualisation ────────────────────────────────────────────────────────
 export { ProgressBar } from './progress-bar';
 export type { ProgressBarProps, ProgressBarVariant } from './progress-bar';
+
+// ── Form primitives ───────────────────────────────────────────────────────────
+export { Input } from './input';
+export type { InputProps } from './input';
+
+export { Checkbox } from './checkbox';
+export type { CheckboxProps } from './checkbox';

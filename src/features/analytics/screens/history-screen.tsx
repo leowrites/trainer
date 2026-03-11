@@ -1,11 +1,12 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+
+import { Container, Heading, Muted } from '@shared/components';
 
 export function HistoryScreen(): React.JSX.Element {
   return (
-    <View className="flex-1 items-center justify-center bg-surface">
-      <Text className="text-white text-2xl font-bold mb-2">History</Text>
-      <Text className="text-white/60 text-sm">Review your past workouts</Text>
-    </View>
+    <Container className="items-center justify-center">
+      <Heading>History</Heading>
+      <Muted className="mt-2">Review your past workouts</Muted>
+    </Container>
   );
 }

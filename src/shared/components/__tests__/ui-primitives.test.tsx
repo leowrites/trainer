@@ -6,7 +6,7 @@
  * we only verify the static DOM structure.
  */
 
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 
 import type { ColSpan } from '../index';
@@ -16,11 +16,13 @@ import {
   Button,
   Caption,
   Card,
+  Checkbox,
   Container,
   Grid,
   GridItem,
   Header,
   Heading,
+  Input,
   Label,
   Muted,
   ProgressBar,
@@ -341,5 +343,134 @@ describe('Grid + GridItem', () => {
       </Grid>,
     );
     expect(toJSON()).toBeTruthy();
+  });
+});
+
+// ─── Input ────────────────────────────────────────────────────────────────────
+
+describe('Input', () => {
+  it('renders without crashing', () => {
+    const { toJSON } = render(<Input value="" onChangeText={jest.fn()} />);
+    expect(toJSON()).toBeTruthy();
+  });
+
+  it('displays the placeholder text', () => {
+    render(
+      <Input value="" onChangeText={jest.fn()} placeholder="Enter name" />,
+    );
+    expect(screen.getByPlaceholderText('Enter name')).toBeTruthy();
+  });
+
+  it('calls onChangeText when text changes', () => {
+    const onChangeText = jest.fn();
+    render(
+      <Input
+        value=""
+        onChangeText={onChangeText}
+        testID="input"
+        placeholder="Type here"
+      />,
+    );
+    fireEvent.changeText(screen.getByPlaceholderText('Type here'), 'Hello');
+    expect(onChangeText).toHaveBeenCalledWith('Hello');
+  });
+
+  it('reflects the current value', () => {
+    render(
+      <Input value="Bench Press" onChangeText={jest.fn()} placeholder="Name" />,
+    );
+    expect(screen.getByDisplayValue('Bench Press')).toBeTruthy();
+  });
+
+  it('applies className overrides without crashing', () => {
+    const { toJSON } = render(
+      <Input value="" onChangeText={jest.fn()} className="mb-4" />,
+    );
+    expect(toJSON()).toBeTruthy();
+  });
+});
+
+// ─── Checkbox ─────────────────────────────────────────────────────────────────
+
+describe('Checkbox', () => {
+  it('renders without crashing', () => {
+    const { toJSON } = render(
+      <Checkbox checked={false} onToggle={jest.fn()} label="Push A" />,
+    );
+    expect(toJSON()).toBeTruthy();
+  });
+
+  it('displays the label text', () => {
+    render(<Checkbox checked={false} onToggle={jest.fn()} label="Pull Day" />);
+    expect(screen.getByText('Pull Day')).toBeTruthy();
+  });
+
+  it('displays the sublabel when provided', () => {
+    render(
+      <Checkbox
+        checked={false}
+        onToggle={jest.fn()}
+        label="Push A"
+        sublabel="6 exercises"
+      />,
+    );
+    expect(screen.getByText('6 exercises')).toBeTruthy();
+  });
+
+  it('shows badgeText inside checkbox when checked', () => {
+    render(
+      <Checkbox
+        checked={true}
+        onToggle={jest.fn()}
+        label="Push A"
+        badgeText="1"
+      />,
+    );
+    expect(screen.getByText('1')).toBeTruthy();
+  });
+
+  it('shows a checkmark when checked and no badgeText provided', () => {
+    render(<Checkbox checked={true} onToggle={jest.fn()} label="Push A" />);
+    expect(screen.getByText('✓')).toBeTruthy();
+  });
+
+  it('calls onToggle when pressed', () => {
+    const onToggle = jest.fn();
+    render(<Checkbox checked={false} onToggle={onToggle} label="Leg Day" />);
+    fireEvent.press(screen.getByRole('checkbox'));
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onToggle when disabled', () => {
+    const onToggle = jest.fn();
+    render(
+      <Checkbox checked={false} onToggle={onToggle} label="Leg Day" disabled />,
+    );
+    fireEvent.press(screen.getByRole('checkbox'));
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it('has correct accessibilityState when unchecked', () => {
+    render(<Checkbox checked={false} onToggle={jest.fn()} label="Push A" />);
+    const el = screen.getByRole('checkbox');
+    expect(el.props.accessibilityState).toMatchObject({ checked: false });
+  });
+
+  it('has correct accessibilityState when checked', () => {
+    render(<Checkbox checked={true} onToggle={jest.fn()} label="Push A" />);
+    const el = screen.getByRole('checkbox');
+    expect(el.props.accessibilityState).toMatchObject({ checked: true });
+  });
+
+  it('uses accessibilityLabel override when provided', () => {
+    render(
+      <Checkbox
+        checked={false}
+        onToggle={jest.fn()}
+        label="Push A"
+        accessibilityLabel="Select Push A routine"
+      />,
+    );
+    expect(screen.getByLabelText('Select Push A routine')).toBeTruthy();
   });
 });
