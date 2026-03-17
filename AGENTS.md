@@ -43,8 +43,12 @@ This guide helps coding agents make safe, high-quality changes in the `trainer` 
 
 1. Read relevant docs first (`README.md`, `docs/architecture.md`, and touched feature files).
 2. Make the smallest change that solves the task.
-3. Run validation commands before finalizing.
-4. Summarize behavior impact, not just code diffs.
+3. Do not implement changes directly in the shared `main` checkout. Treat local `main` as pull-only and keep it clean.
+4. Use a dedicated branch/worktree for all implementation work, including primary agent work.
+5. When delegating implementation work to a subagent, always create a dedicated git worktree for that subagent.
+6. Each subagent must use its own branch in its assigned worktree and commit/push from that branch instead of working in the shared workspace.
+7. Run validation commands before finalizing.
+8. Summarize behavior impact, not just code diffs.
 
 ## Validation checklist
 

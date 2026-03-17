@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+# Catch CI-breaking issues before code is pushed.
+npm run type-check || exit 1
+npm run lint || exit 1
+npm run format:check || exit 1
+npm test -- --runInBand || exit 1
