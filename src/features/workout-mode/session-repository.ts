@@ -30,6 +30,8 @@ function buildActiveWorkoutSession(
       exercises.push({
         exerciseId: row.exercise_id,
         exerciseName: exerciseNames.get(row.exercise_id) ?? 'Exercise',
+        targetSets: row.target_sets,
+        targetReps: row.target_reps,
         sets: [],
       });
     }
@@ -40,6 +42,8 @@ function buildActiveWorkoutSession(
       reps: row.reps,
       weight: row.weight,
       isCompleted: row.is_completed === 1,
+      targetSets: row.target_sets,
+      targetReps: row.target_reps,
     });
   }
 
@@ -65,7 +69,7 @@ export function loadActiveWorkoutSession(
   }
 
   const setRows = db.getAllSync<WorkoutSetRow>(
-    'SELECT id, session_id, exercise_id, weight, reps, is_completed FROM workout_sets WHERE session_id = ? ORDER BY rowid ASC',
+    'SELECT id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps FROM workout_sets WHERE session_id = ? ORDER BY rowid ASC',
     [sessionId],
   );
 
@@ -89,11 +93,13 @@ export function createWorkoutSetRecord(
   exerciseId: string,
   reps: number,
   weight: number,
+  targetSets: number | null,
+  targetReps: number | null,
 ): ActiveWorkoutSet {
   const setId = generateId();
   db.runSync(
-    'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed) VALUES (?, ?, ?, ?, ?, ?)',
-    [setId, sessionId, exerciseId, weight, reps, 0],
+    'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [setId, sessionId, exerciseId, weight, reps, 0, targetSets, targetReps],
   );
 
   return {
@@ -102,6 +108,8 @@ export function createWorkoutSetRecord(
     reps,
     weight,
     isCompleted: false,
+    targetSets,
+    targetReps,
   };
 }
 

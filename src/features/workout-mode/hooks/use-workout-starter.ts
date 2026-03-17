@@ -166,7 +166,7 @@ export function useWorkoutStarter(): {
       for (const exercise of snapshot.exercises) {
         for (let i = 0; i < exercise.targetSets; i++) {
           db.runSync(
-            'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed) VALUES (?, ?, ?, ?, ?, ?)',
+            'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
               generateId(),
               sessionId,
@@ -174,6 +174,8 @@ export function useWorkoutStarter(): {
               0,
               exercise.targetReps,
               0,
+              exercise.targetSets,
+              exercise.targetReps,
             ],
           );
         }

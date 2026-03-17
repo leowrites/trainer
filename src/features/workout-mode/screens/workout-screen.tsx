@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
+import { type ActiveWorkoutSet } from '../types';
 import {
   Badge,
   Body,
@@ -36,6 +37,81 @@ function parseDecimalNumber(value: string): number {
 
   const parsed = Number.parseFloat(value);
   return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function WorkoutSetEditor({
+  exerciseName,
+  setItem,
+  index,
+  onDelete,
+  onUpdateReps,
+  onUpdateWeight,
+}: {
+  exerciseName: string;
+  setItem: ActiveWorkoutSet;
+  index: number;
+  onDelete: () => void;
+  onUpdateReps: (reps: number) => void;
+  onUpdateWeight: (weight: number) => void;
+}): React.JSX.Element {
+  const [repsText, setRepsText] = useState(String(setItem.reps));
+  const [weightText, setWeightText] = useState(String(setItem.weight));
+
+  useEffect(() => {
+    setRepsText(String(setItem.reps));
+  }, [setItem.reps]);
+
+  useEffect(() => {
+    setWeightText(String(setItem.weight));
+  }, [setItem.weight]);
+
+  const handlePersistReps = useCallback((): void => {
+    onUpdateReps(parseWholeNumber(repsText));
+  }, [onUpdateReps, repsText]);
+
+  const handlePersistWeight = useCallback((): void => {
+    onUpdateWeight(parseDecimalNumber(weightText));
+  }, [onUpdateWeight, weightText]);
+
+  return (
+    <Surface variant="card" className="rounded-xl p-3 gap-3">
+      <Caption>Set {index + 1}</Caption>
+      <View className="flex-row gap-3">
+        <View className="flex-1 gap-1">
+          <Label>Reps</Label>
+          <Input
+            value={repsText}
+            onChangeText={setRepsText}
+            onEndEditing={handlePersistReps}
+            onSubmitEditing={handlePersistReps}
+            keyboardType="number-pad"
+            returnKeyType="done"
+            accessibilityLabel={`${exerciseName} set ${index + 1} reps`}
+          />
+        </View>
+        <View className="flex-1 gap-1">
+          <Label>Weight</Label>
+          <Input
+            value={weightText}
+            onChangeText={setWeightText}
+            onEndEditing={handlePersistWeight}
+            onSubmitEditing={handlePersistWeight}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+            accessibilityLabel={`${exerciseName} set ${index + 1} weight`}
+          />
+        </View>
+      </View>
+
+      <Button
+        variant="ghost"
+        onPress={onDelete}
+        accessibilityLabel={`Delete ${exerciseName} set ${index + 1}`}
+      >
+        Delete Set
+      </Button>
+    </Surface>
+  );
 }
 
 export function WorkoutScreen(): React.JSX.Element {
@@ -117,48 +193,17 @@ export function WorkoutScreen(): React.JSX.Element {
                     </View>
 
                     {exercise.sets.map((setItem, index) => (
-                      <Surface
+                      <WorkoutSetEditor
                         key={setItem.id}
-                        variant="card"
-                        className="rounded-xl p-3 gap-3"
-                      >
-                        <Caption>Set {index + 1}</Caption>
-                        <View className="flex-row gap-3">
-                          <View className="flex-1 gap-1">
-                            <Label>Reps</Label>
-                            <Input
-                              value={String(setItem.reps)}
-                              onChangeText={(value) =>
-                                updateReps(setItem.id, parseWholeNumber(value))
-                              }
-                              keyboardType="number-pad"
-                              accessibilityLabel={`${exercise.exerciseName} set ${index + 1} reps`}
-                            />
-                          </View>
-                          <View className="flex-1 gap-1">
-                            <Label>Weight</Label>
-                            <Input
-                              value={String(setItem.weight)}
-                              onChangeText={(value) =>
-                                updateWeight(
-                                  setItem.id,
-                                  parseDecimalNumber(value),
-                                )
-                              }
-                              keyboardType="decimal-pad"
-                              accessibilityLabel={`${exercise.exerciseName} set ${index + 1} weight`}
-                            />
-                          </View>
-                        </View>
-
-                        <Button
-                          variant="ghost"
-                          onPress={() => deleteSet(setItem.id)}
-                          accessibilityLabel={`Delete ${exercise.exerciseName} set ${index + 1}`}
-                        >
-                          Delete Set
-                        </Button>
-                      </Surface>
+                        exerciseName={exercise.exerciseName}
+                        setItem={setItem}
+                        index={index}
+                        onDelete={() => deleteSet(setItem.id)}
+                        onUpdateReps={(reps) => updateReps(setItem.id, reps)}
+                        onUpdateWeight={(weight) =>
+                          updateWeight(setItem.id, weight)
+                        }
+                      />
                     ))}
 
                     <Button

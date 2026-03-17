@@ -62,7 +62,7 @@ export function useActiveWorkout(): {
     (setId: string, reps: number): void => {
       const normalizedReps = normalizeInteger(reps);
       updateWorkoutSetReps(db, setId, normalizedReps);
-      updateSet(setId, { reps: normalizedReps });
+      updateSet(setId, { reps: normalizedReps, isCompleted: true });
     },
     [db, updateSet],
   );
@@ -71,7 +71,7 @@ export function useActiveWorkout(): {
     (setId: string, weight: number): void => {
       const normalizedWeight = normalizeWeight(weight);
       updateWorkoutSetWeight(db, setId, normalizedWeight);
-      updateSet(setId, { weight: normalizedWeight });
+      updateSet(setId, { weight: normalizedWeight, isCompleted: true });
     },
     [db, updateSet],
   );
@@ -92,6 +92,8 @@ export function useActiveWorkout(): {
         exerciseId,
         previousSet?.reps ?? 0,
         previousSet?.weight ?? 0,
+        exercise?.targetSets ?? previousSet?.targetSets ?? null,
+        exercise?.targetReps ?? previousSet?.targetReps ?? null,
       );
 
       addSetToStore(exerciseId, newSet);

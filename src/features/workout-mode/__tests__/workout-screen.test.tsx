@@ -103,8 +103,12 @@ describe('WorkoutScreen', () => {
                 reps: 8,
                 weight: 135,
                 isCompleted: false,
+                targetSets: 3,
+                targetReps: 8,
               },
             ],
+            targetSets: 3,
+            targetReps: 8,
           },
         ],
       },
@@ -120,11 +124,13 @@ describe('WorkoutScreen', () => {
     expect(screen.getByText('Session in progress')).toBeTruthy();
     expect(screen.getByText('Bench Press')).toBeTruthy();
 
-    fireEvent.changeText(screen.getByLabelText('Bench Press set 1 reps'), '10');
-    fireEvent.changeText(
-      screen.getByLabelText('Bench Press set 1 weight'),
-      '140.5',
-    );
+    const repsInput = screen.getByLabelText('Bench Press set 1 reps');
+    const weightInput = screen.getByLabelText('Bench Press set 1 weight');
+
+    fireEvent.changeText(repsInput, '10');
+    fireEvent(repsInput, 'endEditing');
+    fireEvent.changeText(weightInput, '140.5');
+    fireEvent(weightInput, 'endEditing');
     fireEvent.press(screen.getByText('Add Set'));
     fireEvent.press(screen.getByLabelText('Delete Bench Press set 1'));
     fireEvent.press(screen.getByText('Complete Workout'));
