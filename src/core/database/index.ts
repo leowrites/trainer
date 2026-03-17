@@ -7,6 +7,7 @@
  */
 export { database } from './database';
 export type {
+  BodyWeightEntry,
   Exercise,
   Routine,
   RoutineExercise,

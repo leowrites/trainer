@@ -95,15 +95,18 @@ All persistent data flows through [expo-sqlite](https://docs.expo.dev/versions/l
 
 Defined in `src/core/database/schema.ts` as a single SQL string of `CREATE TABLE IF NOT EXISTS` statements. Every table uses a `TEXT PRIMARY KEY` (UUID) for its `id` column.
 
-**Current version: 1** (`SCHEMA_VERSION` constant in `schema.ts`)
+**Current version: 3** (`SCHEMA_VERSION` constant in `schema.ts`)
 
 | Table               | Columns                                                                   |
 | ------------------- | ------------------------------------------------------------------------- |
 | `exercises`         | `name` (TEXT), `muscle_group` (TEXT)                                      |
 | `routines`          | `name` (TEXT), `notes` (TEXT, optional)                                   |
 | `routine_exercises` | `routine_id`\*, `exercise_id`\*, `position`, `target_sets`, `target_reps` |
-| `workout_sessions`  | `routine_id`\* (optional), `start_time`, `end_time` (optional)            |
+| `schedules`         | `name`, `is_active`, `current_position`                                   |
+| `schedule_entries`  | `schedule_id`\*, `routine_id`\*, `position`                               |
+| `workout_sessions`  | `routine_id`\* (optional), `schedule_id`\* (optional), `snapshot_name` (optional), `start_time`, `end_time` (optional) |
 | `workout_sets`      | `session_id`\*, `exercise_id`\*, `weight`, `reps`, `is_completed`         |
+| `body_weight_entries` | `weight`, `unit`, `logged_at`, `notes` (optional)                      |
 
 \* Indexed foreign-key column.
 
@@ -138,6 +141,8 @@ export interface RoutineExercise {
 export interface WorkoutSession {
   id: string;
   routine_id: string | null;
+  schedule_id: string | null;
+  snapshot_name: string | null;
   start_time: number; // Unix timestamp (ms)
   end_time: number | null;
 }
@@ -150,20 +155,28 @@ export interface WorkoutSet {
   reps: number;
   is_completed: number; // SQLite boolean: 0 | 1
 }
+
+export interface BodyWeightEntry {
+  id: string;
+  weight: number;
+  unit: 'kg' | 'lb';
+  logged_at: number; // Unix timestamp (ms)
+  notes: string | null;
+}
 ```
 
 ### Database Instance
 
-A single `SQLiteDatabase` instance is opened in `src/core/database/database.ts` using `openDatabaseSync`. All tables are created (if they don't already exist) synchronously at startup.
+A single `SQLiteDatabase` instance is opened in `src/core/database/database.ts` using `openDatabaseSync`. Missing tables are created and forward-only migrations are applied synchronously at startup.
 
 ```ts
 // src/core/database/database.ts
 import { openDatabaseSync } from 'expo-sqlite';
-import { CREATE_TABLES_SQL } from './schema';
+import { prepareDatabase } from './migrations';
 
 function initDatabase(): SQLiteDatabase {
   const db = openDatabaseSync('trainer.db');
-  db.execSync(CREATE_TABLES_SQL);
+  prepareDatabase(db);
   return db;
 }
 
@@ -252,27 +265,26 @@ export function getRoutines(db: SQLiteDatabase): Routine[] {
 When adding or modifying tables/columns:
 
 1. Increment `SCHEMA_VERSION` in `src/core/database/schema.ts`.
-2. Add the new `CREATE TABLE` or `ALTER TABLE` statements to `CREATE_TABLES_SQL` (new tables only — SQLite does not support removing columns via `ALTER TABLE`).
-3. For column additions, run `ALTER TABLE <table> ADD COLUMN <col> <type>` guarded by the `user_version` pragma so it only runs once.
+2. Add the latest table shape to `CREATE_TABLES_SQL` so fresh installs are correct immediately.
+3. Add a forward-only entry in `src/core/database/migrations.ts` so existing installs can move to the new version without dropping data.
+4. Keep migrations idempotent where possible by using `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, or explicit column existence checks before `ALTER TABLE`.
+5. Never reset or drop user tables during normal startup migrations.
 
-Example migration guard in `database.ts`:
+Example migration entry:
 
 ```ts
-const db = openDatabaseSync('trainer.db');
-db.execSync(CREATE_TABLES_SQL); // idempotent — CREATE TABLE IF NOT EXISTS
-
-const row = db.getFirstSync<{ user_version: number }>('PRAGMA user_version');
-const currentVersion = row?.user_version ?? 0;
-
-if (currentVersion < 2) {
-  db.execSync(`
-    ALTER TABLE exercises ADD COLUMN equipment TEXT;
-    PRAGMA user_version = 2;
-  `);
+{
+  version: 4,
+  description: 'Add exercise equipment metadata.',
+  up: db => {
+    if (!columnExists(db, 'exercises', 'equipment')) {
+      db.execSync('ALTER TABLE exercises ADD COLUMN equipment TEXT;');
+    }
+  },
 }
 ```
 
-> **Warning:** Dropping or renaming columns requires creating a new table, copying data, dropping the old table, and renaming the new one. Plan schema changes carefully to avoid data loss.
+> **Warning:** Dropping or renaming columns still requires creating a replacement table, copying data forward, and renaming it into place. Treat those changes as explicit data-copy migrations and test them before shipping.
 
 ---
 
@@ -333,6 +345,6 @@ app’s established liquid-glass-inspired visual language.
 
 1. Create `src/features/<feature-name>/`.
 2. Add an `index.ts` that exports the feature's public API (components, hooks, actions).
-3. If the feature needs new database tables, update `CREATE_TABLES_SQL` in `schema.ts`, add entity interfaces in `src/core/database/types.ts`, and apply any necessary migration guard in `database.ts`.
+3. If the feature needs new database tables, update `CREATE_TABLES_SQL` in `schema.ts`, add entity interfaces in `src/core/database/types.ts`, and add any required migration step in `src/core/database/migrations.ts`.
 4. Keep business/domain logic in the feature slice — not in React components.
 5. Use `@core/database`'s `useDatabase()` hook for all database access within components.
