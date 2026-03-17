@@ -1,4 +1,5 @@
 # Gluestack integration
+
 This repository is adopting `gluestack-ui` as the primary component foundation. The goal is to pair Gluestack's reusable primitives with the existing feature-sliced and NativeWind-heavy architecture while keeping our semantic theme tokens as the single source of truth.
 
 ## Why Gluestack?

@@ -32,6 +32,7 @@
     "PascalCase",
     "camelCase",
     "kebab",
+    "colour",
     "colours",
     "analytics",
     "simdjson",
