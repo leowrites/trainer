@@ -73,6 +73,19 @@ function resolveVariantProps(variant: ButtonVariant): {
   }
 }
 
+function resolveTextClass(variant: ButtonVariant): string {
+  switch (variant) {
+    case 'secondary':
+      return 'text-black';
+    case 'ghost':
+      return 'text-foreground';
+    case 'danger':
+      return 'text-white';
+    default:
+      return 'text-black';
+  }
+}
+
 export function Button({
   variant = 'primary',
   size = 'md',
@@ -85,6 +98,7 @@ export function Button({
 }: ButtonProps): React.JSX.Element {
   const isInteractive = !disabled && !loading;
   const { action, gluestackVariant } = resolveVariantProps(variant);
+  const textClassName = resolveTextClass(variant);
 
   return (
     <GluestackButton
@@ -101,7 +115,7 @@ export function Button({
       {loading ? (
         <ButtonSpinner accessibilityLabel="Loading" />
       ) : (
-        <ButtonText>{children}</ButtonText>
+        <ButtonText className={textClassName}>{children}</ButtonText>
       )}
     </GluestackButton>
   );

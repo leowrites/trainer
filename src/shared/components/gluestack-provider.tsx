@@ -29,7 +29,7 @@ export function GluestackUIProvider({
 
   return (
     <GluestackContext.Provider value={config}>
-      <GeneratedGluestackUIProvider mode={colorMode}>
+      <GeneratedGluestackUIProvider mode={colorMode} style={config}>
         {children}
       </GeneratedGluestackUIProvider>
     </GluestackContext.Provider>
