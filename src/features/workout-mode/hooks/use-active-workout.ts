@@ -67,7 +67,7 @@ export function useActiveWorkout(): {
     (exerciseId: string, exerciseName: string): void => {
       if (
         !activeSessionId ||
-        !activeSession?.isFreeWorkout ||
+        !activeSession ||
         activeSession.exercises.some((item) => item.exerciseId === exerciseId)
       ) {
         return;
@@ -96,7 +96,18 @@ export function useActiveWorkout(): {
 
   const removeExercise = useCallback(
     (exerciseId: string): void => {
-      if (!activeSessionId || !activeSession?.isFreeWorkout) {
+      if (!activeSessionId || !activeSession) {
+        return;
+      }
+
+      const exercise = activeSession.exercises.find(
+        (item) => item.exerciseId === exerciseId,
+      );
+      if (
+        !exercise ||
+        exercise.targetSets !== null ||
+        exercise.targetReps !== null
+      ) {
         return;
       }
 

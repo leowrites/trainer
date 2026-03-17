@@ -49,7 +49,7 @@ describe('useActiveWorkout', () => {
     });
   });
 
-  it('adds and removes exercise blocks during a free workout', () => {
+  it('adds and removes ad hoc exercise blocks during an active workout', () => {
     const db = createMockDb();
     const wrapper = createDatabaseWrapper(db);
     useWorkoutStore.setState({
@@ -59,8 +59,8 @@ describe('useActiveWorkout', () => {
       activeSession: {
         ...activeSession,
         id: 'session-2',
-        title: 'Free Workout',
-        isFreeWorkout: true,
+        title: 'Push A',
+        isFreeWorkout: false,
         exercises: [],
       },
     });
@@ -104,6 +104,22 @@ describe('useActiveWorkout', () => {
       ['session-2', 'exercise-2'],
     );
     expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([]);
+  });
+
+  it('does not remove planned routine exercises', () => {
+    const db = createMockDb();
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
+
+    act(() => {
+      result.current.removeExercise('exercise-1');
+    });
+
+    expect(db.runSync).not.toHaveBeenCalledWith(
+      'DELETE FROM workout_sets WHERE session_id = ? AND exercise_id = ?',
+      ['session-1', 'exercise-1'],
+    );
+    expect(useWorkoutStore.getState().activeSession?.exercises).toHaveLength(1);
   });
 
   it('persists set edits/additions/deletions and keeps the store in sync', () => {

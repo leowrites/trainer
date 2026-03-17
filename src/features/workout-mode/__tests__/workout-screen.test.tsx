@@ -162,6 +162,79 @@ describe('WorkoutScreen', () => {
     expect(completeWorkout).toHaveBeenCalledTimes(1);
   });
 
+  it('allows adding ad hoc exercises during a scheduled workout', () => {
+    const addExercise = jest.fn();
+
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-1',
+          name: 'Bench Press',
+          muscle_group: 'Chest',
+        },
+        {
+          id: 'exercise-2',
+          name: 'Goblet Squat',
+          muscle_group: 'Legs',
+        },
+      ],
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+    mockUseWorkoutStore.mockReturnValue({
+      isWorkoutActive: true,
+    });
+    mockUseWorkoutStarter.mockReturnValue({
+      nextRoutine: null,
+      startWorkoutFromSchedule: jest.fn(),
+      startFreeWorkout: jest.fn(),
+      refreshPreview: jest.fn(),
+    });
+    mockUseActiveWorkout.mockReturnValue({
+      activeSession: {
+        id: 'session-1',
+        title: 'Push A',
+        startTime: 1_700_000_000_000,
+        isFreeWorkout: false,
+        exercises: [
+          {
+            exerciseId: 'exercise-1',
+            exerciseName: 'Bench Press',
+            sets: [
+              {
+                id: 'set-1',
+                exerciseId: 'exercise-1',
+                reps: 8,
+                weight: 135,
+                isCompleted: false,
+                targetSets: 3,
+                targetReps: 8,
+              },
+            ],
+            targetSets: 3,
+            targetReps: 8,
+          },
+        ],
+      },
+      addExercise,
+      removeExercise: jest.fn(),
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      completeWorkout: jest.fn().mockReturnValue(true),
+    });
+
+    render(<WorkoutScreen />);
+
+    fireEvent.press(screen.getByText('Add Exercise'));
+    fireEvent.press(screen.getByLabelText('Goblet Squat'));
+
+    expect(addExercise).toHaveBeenCalledWith('exercise-2', 'Goblet Squat');
+  });
+
   it('allows adding and removing exercises during a free workout', () => {
     const addExercise = jest.fn();
     const removeExercise = jest.fn();

@@ -116,7 +116,7 @@ function WorkoutSetEditor({
   );
 }
 
-function FreeWorkoutExercisePicker({
+function ActiveWorkoutExercisePicker({
   exerciseIdsInSession,
   onAddExercise,
 }: {
@@ -154,23 +154,31 @@ function FreeWorkoutExercisePicker({
     <Surface variant="card" className="w-full rounded-xl p-4 gap-3">
       <View className="gap-1">
         <Body className="font-semibold">Add exercise</Body>
-        <Muted>Pick an exercise to start logging in this free workout.</Muted>
+        <Muted>Pick an exercise to add to the current workout.</Muted>
       </View>
 
       {showPicker ? (
-        <View className="gap-2">
-          {availableExercises.map((exercise) => (
-            <Checkbox
-              key={exercise.id}
-              checked={false}
-              onToggle={() => {
-                onAddExercise(exercise.id, exercise.name);
-                setShowPicker(false);
-              }}
-              label={exercise.name}
-              sublabel={exercise.muscle_group}
-            />
-          ))}
+        <View className="gap-3">
+          <ScrollView
+            className="max-h-64"
+            nestedScrollEnabled
+            showsVerticalScrollIndicator={false}
+          >
+            <View className="gap-2">
+              {availableExercises.map((exercise) => (
+                <Checkbox
+                  key={exercise.id}
+                  checked={false}
+                  onToggle={() => {
+                    onAddExercise(exercise.id, exercise.name);
+                    setShowPicker(false);
+                  }}
+                  label={exercise.name}
+                  sublabel={exercise.muscle_group}
+                />
+              ))}
+            </View>
+          </ScrollView>
 
           <Button variant="ghost" onPress={() => setShowPicker(false)}>
             Cancel
@@ -250,8 +258,8 @@ export function WorkoutScreen(): React.JSX.Element {
             </Body>
           </Card>
 
-          {activeSession?.isFreeWorkout ? (
-            <FreeWorkoutExercisePicker
+          {activeSession ? (
+            <ActiveWorkoutExercisePicker
               exerciseIdsInSession={activeSession.exercises.map(
                 (exercise) => exercise.exerciseId,
               )}
@@ -295,7 +303,8 @@ export function WorkoutScreen(): React.JSX.Element {
                       Add Set
                     </Button>
 
-                    {activeSession.isFreeWorkout ? (
+                    {exercise.targetSets === null &&
+                    exercise.targetReps === null ? (
                       <Button
                         variant="danger"
                         onPress={() => removeExercise(exercise.exerciseId)}
