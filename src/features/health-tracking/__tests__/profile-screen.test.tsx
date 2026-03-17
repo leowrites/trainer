@@ -127,4 +127,63 @@ describe('ProfileScreen', () => {
 
     expect(deleteEntry).toHaveBeenCalledWith('weight-1');
   });
+
+  it('shows a form error when saving fails', () => {
+    mockUseBodyWeightEntries.mockReturnValue({
+      entries: [],
+      error: null,
+      refresh: jest.fn(),
+      createEntry: jest.fn(() => {
+        throw new Error('insert failed');
+      }),
+      updateEntry: jest.fn(),
+      deleteEntry: jest.fn(),
+    });
+
+    render(<ProfileScreen />);
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Weight (e.g. 72.4)'),
+      '181.6',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText('YYYY-MM-DD'),
+      '2026-03-17',
+    );
+    fireEvent.changeText(screen.getByPlaceholderText('HH:mm'), '07:30');
+    fireEvent.press(screen.getByText('Save entry'));
+
+    expect(
+      screen.getByText('Unable to save this body-weight entry.'),
+    ).toBeTruthy();
+  });
+
+  it('shows a form error when deleting fails', () => {
+    mockUseBodyWeightEntries.mockReturnValue({
+      entries: [
+        {
+          id: 'weight-1',
+          weight: 72.4,
+          unit: 'kg',
+          loggedAt: buildLoggedAtTimestamp('2026-03-16', '08:00') ?? 0,
+          notes: null,
+        },
+      ],
+      error: null,
+      refresh: jest.fn(),
+      createEntry: jest.fn(),
+      updateEntry: jest.fn(),
+      deleteEntry: jest.fn(() => {
+        throw new Error('delete failed');
+      }),
+    });
+
+    render(<ProfileScreen />);
+
+    fireEvent.press(screen.getByText('Delete'));
+
+    expect(
+      screen.getByText('Unable to delete this body-weight entry.'),
+    ).toBeTruthy();
+  });
 });

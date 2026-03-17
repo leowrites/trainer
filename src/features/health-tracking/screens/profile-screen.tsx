@@ -77,11 +77,16 @@ export function ProfileScreen(): React.JSX.Element {
 
   const handleDelete = useCallback(
     (id: string): void => {
-      if (editingEntry?.id === id) {
-        resetForm();
-      }
+      try {
+        if (editingEntry?.id === id) {
+          resetForm();
+        }
 
-      deleteEntry(id);
+        deleteEntry(id);
+        setFormError(null);
+      } catch {
+        setFormError('Unable to delete this body-weight entry.');
+      }
     },
     [deleteEntry, editingEntry?.id, resetForm],
   );
@@ -115,7 +120,10 @@ export function ProfileScreen(): React.JSX.Element {
         createEntry(nextEntry);
       }
 
+      setFormError(null);
       resetForm();
+    } catch {
+      setFormError('Unable to save this body-weight entry.');
     } finally {
       setSaving(false);
     }
