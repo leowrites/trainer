@@ -6,7 +6,7 @@
  * changes. Forward-only migration steps belong in migrations.ts.
  */
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS exercises (
@@ -74,7 +74,9 @@ export const CREATE_TABLES_SQL = `
     exercise_id  TEXT NOT NULL,
     weight       REAL NOT NULL,
     reps         INTEGER NOT NULL,
-    is_completed INTEGER NOT NULL DEFAULT 0
+    is_completed INTEGER NOT NULL DEFAULT 0,
+    target_sets  INTEGER,
+    target_reps  INTEGER
   );
 
   CREATE INDEX IF NOT EXISTS idx_workout_sets_session

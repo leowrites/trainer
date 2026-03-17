@@ -12,11 +12,11 @@ interface MockDatabase extends Partial<SQLiteDatabase> {
 
 function createMigrationDbMock({
   version = 0,
-  hasWorkoutSessionsTable = true,
+  tableNames = ['workout_sessions'],
   hasScheduleIdColumn = true,
 }: {
   version?: number;
-  hasWorkoutSessionsTable?: boolean;
+  tableNames?: string[];
   hasScheduleIdColumn?: boolean;
 } = {}): MockDatabase {
   let userVersion = version;
@@ -41,9 +41,8 @@ function createMigrationDbMock({
       }
 
       if (sql.includes('sqlite_master')) {
-        return hasWorkoutSessionsTable && params?.[0] === 'workout_sessions'
-          ? { name: 'workout_sessions' }
-          : null;
+        const tableName = String(params?.[0] ?? '');
+        return tableNames.includes(tableName) ? { name: tableName } : null;
       }
 
       return null;
@@ -69,7 +68,7 @@ describe('prepareDatabase', () => {
   it('creates the latest schema for a fresh install and sets the current version', () => {
     const db = createMigrationDbMock({
       version: 0,
-      hasWorkoutSessionsTable: false,
+      tableNames: [],
     });
 
     const finalVersion = prepareDatabase(db as SQLiteDatabase);
@@ -81,6 +80,8 @@ describe('prepareDatabase', () => {
     expect(db.execSync).toHaveBeenCalledWith(
       `PRAGMA user_version = ${SCHEMA_VERSION}`,
     );
+    expect(db.withTransactionSync).not.toHaveBeenCalled();
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 
   it('migrates a version 2 database forward without destructive resets', () => {
@@ -103,7 +104,7 @@ describe('prepareDatabase', () => {
   it('patches legacy unversioned workout sessions before running newer migrations', () => {
     const db = createMigrationDbMock({
       version: 0,
-      hasWorkoutSessionsTable: true,
+      tableNames: ['workout_sessions'],
       hasScheduleIdColumn: false,
     });
 
@@ -117,5 +118,19 @@ describe('prepareDatabase', () => {
       'ALTER TABLE workout_sessions ADD COLUMN snapshot_name TEXT;',
     );
     expect(db.withTransactionSync).toHaveBeenCalled();
+  });
+
+  it('returns early on a newer schema version without applying DDL', () => {
+    const db = createMigrationDbMock({
+      version: SCHEMA_VERSION + 1,
+      tableNames: ['workout_sessions', 'workout_sets'],
+    });
+
+    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+
+    expect(finalVersion).toBe(SCHEMA_VERSION + 1);
+    expect(db.execSync).not.toHaveBeenCalledWith(
+      expect.stringContaining('CREATE TABLE IF NOT EXISTS'),
+    );
   });
 });
