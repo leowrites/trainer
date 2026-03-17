@@ -97,16 +97,16 @@ Defined in `src/core/database/schema.ts` as a single SQL string of `CREATE TABLE
 
 **Current version: 3** (`SCHEMA_VERSION` constant in `schema.ts`)
 
-| Table               | Columns                                                                   |
-| ------------------- | ------------------------------------------------------------------------- |
-| `exercises`         | `name` (TEXT), `muscle_group` (TEXT)                                      |
-| `routines`          | `name` (TEXT), `notes` (TEXT, optional)                                   |
-| `routine_exercises` | `routine_id`\*, `exercise_id`\*, `position`, `target_sets`, `target_reps` |
-| `schedules`         | `name`, `is_active`, `current_position`                                   |
-| `schedule_entries`  | `schedule_id`\*, `routine_id`\*, `position`                               |
-| `workout_sessions`  | `routine_id`\* (optional), `schedule_id`\* (optional), `snapshot_name` (optional), `start_time`, `end_time` (optional) |
-| `workout_sets`      | `session_id`\*, `exercise_id`\*, `weight`, `reps`, `is_completed`         |
-| `body_weight_entries` | `weight`, `unit`, `logged_at`, `notes` (optional)                      |
+| Table                 | Columns                                                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `exercises`           | `name` (TEXT), `muscle_group` (TEXT)                                                                                   |
+| `routines`            | `name` (TEXT), `notes` (TEXT, optional)                                                                                |
+| `routine_exercises`   | `routine_id`\*, `exercise_id`\*, `position`, `target_sets`, `target_reps`                                              |
+| `schedules`           | `name`, `is_active`, `current_position`                                                                                |
+| `schedule_entries`    | `schedule_id`\*, `routine_id`\*, `position`                                                                            |
+| `workout_sessions`    | `routine_id`\* (optional), `schedule_id`\* (optional), `snapshot_name` (optional), `start_time`, `end_time` (optional) |
+| `workout_sets`        | `session_id`\*, `exercise_id`\*, `weight`, `reps`, `is_completed`                                                      |
+| `body_weight_entries` | `weight`, `unit`, `logged_at`, `notes` (optional)                                                                      |
 
 \* Indexed foreign-key column.
 
