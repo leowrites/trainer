@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import React, { createContext, useContext, useEffect } from 'react';
 
 import { database } from './database';
+import { seedDevelopmentDatabase } from './seed-development';
 import { seedDefaultExercises } from './seed-exercises';
 
 // ─── React Context ────────────────────────────────────────────────────────────
@@ -16,7 +17,8 @@ interface DatabaseProviderProps {
 
 /**
  * Provides the expo-sqlite `SQLiteDatabase` instance to the component tree.
- * Also runs the one-time exercise seed on first mount.
+ * Also seeds the default exercise catalog on first mount and, when enabled,
+ * populates the development fixture dataset.
  * Wrap your root component (e.g. `<App>`) with this provider.
  */
 export function DatabaseProvider({
@@ -24,10 +26,22 @@ export function DatabaseProvider({
   db = database,
 }: DatabaseProviderProps): React.JSX.Element {
   useEffect(() => {
+    const shouldSeedDevelopmentData =
+      __DEV__ && process.env.EXPO_PUBLIC_DEV_SEED === '1';
+
     try {
-      seedDefaultExercises(db);
+      if (shouldSeedDevelopmentData) {
+        seedDevelopmentDatabase(db);
+      } else {
+        seedDefaultExercises(db);
+      }
     } catch (error) {
-      console.error('[Seed] Failed to seed default exercises:', error);
+      console.error(
+        shouldSeedDevelopmentData
+          ? '[Seed] Failed to seed development data:'
+          : '[Seed] Failed to seed default exercises:',
+        error,
+      );
     }
   }, [db]);
 

@@ -13,22 +13,34 @@ const defaultExercises: ExerciseSeedEntry[] = exerciseSeedData;
 /**
  * Seeds the exercises table with a curated list of common exercises.
  *
- * This is a one-time operation: if the table already contains any records
- * the function returns immediately without modifying the database.
+ * The seed is idempotent: existing exercise names are left untouched and
+ * only missing default entries are inserted.
  *
  * @param db - The expo-sqlite `SQLiteDatabase` instance to seed.
  */
 export function seedDefaultExercises(db: SQLiteDatabase): void {
-  const row = db.getFirstSync<{ count: number }>(
-    'SELECT COUNT(*) as count FROM exercises',
+  const defaultExerciseNames = defaultExercises.map(
+    (exercise: ExerciseSeedEntry) => exercise.name,
+  );
+  const existingExercises = db.getAllSync<{ name: string }>(
+    `SELECT name FROM exercises WHERE name IN (${defaultExerciseNames
+      .map(() => '?')
+      .join(', ')})`,
+    defaultExerciseNames,
+  );
+  const existingNames = new Set(
+    existingExercises.map((exercise: { name: string }) => exercise.name),
+  );
+  const missingExercises = defaultExercises.filter(
+    (exercise: ExerciseSeedEntry) => !existingNames.has(exercise.name),
   );
 
-  if (row && row.count > 0) {
+  if (missingExercises.length === 0) {
     return;
   }
 
   db.withTransactionSync(() => {
-    for (const entry of defaultExercises) {
+    for (const entry of missingExercises) {
       db.runSync(
         'INSERT INTO exercises (id, name, muscle_group) VALUES (?, ?, ?)',
         [generateId(), entry.name, entry.muscleGroup],

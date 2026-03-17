@@ -17,5 +17,6 @@ export type {
   WorkoutSet,
 } from './types';
 export { DatabaseProvider, useDatabase } from './provider';
+export { seedDevelopmentDatabase } from './seed-development';
 export { seedDefaultExercises } from './seed-exercises';
 export { generateId } from './utils';
