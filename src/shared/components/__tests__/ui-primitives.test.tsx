@@ -11,6 +11,7 @@ import React from 'react';
 
 import type { ColSpan } from '../index';
 import {
+  ActionRow,
   Badge,
   Body,
   Button,
@@ -18,6 +19,7 @@ import {
   Card,
   Checkbox,
   Container,
+  DisclosureCard,
   Grid,
   GridItem,
   Header,
@@ -263,6 +265,71 @@ describe('Button', () => {
   it('has accessibilityRole="button"', () => {
     render(<Button>Go</Button>);
     expect(screen.getByRole('button')).toBeTruthy();
+  });
+});
+
+// ─── ActionRow ────────────────────────────────────────────────────────────────
+
+describe('ActionRow', () => {
+  it('renders primary and secondary actions', () => {
+    render(
+      <ActionRow onPrimaryPress={jest.fn()} onSecondaryPress={jest.fn()} />,
+    );
+
+    expect(screen.getByText('Save')).toBeTruthy();
+    expect(screen.getByText('Cancel')).toBeTruthy();
+  });
+
+  it('calls both action handlers', () => {
+    const onPrimaryPress = jest.fn();
+    const onSecondaryPress = jest.fn();
+
+    render(
+      <ActionRow
+        primaryLabel="Create"
+        secondaryLabel="Back"
+        onPrimaryPress={onPrimaryPress}
+        onSecondaryPress={onSecondaryPress}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Create'));
+    fireEvent.press(screen.getByText('Back'));
+
+    expect(onPrimaryPress).toHaveBeenCalledTimes(1);
+    expect(onSecondaryPress).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── DisclosureCard ───────────────────────────────────────────────────────────
+
+describe('DisclosureCard', () => {
+  it('renders the title and expanded content when expanded', () => {
+    render(
+      <DisclosureCard title="Push A" expanded onToggle={jest.fn()}>
+        <Body>Bench Press</Body>
+      </DisclosureCard>,
+    );
+
+    expect(screen.getByText('Push A')).toBeTruthy();
+    expect(screen.getByText('Bench Press')).toBeTruthy();
+  });
+
+  it('calls onToggle when pressed', () => {
+    const onToggle = jest.fn();
+
+    render(
+      <DisclosureCard
+        title="Push A"
+        expanded={false}
+        onToggle={onToggle}
+        accessibilityLabel="Expand Push A"
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText('Expand Push A'));
+
+    expect(onToggle).toHaveBeenCalledTimes(1);
   });
 });
 

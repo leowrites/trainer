@@ -17,6 +17,8 @@
  *  - ProgressBar  — horizontal fill indicator with variants
  *  - Input        — theme-aware text input field
  *  - Checkbox     — toggle row with label and optional sub-label
+ *  - ActionRow    — paired primary/secondary form actions
+ *  - DisclosureCard — expandable card row with actions and detail surface
  */
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -33,6 +35,9 @@ export type { GridProps, GridItemProps, ColSpan } from './grid';
 export { Card } from './card';
 export type { CardProps } from './card';
 
+export { DisclosureCard } from './disclosure-card';
+export type { DisclosureCardProps } from './disclosure-card';
+
 export { Header } from './header';
 export type { HeaderProps } from './header';
 
@@ -48,6 +53,9 @@ export type { BadgeProps, BadgeVariant } from './badge';
 
 export { Button } from './button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './button';
+
+export { ActionRow } from './action-row';
+export type { ActionRowProps } from './action-row';
 
 // ── Data visualisation ────────────────────────────────────────────────────────
 export { ProgressBar } from './progress-bar';

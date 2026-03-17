@@ -4,12 +4,14 @@ import { FlatList, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import {
+  ActionRow,
   Body,
   Button,
   Caption,
   Card,
   Checkbox,
   Container,
+  DisclosureCard,
   Heading,
   Input,
   Label,
@@ -108,23 +110,12 @@ function ExercisesSection({
             onChangeText={setEditMuscleGroup}
             autoCapitalize="words"
           />
-          <View className="flex-row gap-2">
-            <Button
-              className="flex-1"
-              onPress={() => handleSaveEdit(item.id)}
-              loading={editSaving}
-              disabled={editSaving}
-            >
-              Save
-            </Button>
-            <Button
-              variant="ghost"
-              className="flex-1"
-              onPress={() => setEditingId(null)}
-            >
-              Cancel
-            </Button>
-          </View>
+          <ActionRow
+            className="mt-0"
+            onPrimaryPress={() => handleSaveEdit(item.id)}
+            primaryLoading={editSaving}
+            onSecondaryPress={() => setEditingId(null)}
+          />
         </Card>
       );
     }
@@ -188,27 +179,16 @@ function ExercisesSection({
                 onChangeText={setMuscleGroup}
                 autoCapitalize="words"
               />
-              <View className="flex-row gap-2">
-                <Button
-                  className="flex-1"
-                  onPress={handleCreate}
-                  loading={saving}
-                  disabled={saving}
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  onPress={() => {
-                    setShowForm(false);
-                    setName('');
-                    setMuscleGroup('');
-                  }}
-                >
-                  Cancel
-                </Button>
-              </View>
+              <ActionRow
+                className="mt-0"
+                onPrimaryPress={handleCreate}
+                primaryLoading={saving}
+                onSecondaryPress={() => {
+                  setShowForm(false);
+                  setName('');
+                  setMuscleGroup('');
+                }}
+              />
             </Card>
           ) : (
             <Button
@@ -374,23 +354,11 @@ function RoutinesSection({
               />
             ))
           )}
-          <View className="flex-row gap-2 mt-4">
-            <Button
-              className="flex-1"
-              onPress={() => handleSaveEdit(item.id)}
-              loading={editSaving}
-              disabled={editSaving}
-            >
-              Save
-            </Button>
-            <Button
-              variant="ghost"
-              className="flex-1"
-              onPress={() => setEditingId(null)}
-            >
-              Cancel
-            </Button>
-          </View>
+          <ActionRow
+            onPrimaryPress={() => handleSaveEdit(item.id)}
+            primaryLoading={editSaving}
+            onSecondaryPress={() => setEditingId(null)}
+          />
         </Card>
       );
     }
@@ -398,14 +366,13 @@ function RoutinesSection({
     const isExpanded = expandedId === item.id;
 
     return (
-      <Card
-        className="mb-2 rounded-xl p-0 overflow-hidden"
-        onPress={() => handleToggleExpand(item)}
+      <DisclosureCard
+        title={item.name}
+        expanded={isExpanded}
+        onToggle={() => handleToggleExpand(item)}
         accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${item.name}`}
-      >
-        <View className="flex-row items-center justify-between px-4 py-3">
-          <Body className="font-medium flex-1">{item.name}</Body>
-          <View className="flex-row gap-2 items-center">
+        actions={
+          <>
             <Button
               variant="ghost"
               size="sm"
@@ -422,30 +389,23 @@ function RoutinesSection({
             >
               Delete
             </Button>
-            <Caption>{isExpanded ? '▲' : '▼'}</Caption>
-          </View>
-        </View>
-
-        {isExpanded && (
-          <Surface variant="elevated" className="px-4 pb-3 pt-2">
-            {expandedExercises.length === 0 ? (
-              <Muted className="pt-1">No exercises in this routine.</Muted>
-            ) : (
-              expandedExercises.map((re: RoutineExercise) => {
-                const ex = exercises.find(
-                  (e: Exercise) => e.id === re.exercise_id,
-                );
-                return (
-                  <Body key={re.id} className="pt-2">
-                    {ex ? ex.name : re.exercise_id} — {re.target_sets} ×{' '}
-                    {re.target_reps}
-                  </Body>
-                );
-              })
-            )}
-          </Surface>
+          </>
+        }
+      >
+        {expandedExercises.length === 0 ? (
+          <Muted className="pt-1">No exercises in this routine.</Muted>
+        ) : (
+          expandedExercises.map((re: RoutineExercise) => {
+            const ex = exercises.find((e: Exercise) => e.id === re.exercise_id);
+            return (
+              <Body key={re.id} className="pt-2">
+                {ex ? ex.name : re.exercise_id} — {re.target_sets} ×{' '}
+                {re.target_reps}
+              </Body>
+            );
+          })
         )}
-      </Card>
+      </DisclosureCard>
     );
   };
 
@@ -487,27 +447,15 @@ function RoutinesSection({
                   />
                 ))
               )}
-              <View className="flex-row gap-2 mt-4">
-                <Button
-                  className="flex-1"
-                  onPress={handleCreate}
-                  loading={saving}
-                  disabled={saving}
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  onPress={() => {
-                    setShowForm(false);
-                    setRoutineName('');
-                    setSelectedExerciseIds([]);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </View>
+              <ActionRow
+                onPrimaryPress={handleCreate}
+                primaryLoading={saving}
+                onSecondaryPress={() => {
+                  setShowForm(false);
+                  setRoutineName('');
+                  setSelectedExerciseIds([]);
+                }}
+              />
             </Card>
           ) : (
             <Button
