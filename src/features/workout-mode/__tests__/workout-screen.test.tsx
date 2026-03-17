@@ -4,6 +4,7 @@ import React from 'react';
 import { WorkoutScreen } from '../screens/workout-screen';
 import { useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
+import { useActiveWorkout } from '../hooks/use-active-workout';
 
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (callback: () => void) => callback(),
@@ -17,23 +18,34 @@ jest.mock('../hooks/use-workout-starter', () => ({
   useWorkoutStarter: jest.fn(),
 }));
 
+jest.mock('../hooks/use-active-workout', () => ({
+  useActiveWorkout: jest.fn(),
+}));
+
 const mockUseWorkoutStore = jest.mocked(useWorkoutStore);
 const mockUseWorkoutStarter = jest.mocked(useWorkoutStarter);
+const mockUseActiveWorkout = jest.mocked(useActiveWorkout);
 
 describe('WorkoutScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseActiveWorkout.mockReturnValue({
+      activeSession: null,
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      completeWorkout: jest.fn().mockReturnValue(true),
+    });
   });
 
   it('renders the next scheduled workout and starts either workout flow', () => {
-    const endWorkout = jest.fn();
     const startWorkoutFromSchedule = jest.fn();
     const startFreeWorkout = jest.fn();
     const refreshPreview = jest.fn();
 
     mockUseWorkoutStore.mockReturnValue({
       isWorkoutActive: false,
-      endWorkout,
     });
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: {
@@ -57,15 +69,17 @@ describe('WorkoutScreen', () => {
 
     expect(startWorkoutFromSchedule).toHaveBeenCalledTimes(1);
     expect(startFreeWorkout).toHaveBeenCalledTimes(1);
-    expect(endWorkout).not.toHaveBeenCalled();
   });
 
-  it('renders the active workout state and ends the session', () => {
-    const endWorkout = jest.fn();
+  it('renders the active workout session and forwards set editing actions', () => {
+    const addSet = jest.fn();
+    const deleteSet = jest.fn();
+    const updateReps = jest.fn();
+    const updateWeight = jest.fn();
+    const completeWorkout = jest.fn().mockReturnValue(true);
 
     mockUseWorkoutStore.mockReturnValue({
       isWorkoutActive: true,
-      endWorkout,
     });
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: null,
@@ -73,13 +87,58 @@ describe('WorkoutScreen', () => {
       startFreeWorkout: jest.fn(),
       refreshPreview: jest.fn(),
     });
+    mockUseActiveWorkout.mockReturnValue({
+      activeSession: {
+        id: 'session-1',
+        title: 'Push A',
+        startTime: 1_700_000_000_000,
+        exercises: [
+          {
+            exerciseId: 'exercise-1',
+            exerciseName: 'Bench Press',
+            sets: [
+              {
+                id: 'set-1',
+                exerciseId: 'exercise-1',
+                reps: 8,
+                weight: 135,
+                isCompleted: false,
+                targetSets: 3,
+                targetReps: 8,
+              },
+            ],
+            targetSets: 3,
+            targetReps: 8,
+          },
+        ],
+      },
+      addSet,
+      deleteSet,
+      updateReps,
+      updateWeight,
+      completeWorkout,
+    });
 
     render(<WorkoutScreen />);
 
     expect(screen.getByText('Session in progress')).toBeTruthy();
+    expect(screen.getByText('Bench Press')).toBeTruthy();
 
-    fireEvent.press(screen.getByText('End Workout'));
+    const repsInput = screen.getByLabelText('Bench Press set 1 reps');
+    const weightInput = screen.getByLabelText('Bench Press set 1 weight');
 
-    expect(endWorkout).toHaveBeenCalledTimes(1);
+    fireEvent.changeText(repsInput, '10');
+    fireEvent(repsInput, 'endEditing');
+    fireEvent.changeText(weightInput, '140.5');
+    fireEvent(weightInput, 'endEditing');
+    fireEvent.press(screen.getByText('Add Set'));
+    fireEvent.press(screen.getByLabelText('Delete Bench Press set 1'));
+    fireEvent.press(screen.getByText('Complete Workout'));
+
+    expect(updateReps).toHaveBeenCalledWith('set-1', 10);
+    expect(updateWeight).toHaveBeenCalledWith('set-1', 140.5);
+    expect(addSet).toHaveBeenCalledWith('exercise-1');
+    expect(deleteSet).toHaveBeenCalledWith('set-1');
+    expect(completeWorkout).toHaveBeenCalledTimes(1);
   });
 });

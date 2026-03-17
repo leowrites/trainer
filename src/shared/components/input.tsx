@@ -47,6 +47,7 @@ export interface InputProps extends Pick<
   | 'secureTextEntry'
   | 'returnKeyType'
   | 'onSubmitEditing'
+  | 'onEndEditing'
   | 'multiline'
   | 'numberOfLines'
   | 'editable'

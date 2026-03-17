@@ -1,12 +1,38 @@
+import type { ActiveWorkoutSession } from '../types';
 import { useWorkoutStore } from '../store';
+
+const mockSession: ActiveWorkoutSession = {
+  id: 'session-1',
+  title: 'Push A',
+  startTime: 1_700_000_000_000,
+  exercises: [
+    {
+      exerciseId: 'exercise-1',
+      exerciseName: 'Bench Press',
+      sets: [
+        {
+          id: 'set-1',
+          exerciseId: 'exercise-1',
+          reps: 8,
+          weight: 135,
+          isCompleted: false,
+          targetSets: 3,
+          targetReps: 8,
+        },
+      ],
+      targetSets: 3,
+      targetReps: 8,
+    },
+  ],
+};
 
 describe('useWorkoutStore', () => {
   beforeEach(() => {
-    // Reset store to initial state before each test
     useWorkoutStore.setState({
       isWorkoutActive: false,
       activeSessionId: null,
       startTime: null,
+      activeSession: null,
     });
   });
 
@@ -15,38 +41,76 @@ describe('useWorkoutStore', () => {
     expect(state.isWorkoutActive).toBe(false);
     expect(state.activeSessionId).toBeNull();
     expect(state.startTime).toBeNull();
+    expect(state.activeSession).toBeNull();
   });
 
-  it('activates a workout session on startWorkout', () => {
-    const sessionId = 'test-session-1';
-    useWorkoutStore.getState().startWorkout(sessionId);
+  it('activates a workout session with the session snapshot', () => {
+    useWorkoutStore.getState().startWorkout(mockSession);
 
     const state = useWorkoutStore.getState();
     expect(state.isWorkoutActive).toBe(true);
-    expect(state.activeSessionId).toBe(sessionId);
-    expect(state.startTime).toBeGreaterThan(0);
+    expect(state.activeSessionId).toBe(mockSession.id);
+    expect(state.startTime).toBe(mockSession.startTime);
+    expect(state.activeSession).toEqual(mockSession);
   });
 
-  it('records a start time close to Date.now()', () => {
-    jest.useFakeTimers();
-    try {
-      jest.setSystemTime(1_700_000_000_000);
+  it('updates an existing set in the active session', () => {
+    useWorkoutStore.getState().startWorkout(mockSession);
 
-      useWorkoutStore.getState().startWorkout('session-abc');
+    useWorkoutStore.getState().updateSet('set-1', {
+      reps: 10,
+      weight: 145,
+      isCompleted: true,
+    });
 
-      expect(useWorkoutStore.getState().startTime).toBe(1_700_000_000_000);
-    } finally {
-      jest.useRealTimers();
-    }
+    expect(
+      useWorkoutStore.getState().activeSession?.exercises[0].sets[0],
+    ).toMatchObject({
+      reps: 10,
+      weight: 145,
+      isCompleted: true,
+    });
+  });
+
+  it('appends a new set to the matching exercise block', () => {
+    useWorkoutStore.getState().startWorkout(mockSession);
+
+    useWorkoutStore.getState().addSet('exercise-1', {
+      id: 'set-2',
+      exerciseId: 'exercise-1',
+      reps: 8,
+      weight: 135,
+      isCompleted: false,
+      targetSets: 3,
+      targetReps: 8,
+    });
+
+    expect(
+      useWorkoutStore
+        .getState()
+        .activeSession?.exercises[0].sets.map((setItem) => setItem.id),
+    ).toEqual(['set-1', 'set-2']);
+  });
+
+  it('removes a set but preserves the exercise block for future additions', () => {
+    useWorkoutStore.getState().startWorkout(mockSession);
+
+    useWorkoutStore.getState().deleteSet('set-1');
+
+    expect(useWorkoutStore.getState().activeSession?.exercises[0].sets).toEqual(
+      [],
+    );
   });
 
   it('resets all state on endWorkout', () => {
-    useWorkoutStore.getState().startWorkout('session-xyz');
+    useWorkoutStore.getState().startWorkout(mockSession);
+
     useWorkoutStore.getState().endWorkout();
 
     const state = useWorkoutStore.getState();
     expect(state.isWorkoutActive).toBe(false);
     expect(state.activeSessionId).toBeNull();
     expect(state.startTime).toBeNull();
+    expect(state.activeSession).toBeNull();
   });
 });
