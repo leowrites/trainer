@@ -27,8 +27,12 @@ const activeSession: ActiveWorkoutSession = {
           reps: 8,
           weight: 135,
           isCompleted: false,
+          targetSets: 3,
+          targetReps: 8,
         },
       ],
+      targetSets: 3,
+      targetReps: 8,
     },
   ],
 };
@@ -71,8 +75,8 @@ describe('useActiveWorkout', () => {
       [145.5, 'set-1'],
     );
     expect(db.runSync).toHaveBeenCalledWith(
-      'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed) VALUES (?, ?, ?, ?, ?, ?)',
-      ['new-set-1', 'session-1', 'exercise-1', 145.5, 10, 0],
+      'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      ['new-set-1', 'session-1', 'exercise-1', 145.5, 10, 0, 3, 8],
     );
     expect(db.runSync).toHaveBeenCalledWith(
       'DELETE FROM workout_sets WHERE id = ?',
@@ -86,6 +90,8 @@ describe('useActiveWorkout', () => {
           reps: 10,
           weight: 145.5,
           isCompleted: false,
+          targetSets: 3,
+          targetReps: 8,
         },
       ],
     );

@@ -29,6 +29,8 @@ const baseHydratedSession: ActiveWorkoutSession = {
           reps: 8,
           weight: 0,
           isCompleted: false,
+          targetSets: 2,
+          targetReps: 8,
         },
         {
           id: 'set-2',
@@ -36,8 +38,12 @@ const baseHydratedSession: ActiveWorkoutSession = {
           reps: 8,
           weight: 0,
           isCompleted: false,
+          targetSets: 2,
+          targetReps: 8,
         },
       ],
+      targetSets: 2,
+      targetReps: 8,
     },
     {
       exerciseId: 'exercise-2',
@@ -49,8 +55,12 @@ const baseHydratedSession: ActiveWorkoutSession = {
           reps: 10,
           weight: 0,
           isCompleted: false,
+          targetSets: 1,
+          targetReps: 10,
         },
       ],
+      targetSets: 1,
+      targetReps: 10,
     },
   ],
 };
@@ -161,6 +171,8 @@ describe('useWorkoutStarter', () => {
       0,
       8,
       0,
+      2,
+      8,
     ]);
     expect(setInsertCalls[1][1]).toEqual([
       expect.any(String),
@@ -169,6 +181,8 @@ describe('useWorkoutStarter', () => {
       0,
       8,
       0,
+      2,
+      8,
     ]);
     expect(setInsertCalls[2][1]).toEqual([
       expect.any(String),
@@ -177,6 +191,8 @@ describe('useWorkoutStarter', () => {
       0,
       10,
       0,
+      1,
+      10,
     ]);
     expect(db.runSync).toHaveBeenCalledWith(
       'UPDATE schedules SET current_position = ? WHERE id = ?',

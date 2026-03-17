@@ -16,8 +16,12 @@ const mockSession: ActiveWorkoutSession = {
           reps: 8,
           weight: 135,
           isCompleted: false,
+          targetSets: 3,
+          targetReps: 8,
         },
       ],
+      targetSets: 3,
+      targetReps: 8,
     },
   ],
 };
@@ -77,6 +81,8 @@ describe('useWorkoutStore', () => {
       reps: 8,
       weight: 135,
       isCompleted: false,
+      targetSets: 3,
+      targetReps: 8,
     });
 
     expect(
