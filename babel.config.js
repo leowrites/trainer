@@ -27,9 +27,11 @@ module.exports = function (api) {
             '@features': './src/features',
             '@core': './src/core',
             '@shared': './src/shared',
+            'tailwind.config': './tailwind.config.js',
           },
         },
       ],
+      'react-native-worklets/plugin',
     ],
   };
 };

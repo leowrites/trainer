@@ -27,9 +27,10 @@
  */
 
 import React from 'react';
-import { Text, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
+import { Box } from '@shared/ui/box';
+import { Text } from '@shared/ui/text';
 
 export interface HeaderProps {
   title: string;
@@ -54,13 +55,13 @@ export function Header({
   const { tokens } = useTheme();
 
   return (
-    <View
+    <Box
       className={`flex-row items-end justify-between pb-6 mb-8 ${className}`}
       style={{ borderBottomWidth: 1, borderBottomColor: tokens.bgBorder }}
       accessibilityRole="header"
     >
       {/* Left — logo / title */}
-      <View>
+      <Box>
         <Text
           className="text-[36px] font-bold leading-tight"
           style={{ color: tokens.textPrimary }}
@@ -79,12 +80,12 @@ export function Header({
             {subtitle}
           </Text>
         ) : null}
-      </View>
+      </Box>
 
       {/* Right — meta */}
       {(metaLabel !== undefined && metaLabel !== '') ||
       (metaDetail !== undefined && metaDetail !== '') ? (
-        <View className="items-end">
+        <Box className="items-end">
           {metaLabel !== undefined && metaLabel !== '' ? (
             <Text
               className="text-[13px] font-semibold"
@@ -101,8 +102,8 @@ export function Header({
               {metaDetail}
             </Text>
           ) : null}
-        </View>
+        </Box>
       ) : null}
-    </View>
+    </Box>
   );
 }

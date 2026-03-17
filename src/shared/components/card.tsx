@@ -22,10 +22,12 @@
  */
 
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
 import type { ViewProps } from 'react-native';
 
-import { useTheme } from '@core/theme/theme-context';
+import { Box } from '@shared/ui/box';
+import { Card as GluestackCard } from '@shared/ui/card';
+import { Pressable } from '@shared/ui/pressable';
+import { Label } from './typography';
 
 export interface CardProps extends Pick<ViewProps, 'style'> {
   label?: string;
@@ -44,43 +46,27 @@ export function Card({
   onPress,
   accessibilityLabel,
 }: CardProps): React.JSX.Element {
-  const { tokens } = useTheme();
-
-  const cardStyle = {
-    backgroundColor: tokens.bgCard,
-    borderWidth: 1,
-    borderColor: tokens.bgBorder,
-  };
-
   const content = (
-    <>
+    <GluestackCard
+      className={`border border-surface-border bg-surface-card ${className}`}
+      style={style}
+    >
       {label !== undefined && label !== '' ? (
-        <View className="flex-row items-center mb-3">
-          <Text
-            className="text-[10px] uppercase tracking-widest"
-            style={{ color: tokens.textMuted }}
-          >
-            {label}
-          </Text>
-          <View
-            className="flex-1 h-px ml-2"
-            style={{ backgroundColor: tokens.bgBorder }}
-          />
-        </View>
+        <Box className="flex-row items-center mb-3">
+          <Box className="mr-2">
+            <Label>{label}</Label>
+          </Box>
+          <Box className="h-px flex-1 bg-surface-border" />
+        </Box>
       ) : null}
       {children}
-    </>
+    </GluestackCard>
   );
 
   if (onPress) {
     return (
       <Pressable
-        className={`p-5 ${className}`}
-        style={({ pressed }) => [
-          cardStyle,
-          { opacity: pressed ? 0.85 : 1 },
-          style,
-        ]}
+        style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
@@ -90,13 +76,5 @@ export function Card({
     );
   }
 
-  return (
-    <View
-      className={`p-5 ${className}`}
-      style={[cardStyle, style]}
-      accessibilityRole="none"
-    >
-      {content}
-    </View>
-  );
+  return <Box accessibilityRole="none">{content}</Box>;
 }

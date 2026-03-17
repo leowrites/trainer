@@ -29,10 +29,9 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, Text, View } from 'react-native';
+import { Animated, Pressable, View } from 'react-native';
 
-import type { ThemeTokens } from '@core/theme';
-import { useTheme } from '@core/theme/theme-context';
+import { Badge as GluestackBadge, BadgeText } from '@shared/ui/badge';
 
 export type BadgeVariant = 'accent' | 'error' | 'warning' | 'muted';
 
@@ -79,57 +78,19 @@ function PulseDot({ color }: { color: string }): React.JSX.Element {
   );
 }
 
-// ── Variant token helper ──────────────────────────────────────────────────────
-
-function resolveVariantStyles(
-  variant: BadgeVariant,
-  tokens: ThemeTokens,
-): {
-  containerStyle: object;
-  textColor: string;
+function resolveVariantProps(variant: BadgeVariant): {
+  action: 'success' | 'error' | 'warning' | 'muted';
   dotColor: string;
 } {
   switch (variant) {
     case 'error':
-      return {
-        containerStyle: {
-          backgroundColor: tokens.errorSubtle,
-          borderWidth: 1,
-          borderColor: tokens.errorBorder,
-        },
-        textColor: tokens.error,
-        dotColor: tokens.error,
-      };
+      return { action: 'error', dotColor: '#f05a4f' };
     case 'warning':
-      return {
-        containerStyle: {
-          backgroundColor: tokens.secondarySubtle,
-          borderWidth: 1,
-          borderColor: tokens.secondaryBorder,
-        },
-        textColor: tokens.secondary,
-        dotColor: tokens.secondary,
-      };
+      return { action: 'warning', dotColor: '#f5a742' };
     case 'muted':
-      return {
-        containerStyle: {
-          backgroundColor: tokens.bgElevated,
-          borderWidth: 1,
-          borderColor: tokens.bgBorder,
-        },
-        textColor: tokens.textMuted,
-        dotColor: tokens.textMuted,
-      };
+      return { action: 'muted', dotColor: '#666666' };
     default: // accent
-      return {
-        containerStyle: {
-          backgroundColor: tokens.accentSubtle,
-          borderWidth: 1,
-          borderColor: tokens.accentBorder,
-        },
-        textColor: tokens.accent,
-        dotColor: tokens.accent,
-      };
+      return { action: 'success', dotColor: '#c8f542' };
   }
 }
 
@@ -143,25 +104,18 @@ export function Badge({
   accessibilityLabel,
   className = '',
 }: BadgeProps): React.JSX.Element {
-  const { tokens } = useTheme();
-  const { containerStyle, textColor, dotColor } = resolveVariantStyles(
-    variant,
-    tokens,
-  );
+  const { action, dotColor } = resolveVariantProps(variant);
 
   const inner = (
-    <View
-      className={`flex-row items-center gap-1 px-2 py-0.5 ${className}`}
-      style={containerStyle}
+    <GluestackBadge
+      action={action}
+      variant="outline"
+      size="md"
+      className={className}
     >
       {pulse ? <PulseDot color={dotColor} /> : null}
-      <Text
-        className="text-[10px] uppercase tracking-wider font-medium"
-        style={{ color: textColor }}
-      >
-        {children}
-      </Text>
-    </View>
+      <BadgeText>{children}</BadgeText>
+    </GluestackBadge>
   );
 
   if (onPress) {

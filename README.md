@@ -23,6 +23,7 @@ A premium, offline-first mobile fitness application built for serious lifters. T
 | Global State   | Zustand (ephemeral/non-persistent state only)           |
 | Design Pattern | Feature-Sliced Design (FSD)                             |
 | Styling        | NativeWind v4 (Tailwind CSS for React Native)           |
+| UI Foundation  | gluestack-ui (new component library integration path)   |
 
 ---
 

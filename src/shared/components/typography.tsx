@@ -28,10 +28,10 @@
  */
 
 import React from 'react';
-import { Text } from 'react-native';
 import type { TextProps } from 'react-native';
 
-import { useTheme } from '@core/theme/theme-context';
+import { Heading as GluestackHeading } from '@shared/ui/heading';
+import { Text as GluestackText } from '@shared/ui/text';
 
 interface TypographyProps extends Pick<
   TextProps,
@@ -54,17 +54,16 @@ export function Heading({
   accessibilityRole = 'header',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
-  const { tokens } = useTheme();
   return (
-    <Text
-      className={`text-2xl font-bold ${className}`}
-      style={{ color: tokens.textPrimary }}
+    <GluestackHeading
+      className={`text-foreground ${className}`}
+      size="xl"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
     >
       {children}
-    </Text>
+    </GluestackHeading>
   );
 }
 
@@ -80,17 +79,16 @@ export function Body({
   accessibilityRole = 'text',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
-  const { tokens } = useTheme();
   return (
-    <Text
-      className={`text-[13px] leading-relaxed ${className}`}
-      style={{ color: tokens.textPrimary }}
+    <GluestackText
+      className={`text-foreground ${className}`}
+      size="sm"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
     >
       {children}
-    </Text>
+    </GluestackText>
   );
 }
 
@@ -107,17 +105,16 @@ export function Label({
   accessibilityRole = 'text',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
-  const { tokens } = useTheme();
   return (
-    <Text
-      className={`text-[10px] uppercase tracking-widest ${className}`}
-      style={{ color: tokens.textMuted }}
+    <GluestackText
+      className={`text-muted uppercase tracking-widest ${className}`}
+      size="xs"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
     >
       {children}
-    </Text>
+    </GluestackText>
   );
 }
 
@@ -133,17 +130,16 @@ export function Caption({
   accessibilityRole = 'text',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
-  const { tokens } = useTheme();
   return (
-    <Text
-      className={`text-[10px] ${className}`}
-      style={{ color: tokens.textMuted }}
+    <GluestackText
+      className={`text-muted ${className}`}
+      size="xs"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
     >
       {children}
-    </Text>
+    </GluestackText>
   );
 }
 
@@ -160,17 +156,16 @@ export function Muted({
   accessibilityRole = 'text',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
-  const { tokens } = useTheme();
   return (
-    <Text
-      className={`text-[13px] ${className}`}
-      style={{ color: tokens.textMuted }}
+    <GluestackText
+      className={`text-muted ${className}`}
+      size="sm"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
     >
       {children}
-    </Text>
+    </GluestackText>
   );
 }
 
@@ -188,16 +183,16 @@ export function StatValue({
   accessibilityRole = 'text',
   accessibilityLabel,
 }: TypographyProps): React.JSX.Element {
-  const { tokens } = useTheme();
   return (
-    <Text
-      className={`text-[42px] font-bold leading-none ${className}`}
-      style={{ color: tokens.textPrimary }}
+    <GluestackText
+      className={`text-foreground font-bold leading-none ${className}`}
+      size="4xl"
+      bold
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
     >
       {children}
-    </Text>
+    </GluestackText>
   );
 }

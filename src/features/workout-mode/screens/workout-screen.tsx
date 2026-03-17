@@ -1,10 +1,13 @@
 import React, { useCallback, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+
+import { Box } from '@shared/ui/box';
+import { Text } from '@shared/ui/text';
 
 import { useFocusEffect } from '@react-navigation/native';
 
 import { useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
+import { Button } from '@shared/components';
 
 export function WorkoutScreen(): React.JSX.Element {
   const { isWorkoutActive, endWorkout } = useWorkoutStore();
@@ -43,7 +46,7 @@ export function WorkoutScreen(): React.JSX.Element {
   };
 
   return (
-    <View className="flex-1 items-center justify-center bg-surface px-6">
+    <Box className="flex-1 items-center justify-center bg-surface px-6">
       <Text className="text-white text-2xl font-bold mb-2">Workout</Text>
 
       {isWorkoutActive ? (
@@ -51,30 +54,21 @@ export function WorkoutScreen(): React.JSX.Element {
           <Text className="text-white/60 text-sm mb-6">
             Session in progress
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            className="px-6 py-3 rounded-lg bg-surface-elevated"
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.7 : 1,
-            })}
-            onPress={endWorkout}
-          >
-            <Text className="text-primary-400 text-base font-semibold">
-              End Workout
-            </Text>
-          </Pressable>
+          <Button onPress={endWorkout} className="min-w-[170px]">
+            End Workout
+          </Button>
         </>
       ) : (
         <>
           {nextRoutine ? (
-            <View className="items-center mb-6">
+            <Box className="items-center mb-6">
               <Text className="text-white/60 text-xs mb-1 uppercase tracking-wider">
                 Up next · {nextRoutine.scheduleName}
               </Text>
               <Text className="text-white text-lg font-semibold">
                 {nextRoutine.routineName}
               </Text>
-            </View>
+            </Box>
           ) : (
             <Text className="text-white/60 text-sm mb-6">
               No active schedule — start a free workout
@@ -82,36 +76,20 @@ export function WorkoutScreen(): React.JSX.Element {
           )}
 
           {nextRoutine ? (
-            <Pressable
-              accessibilityRole="button"
-              className="px-6 py-3 rounded-lg bg-primary-600 mb-3"
-              style={({ pressed }) => ({
-                opacity: pressed || starting ? 0.7 : 1,
-              })}
-              disabled={starting}
+            <Button
               onPress={handleStartScheduled}
+              disabled={starting}
+              className="mb-3"
             >
-              <Text className="text-white text-base font-semibold">
-                Start {nextRoutine.routineName}
-              </Text>
-            </Pressable>
+              Start {nextRoutine.routineName}
+            </Button>
           ) : null}
 
-          <Pressable
-            accessibilityRole="button"
-            className="px-6 py-3 rounded-lg bg-surface-elevated"
-            style={({ pressed }) => ({
-              opacity: pressed || starting ? 0.7 : 1,
-            })}
-            disabled={starting}
-            onPress={handleStartFree}
-          >
-            <Text className="text-white/60 text-base font-semibold">
-              Free Workout
-            </Text>
-          </Pressable>
+          <Button variant="ghost" onPress={handleStartFree} disabled={starting}>
+            Free Workout
+          </Button>
         </>
       )}
-    </View>
+    </Box>
   );
 }

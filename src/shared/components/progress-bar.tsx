@@ -32,10 +32,10 @@
  */
 
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
-import type { ThemeTokens } from '@core/theme';
-import { useTheme } from '@core/theme/theme-context';
+import { Progress, ProgressFilledTrack } from '@shared/ui/progress';
+import { Caption } from './typography';
 
 export type ProgressBarVariant = 'accent' | 'secondary' | 'error';
 
@@ -52,18 +52,22 @@ export interface ProgressBarProps {
   className?: string;
 }
 
-function resolveFillColour(
-  variant: ProgressBarVariant,
-  tokens: ThemeTokens,
-): string {
+function resolveFillClass(variant: ProgressBarVariant): string {
   switch (variant) {
     case 'secondary':
-      return tokens.secondary;
+      return 'bg-secondary';
     case 'error':
-      return tokens.error;
+      return 'bg-error';
     default:
-      return tokens.accent;
+      return 'bg-accent';
   }
+}
+
+function resolveSize(height: number): 'xs' | 'sm' | 'md' | 'lg' {
+  if (height <= 4) return 'xs';
+  if (height <= 8) return 'sm';
+  if (height <= 12) return 'md';
+  return 'lg';
 }
 
 export function ProgressBar({
@@ -74,43 +78,29 @@ export function ProgressBar({
   label,
   className = '',
 }: ProgressBarProps): React.JSX.Element {
-  const { tokens } = useTheme();
-  // Clamp progress to [0, 1]
   const clamped = Math.min(1, Math.max(0, progress));
   const percentage = Math.round(clamped * 100);
-  const fillColor = resolveFillColour(variant, tokens);
+  const fillClass = resolveFillClass(variant);
+  const size = resolveSize(height);
 
   return (
     <View className={`w-full ${className}`}>
       {label !== undefined && label !== '' ? (
         <View className="flex-row justify-between mb-1">
-          <Text className="text-[10px]" style={{ color: tokens.textMuted }}>
-            {label}
-          </Text>
-          {showLabel ? (
-            <Text
-              className="text-[10px]"
-              style={{ color: tokens.textMuted }}
-            >{`${percentage}%`}</Text>
-          ) : null}
+          <Caption>{label}</Caption>
+          {showLabel ? <Caption>{`${percentage}%`}</Caption> : null}
         </View>
       ) : null}
 
-      {/* Track */}
-      <View
-        className="w-full overflow-hidden"
-        style={{ height, backgroundColor: tokens.bgElevated }}
-        accessible={true}
+      <Progress
+        value={percentage}
+        size={size}
+        className="w-full bg-surface-elevated"
         accessibilityRole="progressbar"
         accessibilityValue={{ min: 0, max: 100, now: percentage }}
       >
-        {/* Fill */}
-        <View
-          className="h-full"
-          style={{ width: `${percentage}%`, backgroundColor: fillColor }}
-          accessible={false}
-        />
-      </View>
+        <ProgressFilledTrack className={fillClass} />
+      </Progress>
     </View>
   );
 }

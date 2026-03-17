@@ -30,11 +30,9 @@
  */
 
 import React from 'react';
-import { View } from 'react-native';
 import type { ViewProps } from 'react-native';
 
-import type { ThemeTokens } from '@core/theme';
-import { useTheme } from '@core/theme/theme-context';
+import { Box } from '@shared/ui/box';
 
 export type SurfaceVariant =
   | 'default'
@@ -50,49 +48,21 @@ export interface SurfaceProps extends Pick<ViewProps, 'style'> {
   className?: string;
 }
 
-type SurfaceStyleMap = Record<
-  SurfaceVariant,
-  {
-    container: object;
-    /** NativeWind classes for layout-only concerns (border-width, opacity). */
-    layoutClass: string;
+function resolveVariantClass(variant: SurfaceVariant): string {
+  switch (variant) {
+    case 'card':
+      return 'bg-surface-card';
+    case 'elevated':
+      return 'bg-surface-elevated';
+    case 'push':
+      return 'border-l-2 border-accent bg-surface-elevated';
+    case 'pull':
+      return 'border-l-2 border-secondary bg-surface-elevated';
+    case 'rest':
+      return 'border-l-2 border-muted bg-surface-elevated opacity-50';
+    default:
+      return 'bg-surface';
   }
->;
-
-function buildVariantMap(tokens: ThemeTokens): SurfaceStyleMap {
-  return {
-    default: { container: { backgroundColor: tokens.bgBase }, layoutClass: '' },
-    card: { container: { backgroundColor: tokens.bgCard }, layoutClass: '' },
-    elevated: {
-      container: { backgroundColor: tokens.bgElevated },
-      layoutClass: '',
-    },
-    push: {
-      container: {
-        backgroundColor: tokens.bgElevated,
-        borderLeftWidth: 2,
-        borderLeftColor: tokens.accent,
-      },
-      layoutClass: '',
-    },
-    pull: {
-      container: {
-        backgroundColor: tokens.bgElevated,
-        borderLeftWidth: 2,
-        borderLeftColor: tokens.secondary,
-      },
-      layoutClass: '',
-    },
-    rest: {
-      container: {
-        backgroundColor: tokens.bgElevated,
-        borderLeftWidth: 2,
-        borderLeftColor: tokens.textMuted,
-        opacity: 0.5,
-      },
-      layoutClass: '',
-    },
-  };
 }
 
 export function Surface({
@@ -101,16 +71,13 @@ export function Surface({
   className = '',
   style,
 }: SurfaceProps): React.JSX.Element {
-  const { tokens } = useTheme();
-  const { container, layoutClass } = buildVariantMap(tokens)[variant];
-
   return (
-    <View
-      className={`${layoutClass} ${className}`}
-      style={[container, style]}
+    <Box
+      className={`${resolveVariantClass(variant)} ${className}`}
+      style={style}
       accessibilityRole="none"
     >
       {children}
-    </View>
+    </Box>
   );
 }

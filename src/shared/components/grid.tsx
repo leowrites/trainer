@@ -26,8 +26,9 @@
  */
 
 import React from 'react';
-import { View } from 'react-native';
 import type { ViewProps } from 'react-native';
+
+import { Box } from '@shared/ui/box';
 
 // ─── Grid ─────────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ export function Grid({
   style,
 }: GridProps): React.JSX.Element {
   return (
-    <View
+    <Box
       className={`flex-row flex-wrap ${className}`}
       style={[{ margin: -(gap / 2) }, style]}
       accessibilityRole="none"
@@ -58,7 +59,7 @@ export function Grid({
       <GridContext.Provider value={{ columns, gap }}>
         {children}
       </GridContext.Provider>
-    </View>
+    </Box>
   );
 }
 
@@ -91,12 +92,12 @@ export function GridItem({
   const flexBasis = `${(span / columns) * 100}%` as const;
 
   return (
-    <View
+    <Box
       className={`${className}`}
       style={[{ flexBasis, padding: gap / 2, maxWidth: flexBasis }, style]}
       accessibilityRole="none"
     >
       {children}
-    </View>
+    </Box>
   );
 }
