@@ -1,0 +1,17 @@
+{
+  "cli": {
+    "version": ">= 3.29.0"
+  },
+  "build": {
+    "development": {
+      "distribution": "internal",
+      "developmentClient": true,
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}
