@@ -53,6 +53,19 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 4,
+    description: 'Persist workout set targets inside session snapshots.',
+    up: (db) => {
+      if (!columnExists(db, 'workout_sets', 'target_sets')) {
+        db.execSync('ALTER TABLE workout_sets ADD COLUMN target_sets INTEGER;');
+      }
+
+      if (!columnExists(db, 'workout_sets', 'target_reps')) {
+        db.execSync('ALTER TABLE workout_sets ADD COLUMN target_reps INTEGER;');
+      }
+    },
+  },
 ];
 
 function setUserVersion(db: SQLiteDatabase, version: number): void {
@@ -84,9 +97,18 @@ export function getUserVersion(db: SQLiteDatabase): number {
   );
 }
 
-export function prepareDatabase(db: SQLiteDatabase): number {
-  db.execSync(CREATE_TABLES_SQL);
+function hasTrainerTables(db: SQLiteDatabase): boolean {
+  return (
+    tableExists(db, 'exercises') ||
+    tableExists(db, 'routines') ||
+    tableExists(db, 'schedules') ||
+    tableExists(db, 'workout_sessions') ||
+    tableExists(db, 'workout_sets') ||
+    tableExists(db, 'body_weight_entries')
+  );
+}
 
+export function prepareDatabase(db: SQLiteDatabase): number {
   const currentVersion = getUserVersion(db);
 
   if (currentVersion > SCHEMA_VERSION) {
@@ -95,6 +117,14 @@ export function prepareDatabase(db: SQLiteDatabase): number {
     );
     return currentVersion;
   }
+
+  if (currentVersion === 0 && !hasTrainerTables(db)) {
+    db.execSync(CREATE_TABLES_SQL);
+    setUserVersion(db, SCHEMA_VERSION);
+    return SCHEMA_VERSION;
+  }
+
+  db.execSync(CREATE_TABLES_SQL);
 
   if (
     currentVersion === 0 &&
