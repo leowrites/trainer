@@ -15,6 +15,10 @@
  *  - Badge        — semantic colour tag with optional pulse animation
  *  - Button       — pressable CTA with variants (primary / secondary / ghost / danger)
  *  - ProgressBar  — horizontal fill indicator with variants
+ *  - Input        — theme-aware text input field
+ *  - Checkbox     — toggle row with label and optional sub-label
+ *  - ActionRow    — paired primary/secondary form actions
+ *  - DisclosureCard — expandable card row with actions and detail surface
  */
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -30,6 +34,9 @@ export type { GridProps, GridItemProps, ColSpan } from './grid';
 // ── Composite blocks ──────────────────────────────────────────────────────────
 export { Card } from './card';
 export type { CardProps } from './card';
+
+export { DisclosureCard } from './disclosure-card';
+export type { DisclosureCardProps } from './disclosure-card';
 
 export { Header } from './header';
 export type { HeaderProps } from './header';
@@ -47,6 +54,9 @@ export type { BadgeProps, BadgeVariant } from './badge';
 export { Button } from './button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './button';
 
+export { ActionRow } from './action-row';
+export type { ActionRowProps } from './action-row';
+
 // ── Data visualisation ────────────────────────────────────────────────────────
 export { ProgressBar } from './progress-bar';
 export type { ProgressBarProps, ProgressBarVariant } from './progress-bar';
@@ -56,3 +66,10 @@ export type { GluestackColorConfig } from './gluestack-theme';
 export { GluestackUIProvider } from './gluestack-provider';
 export { GluestackButton } from './gluestack-button';
 export type { GluestackButtonProps } from './gluestack-button';
+
+// ── Form primitives ───────────────────────────────────────────────────────────
+export { Input } from './input';
+export type { InputProps } from './input';
+
+export { Checkbox } from './checkbox';
+export type { CheckboxProps } from './checkbox';

@@ -108,6 +108,56 @@ Each feature slice exposes a clean public API through its `index.ts` and is full
 
 ---
 
+## UI Library Usage
+
+The app UI is built from the reusable components in `src/shared/components`.
+When updating screens, prefer composing these shared pieces instead of
+introducing raw, one-off UI controls.
+
+### Recommended screen composition
+
+- Use `Container` as the screen root.
+- Use `Heading`, `Muted`, `Body`, `Caption`, and `Label` for text instead of
+  ad hoc `Text` styling.
+- Use `Card`, `Surface`, and `DisclosureCard` for grouped content, list rows,
+  and expandable detail panels.
+- Use `Button`, `Input`, `Checkbox`, and `ActionRow` for actions and forms.
+
+### Current reusable patterns
+
+- `DisclosureCard` is the default expandable row for schedule and routine
+  summary cards with inline actions and a revealed detail area.
+- `ActionRow` standardizes the paired primary/secondary form actions used by
+  create/edit flows.
+
+### Example
+
+```tsx
+<Card label="New Schedule">
+  <Input value={name} onChangeText={setName} placeholder="Schedule name" />
+  <Label className="mb-2">Select Routines</Label>
+  {routines.map((routine) => (
+    <Checkbox
+      key={routine.id}
+      checked={selectedIds.includes(routine.id)}
+      onToggle={() => toggleRoutine(routine.id)}
+      label={routine.name}
+    />
+  ))}
+  <ActionRow
+    onPrimaryPress={handleSave}
+    primaryLoading={saving}
+    onSecondaryPress={handleCancel}
+  />
+</Card>
+```
+
+When a screen needs a new visual pattern more than once, add it to
+`src/shared/components` and document it here before duplicating markup across
+feature screens.
+
+---
+
 ## Path Aliases
 
 Path aliases are configured in both `tsconfig.json` and `babel.config.js` so they work for the TypeScript compiler and at Metro/Babel runtime:

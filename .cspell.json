@@ -8,7 +8,9 @@
     "leowrites",
     "expo",
     "sqlite",
+    "gluestack",
     "precommit",
+    "prebuild",
     "commitlint",
     "husky",
     "cspell",
@@ -32,6 +34,7 @@
     "kebab",
     "colours",
     "analytics",
+    "simdjson",
     "autofix",
     "changelog",
     "serialisation"

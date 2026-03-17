@@ -1,14 +1,23 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList } from 'react-native';
-
-import { Button } from '@shared/components';
-import { Box } from '@shared/ui/box';
-import { Input, InputField } from '@shared/ui/input';
-import { Pressable } from '@shared/ui/pressable';
-import { Text } from '@shared/ui/text';
+import { FlatList, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
+import {
+  ActionRow,
+  Body,
+  Button,
+  Caption,
+  Card,
+  Checkbox,
+  Container,
+  DisclosureCard,
+  Heading,
+  Input,
+  Label,
+  Muted,
+  Surface,
+} from '@shared/components';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutines } from '../hooks/use-routines';
 import type { NewExerciseInput } from '../hooks/use-exercises';
@@ -86,141 +95,105 @@ function ExercisesSection({
   const renderExercise = ({ item }: { item: Exercise }): React.JSX.Element => {
     if (editingId === item.id) {
       return (
-        <Box className="bg-surface-elevated px-4 py-3 rounded-lg mb-2">
-          <Input className="mb-2 border-surface-border bg-surface">
-            <InputField
-              placeholder="Exercise name"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              value={editName}
-              onChangeText={setEditName}
-              autoCapitalize="words"
-              className="text-white"
-            />
-          </Input>
-          <Input className="mb-3 border-surface-border bg-surface">
-            <InputField
-              placeholder="Muscle group"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              value={editMuscleGroup}
-              onChangeText={setEditMuscleGroup}
-              autoCapitalize="words"
-              className="text-white"
-            />
-          </Input>
-          <Box className="flex-row gap-2">
-            <Button
-              className="flex-1"
-              onPress={() => handleSaveEdit(item.id)}
-              loading={editSaving}
-            >
-              Save
-            </Button>
-            <Button
-              className="flex-1"
-              variant="ghost"
-              onPress={() => setEditingId(null)}
-            >
-              Cancel
-            </Button>
-          </Box>
-        </Box>
+        <Card className="mb-2 rounded-xl">
+          <Input
+            className="mb-2"
+            placeholder="Exercise name"
+            value={editName}
+            onChangeText={setEditName}
+            autoCapitalize="words"
+          />
+          <Input
+            className="mb-3"
+            placeholder="Muscle group"
+            value={editMuscleGroup}
+            onChangeText={setEditMuscleGroup}
+            autoCapitalize="words"
+          />
+          <ActionRow
+            className="mt-0"
+            onPrimaryPress={() => handleSaveEdit(item.id)}
+            primaryLoading={editSaving}
+            onSecondaryPress={() => setEditingId(null)}
+          />
+        </Card>
       );
     }
 
     return (
-      <Box className="flex-row items-center justify-between bg-surface-elevated px-4 py-3 rounded-lg mb-2">
-        <Box className="flex-1">
-          <Text className="text-white font-medium">{item.name}</Text>
-          <Text className="text-white/50 text-xs mt-0.5">
-            {item.muscle_group}
-          </Text>
-        </Box>
-        <Box className="flex-row gap-3">
-          <Button
-            accessibilityLabel={`Edit ${item.name}`}
-            className="px-0"
-            variant="ghost"
-            size="sm"
-            onPress={() => handleStartEdit(item)}
-          >
-            Edit
-          </Button>
-          <Button
-            accessibilityLabel={`Delete ${item.name}`}
-            className="px-0"
-            variant="danger"
-            size="sm"
-            onPress={() => deleteExercise(item.id)}
-          >
-            Delete
-          </Button>
-        </Box>
-      </Box>
+      <Card className="mb-2 rounded-xl p-0">
+        <View className="flex-row items-center justify-between px-4 py-3">
+          <View className="flex-1">
+            <Body className="font-medium">{item.name}</Body>
+            <Caption className="mt-0.5">{item.muscle_group}</Caption>
+          </View>
+          <View className="flex-row gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              accessibilityLabel={`Edit ${item.name}`}
+              onPress={() => handleStartEdit(item)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              accessibilityLabel={`Delete ${item.name}`}
+              onPress={() => deleteExercise(item.id)}
+            >
+              Delete
+            </Button>
+          </View>
+        </View>
+      </Card>
     );
   };
 
   return (
-    <Box className="flex-1 px-4 pt-4">
+    <View className="flex-1 pt-2">
       <FlatList
         data={exercises}
         keyExtractor={(item: Exercise) => item.id}
         renderItem={renderExercise}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
         ListEmptyComponent={
-          <Text className="text-white/40 text-center mt-8">
+          <Muted className="text-center mt-8">
             No exercises yet. Add one below.
-          </Text>
+          </Muted>
         }
         ListFooterComponent={
           showForm ? (
-            <Box className="mt-4 bg-surface-elevated rounded-lg p-4">
-              <Text className="text-white font-semibold mb-3">
-                New Exercise
-              </Text>
-              <Input className="mb-2 border-surface-border bg-surface">
-                <InputField
-                  placeholder="Exercise name"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                  className="text-white"
-                />
-              </Input>
-              <Input className="mb-4 border-surface-border bg-surface">
-                <InputField
-                  placeholder="Muscle group (e.g. Chest)"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={muscleGroup}
-                  onChangeText={setMuscleGroup}
-                  autoCapitalize="words"
-                  className="text-white"
-                />
-              </Input>
-              <Box className="flex-row gap-2">
-                <Button
-                  className="flex-1"
-                  onPress={handleCreate}
-                  loading={saving}
-                >
-                  Save
-                </Button>
-                <Button
-                  className="flex-1"
-                  variant="ghost"
-                  onPress={() => {
-                    setShowForm(false);
-                    setName('');
-                    setMuscleGroup('');
-                  }}
-                >
-                  Cancel
-                </Button>
-              </Box>
-            </Box>
+            <Card label="New Exercise" className="mt-4 rounded-xl mx-0">
+              <Input
+                className="mb-2"
+                placeholder="Exercise name"
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+              />
+              <Input
+                className="mb-4"
+                placeholder="Muscle group (e.g. Chest)"
+                value={muscleGroup}
+                onChangeText={setMuscleGroup}
+                autoCapitalize="words"
+              />
+              <ActionRow
+                className="mt-0"
+                onPrimaryPress={handleCreate}
+                primaryLoading={saving}
+                onSecondaryPress={() => {
+                  setShowForm(false);
+                  setName('');
+                  setMuscleGroup('');
+                }}
+              />
+            </Card>
           ) : (
             <Button
-              className="mt-4"
               variant="ghost"
+              className="mt-4 mx-4"
               onPress={() => setShowForm(true)}
             >
               + New Exercise
@@ -228,7 +201,7 @@ function ExercisesSection({
           )
         }
       />
-    </Box>
+    </View>
   );
 }
 
@@ -359,212 +332,135 @@ function RoutinesSection({
   const renderRoutine = ({ item }: { item: Routine }): React.JSX.Element => {
     if (editingId === item.id) {
       return (
-        <Box className="bg-surface-elevated px-4 py-3 rounded-lg mb-2">
-          <Input className="mb-4 border-surface-border bg-surface">
-            <InputField
-              placeholder="Routine name"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              value={editName}
-              onChangeText={setEditName}
-              autoCapitalize="words"
-              className="text-white"
-            />
-          </Input>
-          <Text className="text-white/60 text-xs uppercase tracking-wider mb-2">
-            Select Exercises
-          </Text>
+        <Card className="mb-2 rounded-xl">
+          <Input
+            className="mb-4"
+            placeholder="Routine name"
+            value={editName}
+            onChangeText={setEditName}
+            autoCapitalize="words"
+          />
+          <Label className="mb-2">Select Exercises</Label>
           {exercises.length === 0 ? (
-            <Text className="text-white/40 text-sm mb-4">
-              No exercises available.
-            </Text>
+            <Muted className="mb-4">No exercises available.</Muted>
           ) : (
             exercises.map((ex) => (
-              <Pressable
+              <Checkbox
                 key={ex.id}
-                accessibilityRole="checkbox"
-                accessibilityState={{
-                  checked: editSelectedIds.includes(ex.id),
-                }}
-                className="flex-row items-center py-2"
-                onPress={() => toggleEditExercise(ex.id)}
-              >
-                <Box
-                  className={`w-5 h-5 rounded mr-3 border ${
-                    editSelectedIds.includes(ex.id)
-                      ? 'bg-primary-500 border-primary-500'
-                      : 'border-white/30'
-                  }`}
-                />
-                <Text className="text-white">{ex.name}</Text>
-                <Text className="text-white/40 text-xs ml-2">
-                  {ex.muscle_group}
-                </Text>
-              </Pressable>
+                checked={editSelectedIds.includes(ex.id)}
+                onToggle={() => toggleEditExercise(ex.id)}
+                label={ex.name}
+                sublabel={ex.muscle_group}
+              />
             ))
           )}
-          <Box className="flex-row gap-2 mt-4">
-            <Button
-              className="flex-1"
-              onPress={() => handleSaveEdit(item.id)}
-              loading={editSaving}
-            >
-              Save
-            </Button>
-            <Button
-              className="flex-1"
-              variant="ghost"
-              onPress={() => setEditingId(null)}
-            >
-              Cancel
-            </Button>
-          </Box>
-        </Box>
+          <ActionRow
+            onPrimaryPress={() => handleSaveEdit(item.id)}
+            primaryLoading={editSaving}
+            onSecondaryPress={() => setEditingId(null)}
+          />
+        </Card>
       );
     }
 
     const isExpanded = expandedId === item.id;
 
     return (
-      <Box className="bg-surface-elevated rounded-lg mb-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${item.name}`}
-          className="flex-row items-center justify-between px-4 py-3"
-          onPress={() => handleToggleExpand(item)}
-        >
-          <Text className="text-white font-medium flex-1">{item.name}</Text>
-          <Box className="flex-row gap-3 items-center">
+      <DisclosureCard
+        title={item.name}
+        expanded={isExpanded}
+        onToggle={() => handleToggleExpand(item)}
+        accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${item.name}`}
+        actions={
+          <>
             <Button
-              accessibilityLabel={`Edit ${item.name}`}
-              className="px-0"
               variant="ghost"
               size="sm"
+              accessibilityLabel={`Edit ${item.name}`}
               onPress={() => handleStartEdit(item)}
             >
               Edit
             </Button>
             <Button
-              accessibilityLabel={`Delete ${item.name}`}
-              className="px-0"
               variant="danger"
               size="sm"
+              accessibilityLabel={`Delete ${item.name}`}
               onPress={() => deleteRoutine(item.id)}
             >
               Delete
             </Button>
-            <Text className="text-white/40 text-xs">
-              {isExpanded ? '▲' : '▼'}
-            </Text>
-          </Box>
-        </Pressable>
-
-        {isExpanded && (
-          <Box className="px-4 pb-3 border-t border-white/10">
-            {expandedExercises.length === 0 ? (
-              <Text className="text-white/40 text-sm pt-2">
-                No exercises in this routine.
-              </Text>
-            ) : (
-              expandedExercises.map((re: RoutineExercise) => {
-                const ex = exercises.find(
-                  (e: Exercise) => e.id === re.exercise_id,
-                );
-                return (
-                  <Text key={re.id} className="text-white/70 text-sm pt-2">
-                    {ex ? ex.name : re.exercise_id} — {re.target_sets} ×{' '}
-                    {re.target_reps}
-                  </Text>
-                );
-              })
-            )}
-          </Box>
+          </>
+        }
+      >
+        {expandedExercises.length === 0 ? (
+          <Muted className="pt-1">No exercises in this routine.</Muted>
+        ) : (
+          expandedExercises.map((re: RoutineExercise) => {
+            const ex = exercises.find((e: Exercise) => e.id === re.exercise_id);
+            return (
+              <Body key={re.id} className="pt-2">
+                {ex ? ex.name : re.exercise_id} — {re.target_sets} ×{' '}
+                {re.target_reps}
+              </Body>
+            );
+          })
         )}
-      </Box>
+      </DisclosureCard>
     );
   };
 
   return (
-    <Box className="flex-1 px-4 pt-4">
+    <View className="flex-1 pt-2">
       <FlatList
         data={routines}
         keyExtractor={(item: Routine) => item.id}
         renderItem={renderRoutine}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
         ListEmptyComponent={
-          <Text className="text-white/40 text-center mt-8">
+          <Muted className="text-center mt-8">
             No routines yet. Create one below.
-          </Text>
+          </Muted>
         }
         ListFooterComponent={
           showForm ? (
-            <Box className="mt-4 bg-surface-elevated rounded-lg p-4">
-              <Text className="text-white font-semibold mb-3">New Routine</Text>
-              <Input className="mb-4 border-surface-border bg-surface">
-                <InputField
-                  placeholder="Routine name (e.g. Push A)"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={routineName}
-                  onChangeText={setRoutineName}
-                  autoCapitalize="words"
-                  className="text-white"
-                />
-              </Input>
-              <Text className="text-white/60 text-xs uppercase tracking-wider mb-2">
-                Select Exercises
-              </Text>
+            <Card label="New Routine" className="mt-4 rounded-xl mx-0">
+              <Input
+                className="mb-4"
+                placeholder="Routine name (e.g. Push A)"
+                value={routineName}
+                onChangeText={setRoutineName}
+                autoCapitalize="words"
+              />
+              <Label className="mb-2">Select Exercises</Label>
               {exercises.length === 0 ? (
-                <Text className="text-white/40 text-sm mb-4">
+                <Muted className="mb-4">
                   No exercises available — create some in the Exercises section.
-                </Text>
+                </Muted>
               ) : (
                 exercises.map((ex) => (
-                  <Pressable
+                  <Checkbox
                     key={ex.id}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{
-                      checked: selectedExerciseIds.includes(ex.id),
-                    }}
-                    className="flex-row items-center py-2"
-                    onPress={() => toggleExercise(ex.id)}
-                  >
-                    <Box
-                      className={`w-5 h-5 rounded mr-3 border ${
-                        selectedExerciseIds.includes(ex.id)
-                          ? 'bg-primary-500 border-primary-500'
-                          : 'border-white/30'
-                      }`}
-                    />
-                    <Text className="text-white">{ex.name}</Text>
-                    <Text className="text-white/40 text-xs ml-2">
-                      {ex.muscle_group}
-                    </Text>
-                  </Pressable>
+                    checked={selectedExerciseIds.includes(ex.id)}
+                    onToggle={() => toggleExercise(ex.id)}
+                    label={ex.name}
+                    sublabel={ex.muscle_group}
+                  />
                 ))
               )}
-              <Box className="flex-row gap-2 mt-4">
-                <Button
-                  className="flex-1"
-                  onPress={handleCreate}
-                  loading={saving}
-                >
-                  Save
-                </Button>
-                <Button
-                  className="flex-1"
-                  variant="ghost"
-                  onPress={() => {
-                    setShowForm(false);
-                    setRoutineName('');
-                    setSelectedExerciseIds([]);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </Box>
-            </Box>
+              <ActionRow
+                onPrimaryPress={handleCreate}
+                primaryLoading={saving}
+                onSecondaryPress={() => {
+                  setShowForm(false);
+                  setRoutineName('');
+                  setSelectedExerciseIds([]);
+                }}
+              />
+            </Card>
           ) : (
             <Button
-              className="mt-4"
               variant="ghost"
+              className="mt-4 mx-4"
               onPress={() => setShowForm(true)}
             >
               + New Routine
@@ -572,7 +468,7 @@ function RoutinesSection({
           )
         }
       />
-    </Box>
+    </View>
   );
 }
 
@@ -606,34 +502,27 @@ export function RoutinesScreen(): React.JSX.Element {
   );
 
   return (
-    <Box className="flex-1 bg-surface">
+    <Container className="pt-14 px-0">
       {/* Header */}
-      <Box className="pt-14 pb-4 px-4">
-        <Text className="text-white text-2xl font-bold">Routines</Text>
-      </Box>
+      <View className="px-4 pb-4">
+        <Heading>Routines</Heading>
+      </View>
 
       {/* Section tabs */}
-      <Box className="flex-row mx-4 mb-2 bg-surface-elevated rounded-lg p-1">
+      <Surface variant="elevated" className="flex-row mx-4 mb-2 rounded-lg p-1">
         {(['exercises', 'routines'] as const).map((s) => (
-          <Pressable
+          <Button
             key={s}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: section === s }}
-            className={`flex-1 py-2 rounded-md items-center ${
-              section === s ? 'bg-primary-600' : ''
-            }`}
+            variant={section === s ? 'primary' : 'ghost'}
+            size="sm"
+            className="flex-1 capitalize"
+            accessibilityLabel={s}
             onPress={() => setSection(s)}
           >
-            <Text
-              className={`text-sm font-semibold capitalize ${
-                section === s ? 'text-white' : 'text-white/50'
-              }`}
-            >
-              {s}
-            </Text>
-          </Pressable>
+            {s}
+          </Button>
         ))}
-      </Box>
+      </Surface>
 
       {/* Active section */}
       {section === 'exercises' ? (
@@ -653,6 +542,6 @@ export function RoutinesScreen(): React.JSX.Element {
           getRoutineExercises={getRoutineExercises}
         />
       )}
-    </Box>
+    </Container>
   );
 }

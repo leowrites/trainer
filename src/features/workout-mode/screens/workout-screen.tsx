@@ -1,13 +1,20 @@
 import React, { useCallback, useState } from 'react';
 
-import { Box } from '@shared/ui/box';
-import { Text } from '@shared/ui/text';
-
 import { useFocusEffect } from '@react-navigation/native';
 
+import {
+  Badge,
+  Body,
+  Button,
+  Caption,
+  Card,
+  Container,
+  Heading,
+  Muted,
+  Surface,
+} from '@shared/components';
 import { useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
-import { Button } from '@shared/components';
 
 export function WorkoutScreen(): React.JSX.Element {
   const { isWorkoutActive, endWorkout } = useWorkoutStore();
@@ -46,50 +53,57 @@ export function WorkoutScreen(): React.JSX.Element {
   };
 
   return (
-    <Box className="flex-1 items-center justify-center bg-surface px-6">
-      <Text className="text-white text-2xl font-bold mb-2">Workout</Text>
+    <Container className="items-center justify-center gap-4">
+      <Heading>Workout</Heading>
 
       {isWorkoutActive ? (
         <>
-          <Text className="text-white/60 text-sm mb-6">
+          <Badge variant="accent" pulse>
             Session in progress
-          </Text>
-          <Button onPress={endWorkout} className="min-w-[170px]">
+          </Badge>
+          <Button variant="ghost" onPress={endWorkout}>
             End Workout
           </Button>
         </>
       ) : (
         <>
           {nextRoutine ? (
-            <Box className="items-center mb-6">
-              <Text className="text-white/60 text-xs mb-1 uppercase tracking-wider">
+            <Card className="w-full rounded-xl mb-2">
+              <Caption className="uppercase tracking-wider mb-1">
                 Up next · {nextRoutine.scheduleName}
-              </Text>
-              <Text className="text-white text-lg font-semibold">
-                {nextRoutine.routineName}
-              </Text>
-            </Box>
+              </Caption>
+              <Body className="font-semibold">{nextRoutine.routineName}</Body>
+            </Card>
           ) : (
-            <Text className="text-white/60 text-sm mb-6">
-              No active schedule — start a free workout
-            </Text>
+            <Surface variant="card" className="w-full rounded-xl p-4 mb-2">
+              <Muted className="text-center">
+                No active schedule — start a free workout
+              </Muted>
+            </Surface>
           )}
 
           {nextRoutine ? (
             <Button
               onPress={handleStartScheduled}
               disabled={starting}
-              className="mb-3"
+              loading={starting}
+              className="w-full"
             >
               Start {nextRoutine.routineName}
             </Button>
           ) : null}
 
-          <Button variant="ghost" onPress={handleStartFree} disabled={starting}>
+          <Button
+            variant="ghost"
+            onPress={handleStartFree}
+            disabled={starting}
+            loading={starting}
+            className="w-full"
+          >
             Free Workout
           </Button>
         </>
       )}
-    </Box>
+    </Container>
   );
 }

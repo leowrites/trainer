@@ -19,7 +19,8 @@ This document describes the overall architecture of the Trainer app — how data
 5. [State Management](#state-management)
 6. [Navigation](#navigation)
 7. [Styling](#styling)
-8. [Adding a New Feature Slice](#adding-a-new-feature-slice)
+8. [Screen Composition](#screen-composition)
+9. [Adding a New Feature Slice](#adding-a-new-feature-slice)
 
 ---
 
@@ -297,6 +298,34 @@ Root navigator and route type definitions live in `src/core/navigation/`. The ap
 All styling uses [NativeWind v4](https://www.nativewind.dev/) (Tailwind CSS for React Native). Avoid `StyleSheet.create` unless a style cannot be expressed with Tailwind utility classes.
 
 Design tokens (brand colours, font sizes, spacing scale) are defined in `src/core/theme/index.ts` and extended into `tailwind.config.js` so they are available as utility classes throughout the app.
+
+---
+
+## Screen Composition
+
+Feature screens should compose the shared UI library in
+`src/shared/components` instead of rebuilding their own card, form, and action
+patterns.
+
+Preferred composition rules:
+
+- Start with `Container` as the outer layout wrapper.
+- Use shared typography components (`Heading`, `Body`, `Muted`, `Caption`,
+  `Label`) for visible text.
+- Use `Card` and `Surface` for static grouped content.
+- Use `DisclosureCard` for expandable summary rows that reveal secondary
+  content.
+- Use `Input`, `Checkbox`, and `ActionRow` for create/edit forms.
+
+Current app examples:
+
+- `RoutinesScreen` uses `DisclosureCard` for expandable routine summaries.
+- `ScheduleScreen` uses `DisclosureCard` for expandable schedule summaries.
+- Routines and schedules use `ActionRow` for consistent Save/Cancel actions in
+  create/edit flows.
+
+These shared compositions keep spacing, motion, and theming aligned with the
+app’s established liquid-glass-inspired visual language.
 
 ---
 

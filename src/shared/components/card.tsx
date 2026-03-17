@@ -22,7 +22,7 @@
  */
 
 import React from 'react';
-import type { ViewProps } from 'react-native';
+import type { PressableStateCallbackType, ViewProps } from 'react-native';
 
 import { Box } from '@shared/ui/box';
 import { Card as GluestackCard } from '@shared/ui/card';
@@ -66,7 +66,9 @@ export function Card({
   if (onPress) {
     return (
       <Pressable
-        style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+        style={({ pressed }: PressableStateCallbackType) => [
+          { opacity: pressed ? 0.85 : 1 },
+        ]}
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
