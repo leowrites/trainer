@@ -50,3 +50,6 @@ export type { ButtonProps, ButtonVariant, ButtonSize } from './button';
 // ── Data visualisation ────────────────────────────────────────────────────────
 export { ProgressBar } from './progress-bar';
 export type { ProgressBarProps, ProgressBarVariant } from './progress-bar';
+
+export { createGluestackColorConfig } from './gluestack-theme';
+export type { GluestackColorConfig } from './gluestack-theme';
