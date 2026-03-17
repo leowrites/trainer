@@ -11,6 +11,7 @@ import { generateId } from '@core/database/utils';
 import { getNextPosition, selectNextRoutineId } from '@features/schedule';
 import { buildRoutineSnapshot } from '@features/routines';
 import type { WorkoutSnapshotInput } from '@features/routines';
+import { loadActiveWorkoutSession } from '../session-repository';
 import { useWorkoutStore } from '../store';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -190,7 +191,10 @@ export function useWorkoutStarter(): {
     });
 
     if (sessionId) {
-      startWorkout(sessionId);
+      const activeSession = loadActiveWorkoutSession(db, sessionId);
+      if (activeSession) {
+        startWorkout(activeSession);
+      }
       refreshPreview();
     }
 
@@ -204,7 +208,10 @@ export function useWorkoutStarter(): {
       'INSERT INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
       [sessionId, null, null, null, now, null],
     );
-    startWorkout(sessionId);
+    const activeSession = loadActiveWorkoutSession(db, sessionId);
+    if (activeSession) {
+      startWorkout(activeSession);
+    }
     return sessionId;
   }, [db, startWorkout]);
 

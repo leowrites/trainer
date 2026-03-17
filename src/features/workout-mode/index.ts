@@ -5,5 +5,11 @@
  * rest countdowns, and progressive-overload suggestions during an active session.
  */
 export { useWorkoutStore } from './store';
+export { useActiveWorkout } from './hooks/use-active-workout';
 export { useWorkoutStarter } from './hooks/use-workout-starter';
 export { WorkoutScreen } from './screens/workout-screen';
+export type {
+  ActiveWorkoutExercise,
+  ActiveWorkoutSession,
+  ActiveWorkoutSet,
+} from './types';
