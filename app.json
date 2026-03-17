@@ -28,6 +28,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-sqlite"]
+    "plugins": ["expo-sqlite", "./plugins/with-ios-worklets-header-fix"]
   }
 }
