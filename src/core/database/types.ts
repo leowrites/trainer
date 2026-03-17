@@ -59,3 +59,11 @@ export interface WorkoutSet {
   reps: number;
   is_completed: number; // SQLite uses 0/1 for booleans
 }
+
+export interface BodyWeightEntry {
+  id: string;
+  weight: number;
+  unit: 'kg' | 'lb';
+  logged_at: number;
+  notes: string | null;
+}
