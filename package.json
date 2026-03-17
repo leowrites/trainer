@@ -5,6 +5,7 @@
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
+    "seed:dev": "EXPO_PUBLIC_DEV_SEED=1 expo start",
     "prebuild": "expo prebuild --no-install",
     "android": "expo run:android",
     "ios": "expo run:ios",

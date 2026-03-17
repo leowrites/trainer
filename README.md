@@ -186,11 +186,17 @@ import type { RecordId } from '@shared/types';
 | `npm run ios`          | Launch on iOS Simulator                  |
 | `npm run android`      | Launch on Android Emulator / device      |
 | `npm run web`          | Launch in browser                        |
+| `npm run seed:dev`     | Start Expo with the development seed set |
 | `npm run lint`         | Run ESLint across all `.ts`/`.tsx` files |
 | `npm run lint:fix`     | Run ESLint and auto-fix issues           |
 | `npm run format`       | Format all files with Prettier           |
 | `npm run format:check` | Check formatting without writing         |
 | `npm run type-check`   | Type-check without emitting files        |
+
+`npm run seed:dev` enables a deterministic development dataset when the app
+launches. It seeds the default exercise catalog plus sample routines,
+schedules, completed workouts, and body-weight history. The seed is
+additive and idempotent, so rerunning the command is safe.
 
 ---
 
