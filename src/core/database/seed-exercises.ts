@@ -19,8 +19,14 @@ const defaultExercises: ExerciseSeedEntry[] = exerciseSeedData;
  * @param db - The expo-sqlite `SQLiteDatabase` instance to seed.
  */
 export function seedDefaultExercises(db: SQLiteDatabase): void {
+  const defaultExerciseNames = defaultExercises.map(
+    (exercise: ExerciseSeedEntry) => exercise.name,
+  );
   const existingExercises = db.getAllSync<{ name: string }>(
-    'SELECT name FROM exercises',
+    `SELECT name FROM exercises WHERE name IN (${defaultExerciseNames
+      .map(() => '?')
+      .join(', ')})`,
+    defaultExerciseNames,
   );
   const existingNames = new Set(
     existingExercises.map((exercise: { name: string }) => exercise.name),

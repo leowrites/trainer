@@ -9,6 +9,8 @@ jest.mock('../seed-exercises', () => ({
 import { seedDefaultExercises } from '../seed-exercises';
 import { seedDevelopmentDatabase } from '../seed-development';
 
+const mockSeedDefaultExercises = jest.mocked(seedDefaultExercises);
+
 interface TableRow {
   id: string;
   [key: string]: unknown;
@@ -144,7 +146,7 @@ describe('seedDevelopmentDatabase', () => {
     seedDevelopmentDatabase(db as SQLiteDatabase);
     seedDevelopmentDatabase(db as SQLiteDatabase);
 
-    expect(seedDefaultExercises).toHaveBeenCalledTimes(2);
+    expect(mockSeedDefaultExercises).toHaveBeenCalledTimes(2);
     expect(db.withTransactionSync).toHaveBeenCalledTimes(2);
 
     const routines = db.runSync.mock.calls.filter(([sql]) =>
@@ -176,6 +178,17 @@ describe('seedDevelopmentDatabase', () => {
     );
     expect(bodyWeightEntries).toHaveLength(
       developmentSeedData.bodyWeightEntries.length * 2,
+    );
+  });
+
+  it('seeds the default exercise catalog before resolving required exercise ids', () => {
+    const db = createDevelopmentSeedDbMock();
+
+    seedDevelopmentDatabase(db as SQLiteDatabase);
+
+    expect(mockSeedDefaultExercises).toHaveBeenCalledWith(db);
+    expect(mockSeedDefaultExercises.mock.invocationCallOrder[0]).toBeLessThan(
+      db.getAllSync.mock.invocationCallOrder[0],
     );
   });
 });

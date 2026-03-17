@@ -13,11 +13,23 @@ function createSeedExercisesDbMock(
   existingNames: string[],
 ): SeedExercisesDbMock {
   const names = new Set(existingNames);
+  const defaultExerciseNames = defaultExercises.map(
+    (exercise) => exercise.name,
+  );
 
   return {
-    getAllSync: jest.fn((sql: string) => {
-      if (sql === 'SELECT name FROM exercises') {
-        return [...names].map((name) => ({ name }));
+    getAllSync: jest.fn((sql: string, params?: unknown[]) => {
+      if (
+        sql ===
+        `SELECT name FROM exercises WHERE name IN (${defaultExerciseNames
+          .map(() => '?')
+          .join(', ')})`
+      ) {
+        const requestedNames = (params ?? []) as string[];
+
+        return requestedNames
+          .filter((name) => names.has(name))
+          .map((name) => ({ name }));
       }
 
       return [];
@@ -55,5 +67,18 @@ describe('seedDefaultExercises', () => {
 
     expect(db.withTransactionSync).not.toHaveBeenCalled();
     expect(db.runSync).not.toHaveBeenCalled();
+  });
+
+  it('queries only the default catalog names instead of scanning all exercises', () => {
+    const db = createSeedExercisesDbMock([]);
+
+    seedDefaultExercises(db as SQLiteDatabase);
+
+    expect(db.getAllSync).toHaveBeenCalledWith(
+      `SELECT name FROM exercises WHERE name IN (${defaultExercises
+        .map(() => '?')
+        .join(', ')})`,
+      defaultExercises.map((exercise) => exercise.name),
+    );
   });
 });

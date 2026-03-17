@@ -196,7 +196,8 @@ import type { RecordId } from '@shared/types';
 `npm run seed:dev` enables a deterministic development dataset when the app
 launches. It seeds the default exercise catalog plus sample routines,
 schedules, completed workouts, and body-weight history. The seed is
-additive and idempotent, so rerunning the command is safe.
+additive and idempotent, so rerunning the command is safe. The script uses
+`cross-env`, so it works in POSIX shells and Windows shells.
 
 ---
 

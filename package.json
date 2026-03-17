@@ -5,7 +5,7 @@
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
-    "seed:dev": "EXPO_PUBLIC_DEV_SEED=1 expo start",
+    "seed:dev": "cross-env EXPO_PUBLIC_DEV_SEED=1 expo start",
     "prebuild": "expo prebuild --no-install",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -60,6 +60,7 @@
     "babel-plugin-module-resolver": "^5.0.3",
     "babel-preset-expo": "~55.0.0",
     "cspell": "^9.7.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.3",

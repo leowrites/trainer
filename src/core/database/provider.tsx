@@ -26,13 +26,22 @@ export function DatabaseProvider({
   db = database,
 }: DatabaseProviderProps): React.JSX.Element {
   useEffect(() => {
+    const shouldSeedDevelopmentData =
+      __DEV__ && process.env.EXPO_PUBLIC_DEV_SEED === '1';
+
     try {
-      seedDefaultExercises(db);
-      if (__DEV__ && process.env.EXPO_PUBLIC_DEV_SEED === '1') {
+      if (shouldSeedDevelopmentData) {
         seedDevelopmentDatabase(db);
+      } else {
+        seedDefaultExercises(db);
       }
     } catch (error) {
-      console.error('[Seed] Failed to seed development data:', error);
+      console.error(
+        shouldSeedDevelopmentData
+          ? '[Seed] Failed to seed development data:'
+          : '[Seed] Failed to seed default exercises:',
+        error,
+      );
     }
   }, [db]);
 
