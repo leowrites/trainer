@@ -4,6 +4,7 @@ import { FlatList, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import {
+  ActionRow,
   Badge,
   Body,
   Button,
@@ -11,11 +12,11 @@ import {
   Card,
   Checkbox,
   Container,
+  DisclosureCard,
   Heading,
   Input,
   Label,
   Muted,
-  Surface,
 } from '@shared/components';
 import { useRoutines } from '@features/routines';
 import type { Schedule, ScheduleEntry } from '@core/database/types';
@@ -69,23 +70,22 @@ function ScheduleRow({
   };
 
   return (
-    <Card
-      className="mb-2 rounded-xl p-0 overflow-hidden"
-      onPress={handleToggleExpand}
+    <DisclosureCard
+      title={item.name}
+      expanded={expanded}
+      onToggle={handleToggleExpand}
       accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${item.name}`}
-    >
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <View className="flex-1">
-          <Body className="font-medium">{item.name}</Body>
-          {item.is_active ? (
-            <Badge variant="accent" className="mt-1 self-start">
-              Active
-            </Badge>
-          ) : (
-            <Caption className="mt-0.5">Inactive</Caption>
-          )}
-        </View>
-        <View className="flex-row gap-3 items-center">
+      headerMeta={
+        item.is_active ? (
+          <Badge variant="accent" className="mt-1 self-start">
+            Active
+          </Badge>
+        ) : (
+          <Caption className="mt-0.5">Inactive</Caption>
+        )
+      }
+      actions={
+        <>
           {!item.is_active && (
             <Button
               variant="ghost"
@@ -112,29 +112,24 @@ function ScheduleRow({
           >
             Delete
           </Button>
-          <Caption>{expanded ? '▲' : '▼'}</Caption>
-        </View>
-      </View>
-
-      {expanded && (
-        <Surface variant="elevated" className="px-4 pb-3 pt-2">
-          {entries.length === 0 ? (
-            <Muted className="pt-1">No routines in this schedule.</Muted>
-          ) : (
-            entries.map((entry: ScheduleEntry, idx: number) => {
-              const routine = routines.find(
-                (r: Routine) => r.id === entry.routine_id,
-              );
-              return (
-                <Body key={entry.id} className="pt-2">
-                  {idx + 1}. {routine ? routine.name : entry.routine_id}
-                </Body>
-              );
-            })
-          )}
-        </Surface>
+        </>
+      }
+    >
+      {entries.length === 0 ? (
+        <Muted className="pt-1">No routines in this schedule.</Muted>
+      ) : (
+        entries.map((entry: ScheduleEntry, idx: number) => {
+          const routine = routines.find(
+            (r: Routine) => r.id === entry.routine_id,
+          );
+          return (
+            <Body key={entry.id} className="pt-2">
+              {idx + 1}. {routine ? routine.name : entry.routine_id}
+            </Body>
+          );
+        })
       )}
-    </Card>
+    </DisclosureCard>
   );
 }
 
@@ -270,23 +265,11 @@ export function ScheduleScreen(): React.JSX.Element {
               });
             })()
           )}
-          <View className="flex-row gap-2 mt-4">
-            <Button
-              className="flex-1"
-              onPress={handleSaveEdit}
-              loading={editSaving}
-              disabled={editSaving}
-            >
-              Save
-            </Button>
-            <Button
-              variant="ghost"
-              className="flex-1"
-              onPress={() => setEditingSchedule(null)}
-            >
-              Cancel
-            </Button>
-          </View>
+          <ActionRow
+            onPrimaryPress={handleSaveEdit}
+            primaryLoading={editSaving}
+            onSecondaryPress={() => setEditingSchedule(null)}
+          />
         </Card>
       ) : null}
 
@@ -341,27 +324,15 @@ export function ScheduleScreen(): React.JSX.Element {
                   );
                 })
               )}
-              <View className="flex-row gap-2 mt-4">
-                <Button
-                  className="flex-1"
-                  onPress={handleCreate}
-                  loading={saving}
-                  disabled={saving}
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  onPress={() => {
-                    setShowForm(false);
-                    setScheduleName('');
-                    setOrderedRoutineIds([]);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </View>
+              <ActionRow
+                onPrimaryPress={handleCreate}
+                primaryLoading={saving}
+                onSecondaryPress={() => {
+                  setShowForm(false);
+                  setScheduleName('');
+                  setOrderedRoutineIds([]);
+                }}
+              />
             </Card>
           ) : (
             <Button
