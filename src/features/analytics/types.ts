@@ -1,3 +1,5 @@
+export type WeightUnit = 'kg' | 'lb';
+
 export interface HistorySessionRow {
   id: string;
   routine_id: string | null;
@@ -77,7 +79,7 @@ export interface ProgressiveOverloadCandidate {
 
 export interface ProgressiveOverloadConfig {
   weightIncrement: number;
-  unit: string;
+  unit: WeightUnit;
   precision?: number;
 }
 
@@ -89,5 +91,5 @@ export interface ProgressiveOverloadRecommendation {
   currentWeight: number;
   recommendedWeight: number;
   weightIncrement: number;
-  unit: string;
+  unit: WeightUnit;
 }

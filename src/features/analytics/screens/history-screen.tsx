@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
@@ -155,7 +161,7 @@ function SessionDetail({
         <View>
           <Label>Volume</Label>
           <Body className="mt-1">
-            {formatCompactNumber(session.totalVolume)} kg
+            {formatWeight(session.totalVolume, progressionConfig.unit)}
           </Body>
         </View>
       </View>
@@ -173,7 +179,9 @@ function SessionDetail({
                   {summarizeExerciseSets(exercise)}
                 </Caption>
               </View>
-              <Caption>{formatCompactNumber(exercise.totalVolume)} kg</Caption>
+              <Caption>
+                {formatWeight(exercise.totalVolume, progressionConfig.unit)}
+              </Caption>
             </View>
           </Card>
         ))}
@@ -227,7 +235,7 @@ function HistoryList({
             }
             actions={
               <Badge variant={session.endTime === null ? 'warning' : 'muted'}>
-                {formatCompactNumber(session.totalVolume)} kg
+                {formatWeight(session.totalVolume, progressionConfig.unit)}
               </Badge>
             }
           >
@@ -249,24 +257,40 @@ export function HistoryScreen({
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(
     null,
   );
+  const hasHandledInitialFocus = useRef(false);
+  const hasAutoExpanded = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
+      if (!hasHandledInitialFocus.current) {
+        hasHandledInitialFocus.current = true;
+        return undefined;
+      }
+
       refresh();
+      return undefined;
     }, [refresh]),
   );
 
   useEffect(() => {
     if (sessions.length === 0) {
       setExpandedSessionId(null);
+      hasAutoExpanded.current = false;
       return;
     }
 
-    const expandedSessionStillExists = sessions.some(
-      (session: HistorySession) => session.id === expandedSessionId,
-    );
+    if (!hasAutoExpanded.current && expandedSessionId === null) {
+      hasAutoExpanded.current = true;
+      setExpandedSessionId(sessions[0].id);
+      return;
+    }
 
-    if (!expandedSessionStillExists) {
+    if (
+      expandedSessionId !== null &&
+      !sessions.some(
+        (session: HistorySession) => session.id === expandedSessionId,
+      )
+    ) {
       setExpandedSessionId(sessions[0].id);
     }
   }, [sessions, expandedSessionId]);
@@ -289,7 +313,7 @@ export function HistoryScreen({
         <TrendCard
           title="Volume Over Time"
           points={volumeTrend}
-          unit="kg"
+          unit={progressionConfig.unit}
           accentClassName="bg-accent"
           emptyMessage="Complete a workout to start tracking volume over time."
         />
@@ -312,7 +336,11 @@ export function HistoryScreen({
               </Caption>
               <Caption className="mt-1">
                 {formatDurationMinutes(latestSession.durationMinutes)} •{' '}
-                {formatCompactNumber(latestSession.totalVolume)} kg volume
+                {formatWeight(
+                  latestSession.totalVolume,
+                  progressionConfig.unit,
+                )}{' '}
+                volume
               </Caption>
             </>
           ) : (

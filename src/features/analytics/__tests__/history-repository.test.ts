@@ -40,5 +40,6 @@ describe('loadHistoryRows', () => {
     expect(loadHistoryRows(db)).toEqual({ sessionRows, setRows });
     expect(db.getAllSync).toHaveBeenNthCalledWith(1, HISTORY_SESSIONS_SQL);
     expect(db.getAllSync).toHaveBeenNthCalledWith(2, HISTORY_SETS_SQL);
+    expect(HISTORY_SETS_SQL).not.toContain('routine_exercises');
   });
 });

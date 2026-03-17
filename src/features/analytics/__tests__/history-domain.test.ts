@@ -167,4 +167,34 @@ describe('analytics history domain', () => {
       }),
     ]);
   });
+
+  it('excludes unfinished sessions from hours trends', () => {
+    const sessions = buildHistorySessions(
+      [
+        {
+          id: 'session-1',
+          routine_id: 'routine-1',
+          routine_name: 'Upper A',
+          snapshot_name: null,
+          start_time: new Date('2026-03-10T15:00:00.000Z').getTime(),
+          end_time: null,
+        },
+      ],
+      [
+        {
+          id: 'set-1',
+          session_id: 'session-1',
+          exercise_id: 'exercise-1',
+          exercise_name: 'Bench Press',
+          weight: 100,
+          reps: 10,
+          is_completed: 1,
+          target_sets: 1,
+          target_reps: 10,
+        },
+      ],
+    );
+
+    expect(buildHoursTrend(sessions)).toEqual([]);
+  });
 });

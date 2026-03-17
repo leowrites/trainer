@@ -34,15 +34,17 @@ export function recommendProgressions(
 
     const completedSets = candidate.sets.filter((set) => set.isCompleted);
 
-    if (completedSets.length !== totalRequiredSets) {
+    if (completedSets.length < totalRequiredSets) {
       return [];
     }
 
-    if (completedSets.some((set) => set.reps < targetReps)) {
+    const qualifyingSets = completedSets.slice(0, totalRequiredSets);
+
+    if (qualifyingSets.some((set) => set.reps < targetReps)) {
       return [];
     }
 
-    const currentWeight = Math.max(...completedSets.map((set) => set.weight));
+    const currentWeight = Math.max(...qualifyingSets.map((set) => set.weight));
     const recommendedWeight = roundToPrecision(
       currentWeight + config.weightIncrement,
       precision,
@@ -53,7 +55,7 @@ export function recommendProgressions(
         exerciseId: candidate.exerciseId,
         exerciseName: candidate.exerciseName,
         targetReps,
-        completedSetCount: completedSets.length,
+        completedSetCount: qualifyingSets.length,
         currentWeight,
         recommendedWeight,
         weightIncrement: config.weightIncrement,

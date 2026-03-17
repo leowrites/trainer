@@ -28,14 +28,10 @@ export const HISTORY_SETS_SQL = `
     wset.weight,
     wset.reps,
     wset.is_completed,
-    re.target_sets,
-    re.target_reps
+    wset.target_sets,
+    wset.target_reps
   FROM workout_sets wset
   LEFT JOIN exercises e ON e.id = wset.exercise_id
-  LEFT JOIN workout_sessions ws ON ws.id = wset.session_id
-  LEFT JOIN routine_exercises re
-    ON re.routine_id = ws.routine_id
-   AND re.exercise_id = wset.exercise_id
   ORDER BY wset.session_id ASC, e.name ASC, wset.rowid ASC
 `;
 

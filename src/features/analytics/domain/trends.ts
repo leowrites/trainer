@@ -45,6 +45,14 @@ function buildTrendBuckets(sessions: HistorySession[]): TrendBucket[] {
   );
 }
 
+function buildHoursBuckets(sessions: HistorySession[]): TrendBucket[] {
+  return buildTrendBuckets(
+    sessions.filter(
+      (session: HistorySession) => session.durationMinutes !== null,
+    ),
+  );
+}
+
 function sliceRecentPoints(points: TrendPoint[], limit: number): TrendPoint[] {
   if (limit <= 0) {
     return [];
@@ -74,7 +82,7 @@ export function buildHoursTrend(
   sessions: HistorySession[],
   limit = 6,
 ): TrendPoint[] {
-  const points = buildTrendBuckets(sessions).map(
+  const points = buildHoursBuckets(sessions).map(
     (bucket: TrendBucket): TrendPoint => ({
       key: bucket.key,
       label: bucket.label,

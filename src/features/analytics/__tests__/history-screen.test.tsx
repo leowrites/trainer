@@ -93,7 +93,7 @@ describe('HistoryScreen', () => {
 
     render(<HistoryScreen />);
 
-    expect(refresh).toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
     expect(screen.getByText('History')).toBeTruthy();
     expect(screen.getByText('No sessions recorded yet.')).toBeTruthy();
     expect(screen.getByText('No workout history yet')).toBeTruthy();
@@ -164,7 +164,6 @@ describe('HistoryScreen', () => {
       />,
     );
 
-    expect(refresh).toHaveBeenCalled();
     expect(screen.getByText('Volume Over Time')).toBeTruthy();
     expect(screen.getByText('Hours Over Time')).toBeTruthy();
     expect(screen.getAllByText('Upper A').length).toBeGreaterThan(0);
@@ -175,5 +174,22 @@ describe('HistoryScreen', () => {
     fireEvent.press(screen.getByLabelText('Expand Lower A'));
 
     expect(screen.getAllByText('Squat').length).toBeGreaterThan(0);
+  });
+
+  it('allows all sessions to be collapsed after the initial auto-expand', () => {
+    mockUseHistoryAnalytics.mockReturnValue({
+      sessions: [buildSession()],
+      volumeTrend: [buildTrendPoint()],
+      hoursTrend: [buildTrendPoint({ key: '2026-03-10-hours', value: 1.2 })],
+      refresh: jest.fn(),
+    });
+
+    render(<HistoryScreen />);
+
+    const collapseButton = screen.getByLabelText('Collapse Upper A');
+    fireEvent.press(collapseButton);
+
+    expect(screen.queryByText('Progression Next Time')).toBeNull();
+    expect(screen.getByLabelText('Expand Upper A')).toBeTruthy();
   });
 });

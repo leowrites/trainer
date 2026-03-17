@@ -66,4 +66,31 @@ describe('recommendProgressions', () => {
       }),
     ).toEqual([]);
   });
+
+  it('still recommends progression when extra completed sets exist beyond the target', () => {
+    expect(
+      recommendProgressions(
+        [
+          {
+            exerciseId: 'exercise-1',
+            exerciseName: 'Bench Press',
+            targetSets: 3,
+            targetReps: 10,
+            sets: [
+              { reps: 10, weight: 100, isCompleted: true },
+              { reps: 10, weight: 100, isCompleted: true },
+              { reps: 10, weight: 100, isCompleted: true },
+              { reps: 8, weight: 100, isCompleted: true },
+            ],
+          },
+        ],
+        { weightIncrement: 2.5, unit: 'kg', precision: 1 },
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        exerciseId: 'exercise-1',
+        recommendedWeight: 102.5,
+      }),
+    ]);
+  });
 });
