@@ -16,6 +16,7 @@ const activeSession: ActiveWorkoutSession = {
   id: 'session-1',
   title: 'Push A',
   startTime: 1_700_000_000_000,
+  isFreeWorkout: false,
   exercises: [
     {
       exerciseId: 'exercise-1',
@@ -46,6 +47,63 @@ describe('useActiveWorkout', () => {
       startTime: activeSession.startTime,
       activeSession,
     });
+  });
+
+  it('adds and removes exercise blocks during a free workout', () => {
+    const db = createMockDb();
+    const wrapper = createDatabaseWrapper(db);
+    useWorkoutStore.setState({
+      isWorkoutActive: true,
+      activeSessionId: 'session-2',
+      startTime: activeSession.startTime,
+      activeSession: {
+        ...activeSession,
+        id: 'session-2',
+        title: 'Free Workout',
+        isFreeWorkout: true,
+        exercises: [],
+      },
+    });
+
+    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
+
+    act(() => {
+      result.current.addExercise('exercise-2', 'Goblet Squat');
+    });
+
+    expect(db.runSync).toHaveBeenCalledWith(
+      'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      ['new-set-1', 'session-2', 'exercise-2', 0, 0, 0, null, null],
+    );
+    expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([
+      {
+        exerciseId: 'exercise-2',
+        exerciseName: 'Goblet Squat',
+        targetSets: null,
+        targetReps: null,
+        sets: [
+          {
+            id: 'new-set-1',
+            exerciseId: 'exercise-2',
+            reps: 0,
+            weight: 0,
+            isCompleted: false,
+            targetSets: null,
+            targetReps: null,
+          },
+        ],
+      },
+    ]);
+
+    act(() => {
+      result.current.removeExercise('exercise-2');
+    });
+
+    expect(db.runSync).toHaveBeenCalledWith(
+      'DELETE FROM workout_sets WHERE session_id = ? AND exercise_id = ?',
+      ['session-2', 'exercise-2'],
+    );
+    expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([]);
   });
 
   it('persists set edits/additions/deletions and keeps the store in sync', () => {

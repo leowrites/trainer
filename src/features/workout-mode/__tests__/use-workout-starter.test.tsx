@@ -18,6 +18,7 @@ const baseHydratedSession: ActiveWorkoutSession = {
   id: 'session-template',
   title: 'Push A',
   startTime: 1_700_000_000_000,
+  isFreeWorkout: false,
   exercises: [
     {
       exerciseId: 'exercise-1',

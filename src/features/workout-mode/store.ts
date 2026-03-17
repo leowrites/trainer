@@ -16,6 +16,10 @@ interface WorkoutState {
 interface WorkoutActions {
   /** Begin a new workout session. */
   startWorkout: (session: ActiveWorkoutSession) => void;
+  /** Append a new exercise block to the active session. */
+  addExercise: (exercise: ActiveWorkoutSession['exercises'][number]) => void;
+  /** Remove an exercise block from the active session. */
+  removeExercise: (exerciseId: string) => void;
   /** Update fields for a single set in the active session. */
   updateSet: (
     setId: string,
@@ -57,6 +61,43 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
       activeSessionId: session.id,
       startTime: session.startTime,
       activeSession: session,
+    });
+  },
+
+  addExercise: (exercise): void => {
+    set((state) => {
+      if (
+        !state.activeSession ||
+        state.activeSession.exercises.some(
+          (item) => item.exerciseId === exercise.exerciseId,
+        )
+      ) {
+        return state;
+      }
+
+      return {
+        activeSession: {
+          ...state.activeSession,
+          exercises: [...state.activeSession.exercises, exercise],
+        },
+      };
+    });
+  },
+
+  removeExercise: (exerciseId): void => {
+    set((state) => {
+      if (!state.activeSession) {
+        return state;
+      }
+
+      return {
+        activeSession: {
+          ...state.activeSession,
+          exercises: state.activeSession.exercises.filter(
+            (exercise) => exercise.exerciseId !== exerciseId,
+          ),
+        },
+      };
     });
   },
 

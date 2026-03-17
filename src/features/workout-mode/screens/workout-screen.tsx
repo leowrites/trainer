@@ -3,6 +3,7 @@ import { ScrollView, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
+import { useExercises } from '@features/routines';
 import { type ActiveWorkoutSet } from '../types';
 import {
   Badge,
@@ -10,6 +11,7 @@ import {
   Button,
   Caption,
   Card,
+  Checkbox,
   Container,
   Heading,
   Input,
@@ -114,6 +116,75 @@ function WorkoutSetEditor({
   );
 }
 
+function FreeWorkoutExercisePicker({
+  exerciseIdsInSession,
+  onAddExercise,
+}: {
+  exerciseIdsInSession: string[];
+  onAddExercise: (exerciseId: string, exerciseName: string) => void;
+}): React.JSX.Element | null {
+  const { exercises } = useExercises();
+  const [showPicker, setShowPicker] = useState(false);
+
+  const availableExercises = exercises.filter(
+    (exercise) => !exerciseIdsInSession.includes(exercise.id),
+  );
+
+  if (exercises.length === 0) {
+    return (
+      <Surface variant="card" className="w-full rounded-xl p-4">
+        <Muted className="text-center">
+          No exercises available yet. Create one in Routines first.
+        </Muted>
+      </Surface>
+    );
+  }
+
+  if (availableExercises.length === 0) {
+    return (
+      <Surface variant="card" className="w-full rounded-xl p-4">
+        <Muted className="text-center">
+          All exercises are already in this workout.
+        </Muted>
+      </Surface>
+    );
+  }
+
+  return (
+    <Surface variant="card" className="w-full rounded-xl p-4 gap-3">
+      <View className="gap-1">
+        <Body className="font-semibold">Add exercise</Body>
+        <Muted>Pick an exercise to start logging in this free workout.</Muted>
+      </View>
+
+      {showPicker ? (
+        <View className="gap-2">
+          {availableExercises.map((exercise) => (
+            <Checkbox
+              key={exercise.id}
+              checked={false}
+              onToggle={() => {
+                onAddExercise(exercise.id, exercise.name);
+                setShowPicker(false);
+              }}
+              label={exercise.name}
+              sublabel={exercise.muscle_group}
+            />
+          ))}
+
+          <Button variant="ghost" onPress={() => setShowPicker(false)}>
+            Cancel
+          </Button>
+        </View>
+      ) : (
+        <Button variant="ghost" onPress={() => setShowPicker(true)}>
+          Add Exercise
+        </Button>
+      )}
+    </Surface>
+  );
+}
+
 export function WorkoutScreen(): React.JSX.Element {
   const { isWorkoutActive } = useWorkoutStore();
   const {
@@ -124,6 +195,8 @@ export function WorkoutScreen(): React.JSX.Element {
   } = useWorkoutStarter();
   const {
     activeSession,
+    addExercise,
+    removeExercise,
     addSet,
     deleteSet,
     updateReps,
@@ -177,6 +250,15 @@ export function WorkoutScreen(): React.JSX.Element {
             </Body>
           </Card>
 
+          {activeSession?.isFreeWorkout ? (
+            <FreeWorkoutExercisePicker
+              exerciseIdsInSession={activeSession.exercises.map(
+                (exercise) => exercise.exerciseId,
+              )}
+              onAddExercise={addExercise}
+            />
+          ) : null}
+
           {activeSession && activeSession.exercises.length > 0 ? (
             <ScrollView className="w-full">
               <View className="gap-3">
@@ -212,6 +294,15 @@ export function WorkoutScreen(): React.JSX.Element {
                     >
                       Add Set
                     </Button>
+
+                    {activeSession.isFreeWorkout ? (
+                      <Button
+                        variant="danger"
+                        onPress={() => removeExercise(exercise.exerciseId)}
+                      >
+                        Remove Exercise
+                      </Button>
+                    ) : null}
                   </Card>
                 ))}
               </View>
@@ -219,7 +310,9 @@ export function WorkoutScreen(): React.JSX.Element {
           ) : (
             <Surface variant="card" className="w-full rounded-xl p-4">
               <Muted className="text-center">
-                No exercises in this session yet.
+                {activeSession?.isFreeWorkout
+                  ? 'No exercises in this free workout yet.'
+                  : 'No exercises in this session yet.'}
               </Muted>
             </Surface>
           )}
