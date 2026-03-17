@@ -36,10 +36,12 @@
  */
 
 import React from 'react';
-import { ActivityIndicator, Pressable, Text } from 'react-native';
 
-import type { ThemeTokens } from '@core/theme';
-import { useTheme } from '@core/theme/theme-context';
+import {
+  Button as GluestackButton,
+  ButtonSpinner,
+  ButtonText,
+} from '@shared/ui/button';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -55,37 +57,21 @@ export interface ButtonProps {
   accessibilityLabel?: string;
 }
 
-// ── Colour helpers ────────────────────────────────────────────────────────────
-
-function resolveVariantColours(
-  variant: ButtonVariant,
-  tokens: ThemeTokens,
-): { bg: string; fg: string } {
+function resolveVariantProps(variant: ButtonVariant): {
+  action: 'primary' | 'secondary' | 'negative' | 'default';
+  gluestackVariant: 'solid' | 'outline' | 'link';
+} {
   switch (variant) {
     case 'secondary':
-      return { bg: tokens.secondary, fg: tokens.secondaryForeground };
+      return { action: 'secondary', gluestackVariant: 'solid' };
     case 'ghost':
-      return { bg: tokens.bgElevated, fg: tokens.textMuted };
+      return { action: 'default', gluestackVariant: 'outline' };
     case 'danger':
-      return { bg: tokens.error, fg: tokens.errorForeground };
+      return { action: 'negative', gluestackVariant: 'solid' };
     default: // primary
-      return { bg: tokens.accent, fg: tokens.accentForeground };
+      return { action: 'primary', gluestackVariant: 'solid' };
   }
 }
-
-const containerSize: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 rounded',
-  md: 'px-5 py-2.5 rounded-lg',
-  lg: 'px-7 py-4 rounded-xl',
-};
-
-const textSize: Record<ButtonSize, string> = {
-  sm: 'text-xs',
-  md: 'text-sm',
-  lg: 'text-base',
-};
-
-// ── Button ────────────────────────────────────────────────────────────────────
 
 export function Button({
   variant = 'primary',
@@ -97,37 +83,26 @@ export function Button({
   className = '',
   accessibilityLabel,
 }: ButtonProps): React.JSX.Element {
-  const { tokens } = useTheme();
   const isInteractive = !disabled && !loading;
-  const { bg, fg } = resolveVariantColours(variant, tokens);
+  const { action, gluestackVariant } = resolveVariantProps(variant);
 
   return (
-    <Pressable
-      className={`flex-row items-center justify-center ${containerSize[size]} ${className}`}
-      style={({ pressed }) => ({
-        backgroundColor: bg,
-        opacity: !isInteractive ? 0.5 : pressed ? 0.75 : 1,
-      })}
+    <GluestackButton
+      action={action}
+      variant={gluestackVariant}
+      size={size}
+      className={className}
       onPress={isInteractive ? onPress : undefined}
-      disabled={!isInteractive}
+      isDisabled={!isInteractive}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !isInteractive }}
     >
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={fg}
-          accessibilityLabel="Loading"
-        />
+        <ButtonSpinner accessibilityLabel="Loading" />
       ) : (
-        <Text
-          className={`font-semibold ${textSize[size]}`}
-          style={{ color: fg }}
-        >
-          {children}
-        </Text>
+        <ButtonText>{children}</ButtonText>
       )}
-    </Pressable>
+    </GluestackButton>
   );
 }

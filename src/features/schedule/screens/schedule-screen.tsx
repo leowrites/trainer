@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { FlatList } from 'react-native';
+
+import { Button } from '@shared/components';
+import { Box } from '@shared/ui/box';
+import { Input, InputField } from '@shared/ui/input';
+import { Pressable } from '@shared/ui/pressable';
+import { Text } from '@shared/ui/text';
 
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -62,54 +61,57 @@ function ScheduleRow({
   };
 
   return (
-    <View className="bg-surface-elevated rounded-lg mb-2">
+    <Box className="bg-surface-elevated rounded-lg mb-2">
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${item.name}`}
         className="flex-row items-center justify-between px-4 py-3"
         onPress={handleToggleExpand}
       >
-        <View className="flex-1">
+        <Box className="flex-1">
           <Text className="text-white font-medium">{item.name}</Text>
           {item.is_active ? (
             <Text className="text-primary-400 text-xs mt-0.5">● Active</Text>
           ) : (
             <Text className="text-white/40 text-xs mt-0.5">Inactive</Text>
           )}
-        </View>
-        <View className="flex-row gap-3 items-center">
+        </Box>
+        <Box className="flex-row gap-3 items-center">
           {!item.is_active && (
-            <Pressable
-              accessibilityRole="button"
+            <Button
               accessibilityLabel={`Set ${item.name} as active`}
+              className="px-0"
+              variant="ghost"
+              size="sm"
               onPress={() => onActivate(item.id)}
-              hitSlop={8}
             >
-              <Text className="text-primary-400 text-sm">Set Active</Text>
-            </Pressable>
+              Set Active
+            </Button>
           )}
-          <Pressable
-            accessibilityRole="button"
+          <Button
             accessibilityLabel={`Edit ${item.name}`}
+            className="px-0"
+            variant="ghost"
+            size="sm"
             onPress={() => onEdit(item)}
-            hitSlop={8}
           >
-            <Text className="text-primary-400 text-sm">Edit</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
+            Edit
+          </Button>
+          <Button
             accessibilityLabel={`Delete ${item.name}`}
+            className="px-0"
+            variant="danger"
+            size="sm"
             onPress={() => onDelete(item.id)}
-            hitSlop={8}
           >
-            <Text className="text-red-400 text-sm">Delete</Text>
-          </Pressable>
+            Delete
+          </Button>
           <Text className="text-white/40 text-xs">{expanded ? '▲' : '▼'}</Text>
-        </View>
+        </Box>
       </Pressable>
 
       {expanded && (
-        <View className="px-4 pb-3 border-t border-white/10">
+        <Box className="px-4 pb-3 border-t border-white/10">
           {entries.length === 0 ? (
             <Text className="text-white/40 text-sm pt-2">
               No routines in this schedule.
@@ -126,9 +128,9 @@ function ScheduleRow({
               );
             })
           )}
-        </View>
+        </Box>
       )}
-    </View>
+    </Box>
   );
 }
 
@@ -235,7 +237,7 @@ export function ScheduleScreen(): React.JSX.Element {
         className="flex-row items-center py-2"
         onPress={() => onToggle(routineId)}
       >
-        <View
+        <Box
           className={`w-5 h-5 rounded mr-3 border items-center justify-center ${
             selected ? 'bg-primary-500 border-primary-500' : 'border-white/30'
           }`}
@@ -243,34 +245,36 @@ export function ScheduleScreen(): React.JSX.Element {
           {selected ? (
             <Text className="text-white text-xs font-bold">{idx + 1}</Text>
           ) : null}
-        </View>
+        </Box>
         <Text className="text-white">{routine ? routine.name : routineId}</Text>
       </Pressable>
     );
   };
 
   return (
-    <View className="flex-1 bg-surface">
+    <Box className="flex-1 bg-surface">
       {/* Header */}
-      <View className="pt-14 pb-4 px-4">
+      <Box className="pt-14 pb-4 px-4">
         <Text className="text-white text-2xl font-bold">Schedules</Text>
         <Text className="text-white/50 text-sm mt-1">
           Arrange routines into a rotating schedule (A → B → C → A)
         </Text>
-      </View>
+      </Box>
 
       {/* Inline edit form */}
       {editingSchedule ? (
-        <View className="mx-4 mb-4 bg-surface-elevated rounded-lg p-4">
+        <Box className="mx-4 mb-4 bg-surface-elevated rounded-lg p-4">
           <Text className="text-white font-semibold mb-3">Edit Schedule</Text>
-          <TextInput
-            className="bg-surface text-white rounded-md px-3 py-2 mb-4"
-            placeholder="Schedule name"
-            placeholderTextColor="rgba(255,255,255,0.3)"
-            value={editName}
-            onChangeText={setEditName}
-            autoCapitalize="words"
-          />
+          <Input className="mb-4 border-surface-border bg-surface">
+            <InputField
+              placeholder="Schedule name"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              value={editName}
+              onChangeText={setEditName}
+              autoCapitalize="words"
+              className="text-white"
+            />
+          </Input>
           <Text className="text-white/60 text-xs uppercase tracking-wider mb-2">
             Select Routines (in rotation order)
           </Text>
@@ -296,31 +300,32 @@ export function ScheduleScreen(): React.JSX.Element {
               });
             })()
           )}
-          <View className="flex-row gap-2 mt-4">
-            <Pressable
-              accessibilityRole="button"
-              className="flex-1 bg-primary-600 rounded-md py-2 items-center"
+          <Box className="flex-row gap-2 mt-4">
+            <Button
+              variant="primary"
+              size="md"
+              className="flex-1"
               onPress={handleSaveEdit}
               disabled={editSaving}
+              loading={editSaving}
+              accessibilityLabel="Save schedule changes"
             >
-              {editSaving ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-white font-semibold">Save</Text>
-              )}
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              className="flex-1 bg-surface rounded-md py-2 items-center"
+              Save
+            </Button>
+            <Button
+              variant="ghost"
+              size="md"
+              className="flex-1"
               onPress={() => setEditingSchedule(null)}
+              accessibilityLabel="Cancel editing schedule"
             >
-              <Text className="text-white/60 font-semibold">Cancel</Text>
-            </Pressable>
-          </View>
-        </View>
+              Cancel
+            </Button>
+          </Box>
+        </Box>
       ) : null}
 
-      <View className="flex-1 px-4">
+      <Box className="flex-1 px-4">
         <FlatList
           data={schedules}
           keyExtractor={(item: Schedule) => item.id}
@@ -342,18 +347,20 @@ export function ScheduleScreen(): React.JSX.Element {
           }
           ListFooterComponent={
             showForm ? (
-              <View className="mt-4 bg-surface-elevated rounded-lg p-4">
+              <Box className="mt-4 bg-surface-elevated rounded-lg p-4">
                 <Text className="text-white font-semibold mb-3">
                   New Schedule
                 </Text>
-                <TextInput
-                  className="bg-surface text-white rounded-md px-3 py-2 mb-4"
-                  placeholder="Schedule name (e.g. Push/Pull Split)"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={scheduleName}
-                  onChangeText={setScheduleName}
-                  autoCapitalize="words"
-                />
+                <Input className="mb-4 border-surface-border bg-surface">
+                  <InputField
+                    placeholder="Schedule name (e.g. Push/Pull Split)"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={scheduleName}
+                    onChangeText={setScheduleName}
+                    autoCapitalize="words"
+                    className="text-white"
+                  />
+                </Input>
                 <Text className="text-white/60 text-xs uppercase tracking-wider mb-2">
                   Select Routines (in rotation order)
                 </Text>
@@ -373,7 +380,7 @@ export function ScheduleScreen(): React.JSX.Element {
                         className="flex-row items-center py-2"
                         onPress={() => toggleRoutine(routine.id)}
                       >
-                        <View
+                        <Box
                           className={`w-5 h-5 rounded mr-3 border items-center justify-center ${
                             selected
                               ? 'bg-primary-500 border-primary-500'
@@ -385,52 +392,55 @@ export function ScheduleScreen(): React.JSX.Element {
                               {idx + 1}
                             </Text>
                           ) : null}
-                        </View>
+                        </Box>
                         <Text className="text-white">{routine.name}</Text>
                       </Pressable>
                     );
                   })
                 )}
-                <View className="flex-row gap-2 mt-4">
-                  <Pressable
-                    accessibilityRole="button"
-                    className="flex-1 bg-primary-600 rounded-md py-2 items-center"
+                <Box className="flex-row gap-2 mt-4">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    className="flex-1"
                     onPress={handleCreate}
                     disabled={saving}
+                    loading={saving}
+                    accessibilityLabel="Save new schedule"
                   >
-                    {saving ? (
-                      <ActivityIndicator color="white" />
-                    ) : (
-                      <Text className="text-white font-semibold">Save</Text>
-                    )}
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    className="flex-1 bg-surface rounded-md py-2 items-center"
+                    Save
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    className="flex-1"
                     onPress={() => {
                       setShowForm(false);
                       setScheduleName('');
                       setOrderedRoutineIds([]);
                     }}
+                    accessibilityLabel="Cancel new schedule form"
                   >
-                    <Text className="text-white/60 font-semibold">Cancel</Text>
-                  </Pressable>
-                </View>
-              </View>
+                    Cancel
+                  </Button>
+                </Box>
+              </Box>
             ) : (
-              <Pressable
-                accessibilityRole="button"
-                className="mt-4 bg-surface-elevated rounded-lg py-3 items-center"
-                onPress={() => setShowForm(true)}
-              >
-                <Text className="text-primary-400 font-semibold">
+              <Box className="mt-4 rounded-lg bg-surface-elevated">
+                <Button
+                  variant="ghost"
+                  size="md"
+                  className="w-full rounded-lg py-3"
+                  onPress={() => setShowForm(true)}
+                  accessibilityLabel="Create new schedule"
+                >
                   + New Schedule
-                </Text>
-              </Pressable>
+                </Button>
+              </Box>
             )
           }
         />
-      </View>
-    </View>
+      </Box>
+    </Box>
   );
 }

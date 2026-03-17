@@ -10,10 +10,11 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["src/*", "./*"],
       "@features/*": ["src/features/*"],
       "@core/*": ["src/core/*"],
-      "@shared/*": ["src/shared/*"]
+      "@shared/*": ["src/shared/*"],
+      "tailwind.config": ["./tailwind.config.js"]
     }
   },
   "include": [

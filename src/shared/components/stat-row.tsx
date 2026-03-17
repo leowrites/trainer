@@ -28,9 +28,10 @@
  */
 
 import React from 'react';
-import { Text, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
+import { Box } from '@shared/ui/box';
+import { Text } from '@shared/ui/text';
 
 export interface StatRowProps {
   value: string | number;
@@ -53,23 +54,23 @@ export function StatRow({
     unit !== undefined && unit !== '' ? `${valueStr} ${unit}` : valueStr;
 
   return (
-    <View className={`${className}`} accessibilityRole="none">
+    <Box className={`${className}`} accessibilityRole="none">
       {label !== undefined && label !== '' ? (
-        <View className="flex-row items-center mb-3">
+        <Box className="flex-row items-center mb-3">
           <Text
             className="text-[10px] uppercase tracking-widest"
             style={{ color: tokens.textMuted }}
           >
             {label}
           </Text>
-          <View
+          <Box
             className="flex-1 h-px ml-2"
             style={{ backgroundColor: tokens.bgBorder }}
           />
-        </View>
+        </Box>
       ) : null}
 
-      <View className="flex-row items-baseline gap-1">
+      <Box className="flex-row items-baseline gap-1">
         <Text
           className="text-[42px] font-bold leading-none"
           style={{ color: tokens.textPrimary }}
@@ -88,7 +89,7 @@ export function StatRow({
             {unit}
           </Text>
         ) : null}
-      </View>
+      </Box>
 
       {sub !== undefined && sub !== '' ? (
         <Text
@@ -99,6 +100,6 @@ export function StatRow({
           {sub}
         </Text>
       ) : null}
-    </View>
+    </Box>
   );
 }

@@ -20,10 +20,9 @@
  */
 
 import React from 'react';
-import { View } from 'react-native';
 import type { ViewProps } from 'react-native';
 
-import { useTheme } from '@core/theme/theme-context';
+import { SafeAreaView } from '@shared/ui/safe-area-view';
 
 export interface ContainerProps extends Pick<ViewProps, 'style'> {
   children: React.ReactNode;
@@ -39,14 +38,13 @@ export function Container({
   className = '',
   style,
 }: ContainerProps): React.JSX.Element {
-  const { tokens } = useTheme();
   return (
-    <View
-      className={`flex-1 px-6 ${className}`}
-      style={[{ backgroundColor: tokens.bgBase }, style]}
+    <SafeAreaView
+      className={`flex-1 bg-surface px-6 ${className}`}
+      style={style}
       accessibilityRole="none"
     >
       {children}
-    </View>
+    </SafeAreaView>
   );
 }
