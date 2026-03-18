@@ -76,13 +76,13 @@ function ScheduleRow({
   return (
     <Surface
       variant="card"
-      className="mx-0 mb-3 overflow-hidden rounded-[20px] border border-surface-border p-0"
+      className="mx-0 mb-3 overflow-hidden rounded-[24px] border border-surface-border/80 p-0"
     >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${item.name}`}
         onPress={handleToggleExpand}
-        className="px-4 py-3"
+        className="px-5 py-5"
       >
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1">
@@ -97,7 +97,7 @@ function ScheduleRow({
             <Label className={item.is_active ? 'text-secondary' : ''}>
               {item.is_active ? 'Active' : 'Inactive'}
             </Label>
-            <Caption className="mt-1">
+            <Caption className="mt-1 text-muted-foreground">
               {expanded ? 'Collapse' : 'Expand'}
             </Caption>
           </View>
@@ -105,7 +105,7 @@ function ScheduleRow({
       </Pressable>
 
       {expanded ? (
-        <View className="border-t border-surface-border px-4 pb-4 pt-3">
+        <View className="border-t border-surface-border/70 px-5 pb-5 pt-4">
           {entries.length === 0 ? (
             <Muted className="text-sm leading-[17px]">
               No routines in this schedule.
@@ -130,13 +130,12 @@ function ScheduleRow({
             })
           )}
 
-          <View className="mt-3 border-t border-surface-border pt-3">
-            <View className="flex-row gap-2">
+          <View className="mt-4 border-t border-surface-border/70 pt-4">
+            <View className="gap-2">
               {!item.is_active ? (
                 <Button
-                  variant="ghost"
                   size="sm"
-                  className="flex-1"
+                  className="w-full"
                   accessibilityLabel={`Set ${item.name} as active`}
                   onPress={() => onActivate(item.id)}
                 >
@@ -146,22 +145,21 @@ function ScheduleRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex-1"
+                className="w-full"
                 accessibilityLabel={`Edit ${item.name}`}
                 onPress={() => onEdit(item)}
               >
                 Edit
               </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                className="flex-1"
-                accessibilityLabel={`Delete ${item.name}`}
-                onPress={() => onDelete(item.id)}
-              >
-                Delete
-              </Button>
             </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${item.name}`}
+              className="mt-3 self-start px-1 py-1"
+              onPress={() => onDelete(item.id)}
+            >
+              <Caption className="text-muted-foreground">Delete</Caption>
+            </Pressable>
           </View>
         </View>
       ) : null}
@@ -275,21 +273,19 @@ export function ScheduleScreen(): React.JSX.Element {
       </View>
 
       <View className="py-3">
-        <Surface variant="card" className="mx-0 rounded-[20px] px-4 py-4">
+        <Surface variant="card" className="mx-0 rounded-[24px] px-5 py-5">
           <View className="mb-3 flex-row items-center justify-between gap-3">
-            <Label className="text-secondary">
-              {activeSchedule ? 'Active Schedule' : 'Schedule Setup'}
-            </Label>
+            <Meta>{activeSchedule ? 'Active Schedule' : 'Schedule Setup'}</Meta>
             <Meta className="text-foreground">
               {activeSchedule
                 ? `${activeEntries.length} routines`
                 : `${routines.length} routines`}
             </Meta>
           </View>
-          <DisplayHeading className="text-3xl leading-[32px]">
+          <DisplayHeading className="text-[28px] leading-[30px]">
             {activeSchedule?.name ?? 'No active schedule'}
           </DisplayHeading>
-          <Muted className="mt-2 text-sm leading-[17px]">
+          <Muted className="mt-3 text-sm leading-[18px]">
             {activeSchedule
               ? activeSchedule.current_position >= 0
                 ? `Rotation position ${activeSchedule.current_position + 1}`
@@ -300,7 +296,7 @@ export function ScheduleScreen(): React.JSX.Element {
       </View>
 
       {editingSchedule ? (
-        <Card label="Edit Schedule" className="mx-0 mb-3 rounded-[20px] p-4">
+        <Card label="Edit Schedule" className="mx-0 mb-3 rounded-[24px] p-5">
           <Input
             className="mb-4"
             placeholder="Schedule name"
@@ -405,7 +401,7 @@ export function ScheduleScreen(): React.JSX.Element {
           ) : (
             <Button
               variant="ghost"
-              className="mx-0 mt-3 w-auto"
+              className="mx-0 mt-3 w-full rounded-[20px]"
               onPress={() => setShowForm(true)}
             >
               + New Schedule

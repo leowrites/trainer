@@ -145,32 +145,32 @@ function SessionDetail({
 
   return (
     <>
-      <View className="flex-row flex-wrap gap-4">
-        <View>
+      <View className="flex-row flex-wrap gap-3">
+        <Card className="min-w-[110px] flex-1 rounded-[18px] bg-surface-elevated px-4 py-4">
           <Label>Date</Label>
-          <Body className="mt-1">
+          <Body className="mt-2">
             {formatSessionDateTime(session.startTime)}
           </Body>
-        </View>
-        <View>
+        </Card>
+        <Card className="min-w-[110px] flex-1 rounded-[18px] bg-surface-elevated px-4 py-4">
           <Label>Duration</Label>
-          <Body className="mt-1">
+          <Body className="mt-2">
             {formatDurationMinutes(session.durationMinutes)}
           </Body>
-        </View>
-        <View>
+        </Card>
+        <Card className="min-w-[110px] flex-1 rounded-[18px] bg-surface-elevated px-4 py-4">
           <Label>Volume</Label>
-          <Body className="mt-1">
+          <Body className="mt-2">
             {formatWeight(session.totalVolume, progressionConfig.unit)}
           </Body>
-        </View>
+        </Card>
       </View>
 
-      <View className="mt-4 gap-2">
+      <View className="mt-5 gap-3">
         {session.exercises.map((exercise: HistoryExerciseSummary) => (
           <Card
             key={exercise.exerciseId}
-            className="rounded-xl bg-surface-card"
+            className="rounded-[18px] bg-surface-elevated px-4 py-4"
           >
             <View className="flex-row items-start justify-between gap-3">
               <View className="flex-1">
@@ -296,9 +296,9 @@ export function HistoryScreen({
     <Container>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: 28 }}
       >
-        <View className="border-surface-border pb-3">
+        <View className="pb-4">
           <View accessibilityRole="header" className="gap-2">
             <Heading className="text-4xl leading-[36px]">History</Heading>
             <Muted className="text-sm leading-[19px]">
@@ -307,8 +307,8 @@ export function HistoryScreen({
           </View>
         </View>
 
-        <View className="py-3">
-          <Card label="Latest Session" className="rounded-[20px] px-4 py-4">
+        <View className="pb-4">
+          <Card label="Latest Session" className="rounded-[24px] px-5 py-5">
             {latestSession ? (
               <>
                 <Body className="font-heading text-2xl leading-[30px]">
@@ -333,12 +333,6 @@ export function HistoryScreen({
           </Card>
         </View>
 
-        <View className="pb-1">
-          <Muted className="text-sm leading-[17px]">
-            Trends update from completed sessions saved on this device.
-          </Muted>
-        </View>
-
         <View>
           <TrendCard
             title="Volume Over Time"
@@ -357,7 +351,7 @@ export function HistoryScreen({
           />
         </View>
 
-        <View className="border-b border-t border-surface-border px-3 py-3">
+        <View className="pb-2 pt-3">
           <Heading className="text-2xl leading-[24px]">Sessions</Heading>
           <Muted className="mt-2 text-sm leading-[17px]">
             Expand a session to inspect exercise details and recommendations.
@@ -365,7 +359,7 @@ export function HistoryScreen({
         </View>
 
         {sessions.length > 0 ? (
-          <View className="pt-3">
+          <View className="pt-2">
             <HistoryList
               sessions={sessions}
               expandedSessionId={expandedSessionId}
@@ -378,8 +372,8 @@ export function HistoryScreen({
             />
           </View>
         ) : (
-          <View className="pt-3">
-            <Card className="rounded-[20px] px-4 py-4">
+          <View className="pt-2">
+            <Card className="rounded-[24px] px-5 py-5">
               <Body className="font-medium">No workout history yet</Body>
               <Muted className="mt-2">
                 Completed sessions will appear here with routine, date, set

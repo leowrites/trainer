@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 
-import { Body, Caption, Meta } from './typography';
+import { Body, Caption } from './typography';
 import { Card } from './card';
 import { Surface } from './surface';
 
@@ -37,7 +37,7 @@ export function DisclosureCard({
       accessibilityLabel={accessibilityLabel}
     >
       <View
-        className={`flex-row items-start justify-between gap-3 px-5 py-4 ${headerClassName}`}
+        className={`flex-row items-start justify-between gap-4 px-5 py-5 ${headerClassName}`}
       >
         <View className="flex-1">
           <Body className="font-heading text-lg leading-tight">{title}</Body>
@@ -45,15 +45,19 @@ export function DisclosureCard({
         </View>
         <View className="flex-row items-center gap-2">
           {actions}
-          <Meta className="text-muted">{expanded ? 'OPEN' : 'MORE'}</Meta>
-          <Caption>{expanded ? '▲' : '▼'}</Caption>
+          <Caption className="uppercase tracking-[1.2px] text-muted-foreground">
+            {expanded ? 'Hide' : 'View'}
+          </Caption>
+          <Caption className="text-muted-foreground">
+            {expanded ? '▲' : '▼'}
+          </Caption>
         </View>
       </View>
 
       {expanded ? (
         <Surface
-          variant="elevated"
-          className={`border-t border-surface-border px-5 pb-4 pt-3 ${contentClassName}`}
+          variant="card"
+          className={`border-t border-surface-border/70 px-5 pb-5 pt-4 ${contentClassName}`}
         >
           {children}
         </Surface>

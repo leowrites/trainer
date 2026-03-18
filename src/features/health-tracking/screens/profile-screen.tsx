@@ -135,10 +135,10 @@ export function ProfileScreen(): React.JSX.Element {
     <Container>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: 28 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="border-surface-border pb-3">
+        <View className="pb-4">
           <View accessibilityRole="header" className="gap-2">
             <Heading className="text-4xl leading-[36px]">Profile</Heading>
             <Muted className="text-sm leading-[19px]">
@@ -148,8 +148,8 @@ export function ProfileScreen(): React.JSX.Element {
           </View>
         </View>
 
-        <View className="py-3">
-          <Card label="Latest Reading" className="rounded-[20px] px-4 py-4">
+        <View className="pb-4">
+          <Card label="Latest Reading" className="rounded-[24px] px-5 py-5">
             {latestEntry ? (
               <StatRow
                 value={formatBodyWeightValue(latestEntry.weight)}
@@ -168,14 +168,14 @@ export function ProfileScreen(): React.JSX.Element {
         </View>
 
         {error ? (
-          <View className="pb-3">
-            <Card label="Status" className="rounded-[20px] px-4 py-4">
+          <View className="pb-4">
+            <Card label="Status" className="rounded-[24px] px-5 py-5">
               <Body className="text-red-400">{error}</Body>
             </Card>
           </View>
         ) : null}
 
-        <View>
+        <View className="pb-4">
           <BodyWeightForm
             title={editingEntry ? 'Edit body-weight log' : 'Log body weight'}
             form={form}
@@ -193,7 +193,7 @@ export function ProfileScreen(): React.JSX.Element {
           />
         </View>
 
-        <View className="border-b border-t border-surface-border py-3">
+        <View className="pb-2 pt-1">
           <Heading className="text-2xl leading-[24px]">Recent logs</Heading>
           <Muted className="mt-2 text-sm leading-[17px]">
             {entries.length === 0
@@ -203,13 +203,13 @@ export function ProfileScreen(): React.JSX.Element {
         </View>
 
         {entries.length === 0 ? (
-          <View className="pt-3">
-            <Card className="rounded-[20px] px-4 py-4">
+          <View className="pt-2">
+            <Card className="rounded-[24px] px-5 py-5">
               <Body>Log your first entry to start a body-weight history.</Body>
             </Card>
           </View>
         ) : (
-          <View className="pt-3">
+          <View className="pt-2">
             {entries.map((entry) => (
               <View key={entry.id} className="mb-3">
                 <BodyWeightEntryCard

@@ -25,23 +25,26 @@ export function ActionRow({
   className = '',
 }: ActionRowProps): React.JSX.Element {
   return (
-    <View className={`mt-4 flex-row gap-2 ${className}`}>
+    <View className={`mt-5 gap-2 ${className}`}>
       <Button
-        className="flex-1"
+        className="w-full"
         onPress={onPrimaryPress}
         loading={primaryLoading}
         disabled={primaryDisabled || primaryLoading}
       >
         {primaryLabel}
       </Button>
-      <Button
-        variant="ghost"
-        className="flex-1"
-        onPress={onSecondaryPress}
-        disabled={secondaryDisabled}
-      >
-        {secondaryLabel}
-      </Button>
+      <View className="items-end">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="px-1"
+          onPress={onSecondaryPress}
+          disabled={secondaryDisabled}
+        >
+          {secondaryLabel}
+        </Button>
+      </View>
     </View>
   );
 }

@@ -63,7 +63,7 @@ function resolveVariantProps(variant: ButtonVariant): {
 } {
   switch (variant) {
     case 'secondary':
-      return { action: 'secondary', gluestackVariant: 'solid' };
+      return { action: 'default', gluestackVariant: 'outline' };
     case 'ghost':
       return { action: 'default', gluestackVariant: 'outline' };
     case 'danger':
@@ -76,7 +76,7 @@ function resolveVariantProps(variant: ButtonVariant): {
 function resolveTextClass(variant: ButtonVariant): string {
   switch (variant) {
     case 'secondary':
-      return 'text-black';
+      return 'text-foreground';
     case 'ghost':
       return 'text-foreground';
     case 'danger':

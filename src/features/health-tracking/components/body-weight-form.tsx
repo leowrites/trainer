@@ -48,8 +48,8 @@ export function BodyWeightForm({
   onSecondaryPress,
 }: BodyWeightFormProps): React.JSX.Element {
   return (
-    <Card label={title} className="rounded-[20px] px-4 py-4">
-      <View className="gap-4">
+    <Card label={title} className="rounded-[24px] px-5 py-5">
+      <View className="gap-5">
         <View>
           <Label className="mb-2">Weight</Label>
           <Input
@@ -70,7 +70,7 @@ export function BodyWeightForm({
             {BODY_WEIGHT_UNITS.map((unit) => (
               <Button
                 key={unit}
-                variant={form.unit === unit ? 'secondary' : 'ghost'}
+                variant={form.unit === unit ? 'primary' : 'ghost'}
                 className="flex-1"
                 onPress={() => onUnitChange(unit)}
                 accessibilityLabel={`Use ${unit}`}
@@ -109,7 +109,7 @@ export function BodyWeightForm({
           </View>
         </View>
 
-        <Caption className="text-xs leading-[15px]">
+        <Caption className="text-xs leading-[15px] text-muted-foreground">
           Use YYYY-MM-DD and 24-hour HH:mm.
         </Caption>
 

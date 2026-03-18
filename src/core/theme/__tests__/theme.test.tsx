@@ -24,6 +24,7 @@ describe('darkTokens', () => {
       'accentBorder',
       'accentForeground',
       'secondary',
+      'success',
       'error',
     ];
     required.forEach((key) => {
@@ -32,11 +33,11 @@ describe('darkTokens', () => {
   });
 
   it('accent matches the primary palette value', () => {
-    expect(darkTokens.accent).toBe(palette.lime);
+    expect(darkTokens.accent).toBe(palette.primary);
   });
 
   it('error is the red value from palette', () => {
-    expect(darkTokens.error).toBe(palette.red);
+    expect(darkTokens.error).toBe(palette.error);
   });
 });
 
@@ -51,6 +52,7 @@ describe('lightTokens', () => {
       'textMuted',
       'accent',
       'secondary',
+      'success',
       'error',
     ];
     required.forEach((key) => {
@@ -58,10 +60,9 @@ describe('lightTokens', () => {
     });
   });
 
-  it('has a lighter background than dark mode', () => {
-    expect(lightTokens.bgBase).not.toBe(darkTokens.bgBase);
-    expect(lightTokens.bgBase).toBe('#f3f6f9');
-    expect(darkTokens.bgBase).toBe('#0f1216');
+  it('uses the requested soft background', () => {
+    expect(lightTokens.bgBase).toBe('#F6F7FB');
+    expect(darkTokens.bgBase).toBe('#F6F7FB');
   });
 });
 
@@ -88,16 +89,16 @@ const twColors = tw.theme.extend.colors as Record<
 >;
 
 describe('palette ↔ tailwind.config.js consistency', () => {
-  it('accent.DEFAULT matches palette.lime', () => {
-    expect(twColors.accent.DEFAULT).toBe(palette.lime);
+  it('accent.DEFAULT matches palette.primary', () => {
+    expect(twColors.accent.DEFAULT).toBe(palette.primary);
   });
 
-  it('secondary.DEFAULT matches palette.amber', () => {
-    expect(twColors.secondary.DEFAULT).toBe(palette.amber);
+  it('secondary.DEFAULT matches palette.secondary', () => {
+    expect(twColors.secondary.DEFAULT).toBe(palette.secondary);
   });
 
-  it('error.DEFAULT matches palette.red', () => {
-    expect(twColors.error.DEFAULT).toBe(palette.red);
+  it('error.DEFAULT matches palette.error', () => {
+    expect(twColors.error.DEFAULT).toBe(palette.error);
   });
 
   it('surface.DEFAULT matches palette.bg', () => {

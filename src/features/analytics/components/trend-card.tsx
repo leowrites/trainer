@@ -37,7 +37,7 @@ export function TrendCard({
   );
 
   return (
-    <Card label={title} className="mb-4 rounded-[20px] px-4 py-4">
+    <Card label={title} className="mb-4 rounded-[24px] px-5 py-5">
       {latestPoint ? (
         <>
           <View>
@@ -49,15 +49,15 @@ export function TrendCard({
                 {unit}
               </Body>
             </View>
-            <Muted className="mt-2 text-xs leading-[16px] text-muted-foreground">
+            <Muted className="mt-1 text-xs leading-[16px] text-muted-foreground">
               Last {points.length} workout days
             </Muted>
           </View>
 
-          <View className="mt-4 flex-row items-end gap-2">
+          <View className="mt-5 flex-row items-end gap-3">
             {points.map((point: TrendPoint) => (
               <View key={point.key} className="flex-1 items-center">
-                <View className="h-16 w-full justify-end rounded-[14px] bg-surface-elevated px-1.5 pb-1.5">
+                <View className="h-[72px] w-full justify-end rounded-[16px] bg-surface-elevated px-2 pb-2">
                   <View
                     className={`w-full rounded-[10px] ${accentClassName}`}
                     style={{

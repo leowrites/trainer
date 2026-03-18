@@ -4,7 +4,6 @@ import { FlatList, Pressable, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import {
-  ActionRow,
   Body,
   Button,
   Caption,
@@ -16,7 +15,6 @@ import {
   Input,
   Label,
   Muted,
-  Surface,
 } from '@shared/components';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutines } from '../hooks/use-routines';
@@ -42,7 +40,7 @@ function SectionSwitcher({
   onChange: (section: Section) => void;
 }): React.JSX.Element {
   return (
-    <View className="mx-0 flex-row overflow-hidden rounded-[18px] border-y border-surface-border bg-surface-card">
+    <View className="mx-0 flex-row border-y border-surface-border">
       {(['exercises', 'routines'] as const).map((item, index) => {
         const active = section === item;
         return (
@@ -76,10 +74,10 @@ function FormSection({
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <Card className="mx-0 rounded-[20px] px-4 py-4">
-      <View className="mb-2 flex-row items-center gap-3">
-        <Label className="text-secondary">{label}</Label>
-        <View className="h-px flex-1 bg-surface-border" />
+    <Card className="mx-0 rounded-[24px] px-5 py-5">
+      <View className="mb-4 flex-row items-center gap-3">
+        <Label className="text-muted-foreground">{label}</Label>
+        <View className="h-px flex-1 bg-surface-border/70" />
       </View>
       {children}
     </Card>
@@ -96,11 +94,44 @@ function NewItemButton({
   return (
     <Pressable
       accessibilityRole="button"
-      className="mx-0 rounded-[16px] border border-surface-border bg-surface-card px-4 py-3"
+      className="mx-0 rounded-[20px] border border-surface-border/80 bg-surface-card px-5 py-4"
       onPress={onPress}
     >
-      <Label className="text-secondary">{label}</Label>
+      <Label className="text-muted-foreground">{label}</Label>
     </Pressable>
+  );
+}
+
+function FormActions({
+  primaryLabel = 'Save',
+  secondaryLabel = 'Cancel',
+  onPrimaryPress,
+  onSecondaryPress,
+  primaryLoading = false,
+}: {
+  primaryLabel?: string;
+  secondaryLabel?: string;
+  onPrimaryPress: () => void;
+  onSecondaryPress: () => void;
+  primaryLoading?: boolean;
+}): React.JSX.Element {
+  return (
+    <View className="mt-4 gap-3">
+      <Button
+        onPress={onPrimaryPress}
+        loading={primaryLoading}
+        className="w-full"
+      >
+        {primaryLabel}
+      </Button>
+      <Pressable
+        accessibilityRole="button"
+        className="items-center py-1"
+        onPress={onSecondaryPress}
+      >
+        <Caption className="text-muted-foreground">{secondaryLabel}</Caption>
+      </Pressable>
+    </View>
   );
 }
 
@@ -165,7 +196,7 @@ function ExercisesSection({
   const renderExercise = ({ item }: { item: Exercise }): React.JSX.Element => {
     if (editingId === item.id) {
       return (
-        <Card className="mx-0 mb-3 rounded-[20px] px-4 py-4">
+        <Card className="mx-0 mb-3 rounded-[24px] px-5 py-5">
           <Input
             className="mb-2"
             placeholder="Exercise name"
@@ -180,8 +211,9 @@ function ExercisesSection({
             onChangeText={setEditMuscleGroup}
             autoCapitalize="words"
           />
-          <ActionRow
-            className="mt-0"
+          <FormActions
+            primaryLabel="Save changes"
+            secondaryLabel="Cancel"
             onPrimaryPress={() => handleSaveEdit(item.id)}
             primaryLoading={editSaving}
             onSecondaryPress={() => setEditingId(null)}
@@ -191,7 +223,7 @@ function ExercisesSection({
     }
 
     return (
-      <Card className="mx-0 mb-3 rounded-[20px] px-4 py-4">
+      <Card className="mx-0 mb-3 rounded-[24px] px-5 py-5">
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1">
             <Body className="font-heading text-2xl leading-[24px]">
@@ -201,25 +233,23 @@ function ExercisesSection({
               {item.muscle_group}
             </Caption>
           </View>
-          <View className="flex-row gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              accessibilityLabel={`Edit ${item.name}`}
-              onPress={() => handleStartEdit(item)}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              accessibilityLabel={`Delete ${item.name}`}
-              onPress={() => deleteExercise(item.id)}
-            >
-              Delete
-            </Button>
-          </View>
+          <Button
+            variant="ghost"
+            size="sm"
+            accessibilityLabel={`Edit ${item.name}`}
+            onPress={() => handleStartEdit(item)}
+          >
+            Edit
+          </Button>
         </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Delete ${item.name}`}
+          className="mt-3 self-start px-1 py-1"
+          onPress={() => deleteExercise(item.id)}
+        >
+          <Caption className="text-muted">Delete</Caption>
+        </Pressable>
       </Card>
     );
   };
@@ -257,8 +287,9 @@ function ExercisesSection({
                 onChangeText={setMuscleGroup}
                 autoCapitalize="words"
               />
-              <ActionRow
-                className="mt-0"
+              <FormActions
+                primaryLabel="Save exercise"
+                secondaryLabel="Cancel"
                 onPrimaryPress={handleCreate}
                 primaryLoading={saving}
                 onSecondaryPress={() => {
@@ -420,8 +451,9 @@ function RoutinesSection({
               />
             ))
           )}
-          <ActionRow
-            className="mt-3"
+          <FormActions
+            primaryLabel="Save changes"
+            secondaryLabel="Cancel"
             onPrimaryPress={() => handleSaveEdit(item.id)}
             primaryLoading={editSaving}
             onSecondaryPress={() => setEditingId(null)}
@@ -437,9 +469,9 @@ function RoutinesSection({
         title={item.name}
         expanded={isExpanded}
         onToggle={() => handleToggleExpand(item)}
-        className="mx-0 rounded-[20px] border border-surface-border"
-        headerClassName="px-4 py-4"
-        contentClassName="px-4 pb-4"
+        className="mx-0 rounded-[24px] border border-surface-border/80"
+        headerClassName="px-5 py-5"
+        contentClassName="px-5 pb-5"
         accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${item.name}`}
         actions={
           <>
@@ -451,14 +483,14 @@ function RoutinesSection({
             >
               Edit
             </Button>
-            <Button
-              variant="danger"
-              size="sm"
+            <Pressable
+              accessibilityRole="button"
               accessibilityLabel={`Delete ${item.name}`}
+              className="px-2 py-1"
               onPress={() => deleteRoutine(item.id)}
             >
-              Delete
-            </Button>
+              <Caption className="text-muted">Delete</Caption>
+            </Pressable>
           </>
         }
       >
@@ -535,8 +567,9 @@ function RoutinesSection({
                   />
                 ))
               )}
-              <ActionRow
-                className="mt-3"
+              <FormActions
+                primaryLabel="Save routine"
+                secondaryLabel="Cancel"
                 onPrimaryPress={handleCreate}
                 primaryLoading={saving}
                 onSecondaryPress={() => {
@@ -589,42 +622,19 @@ export function RoutinesScreen(): React.JSX.Element {
 
   return (
     <Container>
-      <View className="border-surface-border px-0 pb-3">
+      <View className="border-b border-surface-border pb-3">
         <View accessibilityRole="header" className="gap-2">
           <Heading className="text-4xl leading-[36px]">Routines</Heading>
-          <Muted className="text-sm leading-[19px]">
+          <Muted className="max-w-[280px] text-sm leading-[19px]">
             Build your exercise library and shape reliable templates for the
             sessions you repeat most.
           </Muted>
         </View>
       </View>
 
-      <View className="py-3">
-        <Surface variant="card" className="mx-0 rounded-[20px] px-4 py-4">
-          <View className="mb-3 flex-row items-center justify-between gap-3">
-            <Label className="text-secondary">
-              {section === 'exercises' ? 'Exercise Library' : 'Routine Library'}
-            </Label>
-            <Caption className="text-foreground">
-              {section === 'exercises'
-                ? `${exercises.length} saved`
-                : `${routines.length} saved`}
-            </Caption>
-          </View>
-          <Heading className="text-2xl leading-[24px]">
-            {section === 'exercises' ? 'Exercises' : 'Routines'}
-          </Heading>
-          <Muted className="mt-2 text-sm leading-[17px]">
-            {section === 'exercises'
-              ? 'Keep names and muscle groups clean so adding exercises in a session stays quick.'
-              : 'Group exercises into dependable templates you can schedule and run without extra setup.'}
-          </Muted>
-        </Surface>
-      </View>
-
       <SectionSwitcher section={section} onChange={setSection} />
 
-      <View className="flex-1 pt-3">
+      <View className="flex-1 pt-2">
         {section === 'exercises' ? (
           <ExercisesSection
             exercises={exercises}

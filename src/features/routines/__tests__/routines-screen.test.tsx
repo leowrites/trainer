@@ -60,7 +60,7 @@ describe('RoutinesScreen', () => {
       screen.getByPlaceholderText('Muscle group (e.g. Chest)'),
       ' Chest ',
     );
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('Save exercise'));
 
     expect(createExercise).toHaveBeenCalledWith({
       name: 'Bench Press',

@@ -3,55 +3,49 @@
  *
  * Central design tokens — colours, spacing, typography, and breakpoints —
  * aligned with the Tailwind/NativeWind configuration in tailwind.config.js.
- *
- * Semantic tokens mirror the CSS custom-property set from the design spec:
- *   --bg, --surface, --surface2, --border, --accent, --accent2, --text, --muted, --red
  */
 
 // ─── Raw Palette ───────────────────────────────────────────────────────────────
 
 /** All concrete colour values used in the design system. */
 export const palette = {
-  // Greens (primary)
-  green50: '#ecfdf5',
-  green100: '#d1fae5',
-  green200: '#a7f3d0',
-  green300: '#6ee7b7',
-  green400: '#34d399',
-  green500: '#10b981',
-  green600: '#059669',
-  green700: '#047857',
-  green800: '#065f46',
-  green900: '#064e3b',
-  green950: '#022c22',
+  primary50: '#eef2ff',
+  primary100: '#e0e8ff',
+  primary200: '#cad7ff',
+  primary300: '#aebfff',
+  primary400: '#8ea7ff',
+  primary500: '#6c8cff',
+  primary600: '#5878eb',
+  primary700: '#4867d3',
+  primary800: '#3a53aa',
+  primary900: '#31468c',
+  primary950: '#24325f',
 
-  // Accent (emerald) — CSS --accent
-  lime: '#3dd6a0',
-  limeSubtle: 'rgba(61,214,160,0.14)',
-  limeBorder: 'rgba(61,214,160,0.28)',
+  primary: '#6C8CFF',
+  primarySubtle: 'rgba(108,140,255,0.15)',
+  primaryBorder: 'rgba(108,140,255,0.35)',
 
-  // Secondary (steel blue) — CSS --accent2
-  amber: '#7ea6c9',
-  amberSubtle: 'rgba(126,166,201,0.14)',
-  amberBorder: 'rgba(126,166,201,0.28)',
+  success: '#7ED6A5',
+  successSubtle: 'rgba(126,214,165,0.18)',
+  successBorder: 'rgba(126,214,165,0.32)',
 
-  // Error (red) — CSS --red
-  red: '#d46a6a',
-  redSubtle: 'rgba(212,106,106,0.14)',
-  redBorder: 'rgba(212,106,106,0.28)',
+  secondary: '#7D8796',
+  secondarySubtle: 'rgba(125,135,150,0.14)',
+  secondaryBorder: 'rgba(125,135,150,0.28)',
 
-  // Neutral backgrounds — CSS --bg / --surface / --surface2 / --border
-  bg: '#0f1216',
-  surface: '#161b21',
-  surface2: '#1f2630',
-  border: '#323c49',
+  error: '#F28B82',
+  errorSubtle: 'rgba(242,139,130,0.16)',
+  errorBorder: 'rgba(242,139,130,0.28)',
 
-  // Text — CSS --text / --muted
-  text: '#edf2f7',
-  muted: '#7d8998',
-  mutedForeground: '#a8b2bf',
+  bg: '#F6F7FB',
+  surface: '#FFFFFF',
+  surface2: '#F0F2F8',
+  border: '#E6EAF2',
 
-  // Pure
+  text: '#2B2F36',
+  muted: '#7D8796',
+  mutedForeground: '#AAB3C2',
+
   white: '#ffffff',
   black: '#000000',
   transparent: 'transparent',
@@ -84,6 +78,11 @@ export interface ThemeTokens {
   secondaryBorder: string;
   secondaryForeground: string;
 
+  success: string;
+  successSubtle: string;
+  successBorder: string;
+  successForeground: string;
+
   // Status
   error: string;
   errorSubtle: string;
@@ -91,71 +90,65 @@ export interface ThemeTokens {
   errorForeground: string;
 }
 
-/**
- * Semantic colour tokens for the **dark** theme.
- * These map to the CSS custom properties in the design spec.
- */
 export const darkTokens: ThemeTokens = {
-  // Backgrounds
   bgBase: palette.bg,
   bgCard: palette.surface,
   bgElevated: palette.surface2,
   bgBorder: palette.border,
 
-  // Text
   textPrimary: palette.text,
   textMuted: palette.muted,
   textMutedForeground: palette.mutedForeground,
 
-  // Brand / accent colours
-  accent: palette.lime,
-  accentSubtle: palette.limeSubtle,
-  accentBorder: palette.limeBorder,
-  accentForeground: palette.black,
+  accent: palette.primary,
+  accentSubtle: palette.primarySubtle,
+  accentBorder: palette.primaryBorder,
+  accentForeground: palette.white,
 
-  secondary: palette.amber,
-  secondarySubtle: palette.amberSubtle,
-  secondaryBorder: palette.amberBorder,
-  secondaryForeground: palette.black,
+  secondary: palette.secondary,
+  secondarySubtle: palette.secondarySubtle,
+  secondaryBorder: palette.secondaryBorder,
+  secondaryForeground: palette.white,
 
-  // Status
-  error: palette.red,
-  errorSubtle: palette.redSubtle,
-  errorBorder: palette.redBorder,
+  success: palette.success,
+  successSubtle: palette.successSubtle,
+  successBorder: palette.successBorder,
+  successForeground: palette.white,
+
+  error: palette.error,
+  errorSubtle: palette.errorSubtle,
+  errorBorder: palette.errorBorder,
   errorForeground: palette.white,
 };
 
-/**
- * Semantic colour tokens for the **light** theme.
- * Inverts/lightens values to provide a readable light-mode palette.
- */
 export const lightTokens: ThemeTokens = {
-  // Backgrounds
-  bgBase: '#f3f6f9',
-  bgCard: '#ffffff',
-  bgElevated: '#e7edf3',
-  bgBorder: '#cfd8e3',
+  bgBase: palette.bg,
+  bgCard: palette.surface,
+  bgElevated: palette.surface2,
+  bgBorder: palette.border,
 
-  // Text
-  textPrimary: '#15202b',
-  textMuted: '#667487',
-  textMutedForeground: '#8391a3',
+  textPrimary: palette.text,
+  textMuted: palette.muted,
+  textMutedForeground: palette.mutedForeground,
 
-  // Brand / accent colours (same hues, readable on light bg)
-  accent: '#148f68',
-  accentSubtle: 'rgba(20,143,104,0.12)',
-  accentBorder: 'rgba(20,143,104,0.24)',
+  accent: palette.primary,
+  accentSubtle: palette.primarySubtle,
+  accentBorder: palette.primaryBorder,
   accentForeground: palette.white,
 
-  secondary: '#557da2',
-  secondarySubtle: 'rgba(85,125,162,0.12)',
-  secondaryBorder: 'rgba(85,125,162,0.24)',
+  secondary: palette.secondary,
+  secondarySubtle: palette.secondarySubtle,
+  secondaryBorder: palette.secondaryBorder,
   secondaryForeground: palette.white,
 
-  // Status
-  error: '#c65d5d',
-  errorSubtle: 'rgba(198,93,93,0.12)',
-  errorBorder: 'rgba(198,93,93,0.24)',
+  success: palette.success,
+  successSubtle: palette.successSubtle,
+  successBorder: palette.successBorder,
+  successForeground: palette.white,
+
+  error: palette.error,
+  errorSubtle: palette.errorSubtle,
+  errorBorder: palette.errorBorder,
   errorForeground: palette.white,
 };
 
@@ -223,17 +216,17 @@ export const spacing = {
 /** @deprecated Use `darkTokens` / `lightTokens` + `useTheme()` instead. */
 export const colors = {
   primary: {
-    50: palette.green50,
-    100: palette.green100,
-    200: palette.green200,
-    300: palette.green300,
-    400: palette.green400,
-    500: palette.green500,
-    600: palette.green600,
-    700: palette.green700,
-    800: palette.green800,
-    900: palette.green900,
-    950: palette.green950,
+    50: palette.primary50,
+    100: palette.primary100,
+    200: palette.primary200,
+    300: palette.primary300,
+    400: palette.primary400,
+    500: palette.primary500,
+    600: palette.primary600,
+    700: palette.primary700,
+    800: palette.primary800,
+    900: palette.primary900,
+    950: palette.primary950,
   },
   surface: {
     DEFAULT: palette.bg,
@@ -247,19 +240,24 @@ export const colors = {
     muted: palette.muted,
   },
   accent: {
-    DEFAULT: palette.lime,
-    subtle: palette.limeSubtle,
-    border: palette.limeBorder,
+    DEFAULT: palette.primary,
+    subtle: palette.primarySubtle,
+    border: palette.primaryBorder,
   },
   secondary: {
-    DEFAULT: palette.amber,
-    subtle: palette.amberSubtle,
-    border: palette.amberBorder,
+    DEFAULT: palette.secondary,
+    subtle: palette.secondarySubtle,
+    border: palette.secondaryBorder,
   },
   error: {
-    DEFAULT: palette.red,
-    subtle: palette.redSubtle,
-    border: palette.redBorder,
+    DEFAULT: palette.error,
+    subtle: palette.errorSubtle,
+    border: palette.errorBorder,
+  },
+  success: {
+    DEFAULT: palette.success,
+    subtle: palette.successSubtle,
+    border: palette.successBorder,
   },
 } as const;
 

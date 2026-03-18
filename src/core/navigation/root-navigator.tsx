@@ -1,6 +1,6 @@
 import { createNativeBottomTabNavigator } from '@react-navigation/bottom-tabs/unstable';
 import {
-  DarkTheme,
+  DefaultTheme,
   type NavigatorScreenParams,
   NavigationContainer,
 } from '@react-navigation/native';
@@ -97,10 +97,10 @@ function TabNavigator({
  */
 export function RootNavigator(): React.JSX.Element {
   const navigationTheme = {
-    ...DarkTheme,
+    ...DefaultTheme,
     colors: {
-      ...DarkTheme.colors,
-      primary: colors.primary[400],
+      ...DefaultTheme.colors,
+      primary: colors.primary[500],
       background: colors.surface.DEFAULT,
       card: colors.surface.card,
       text: colors.text.primary,
