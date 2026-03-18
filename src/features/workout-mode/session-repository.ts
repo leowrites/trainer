@@ -51,6 +51,7 @@ function buildActiveWorkoutSession(
     id: sessionRow.id,
     title: sessionRow.snapshot_name ?? 'Free Workout',
     startTime: sessionRow.start_time,
+    isFreeWorkout: sessionRow.snapshot_name === null,
     exercises,
   };
 }
@@ -140,6 +141,17 @@ export function deleteWorkoutSetRecord(
   setId: string,
 ): void {
   db.runSync('DELETE FROM workout_sets WHERE id = ?', [setId]);
+}
+
+export function deleteWorkoutSetsForExercise(
+  db: SQLiteDatabase,
+  sessionId: string,
+  exerciseId: string,
+): void {
+  db.runSync(
+    'DELETE FROM workout_sets WHERE session_id = ? AND exercise_id = ?',
+    [sessionId, exerciseId],
+  );
 }
 
 export function completeWorkoutSessionRecord(

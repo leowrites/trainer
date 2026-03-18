@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
+import { useExercises } from '@features/routines';
 import { type ActiveWorkoutSet } from '../types';
 import {
   Badge,
@@ -114,6 +115,105 @@ function WorkoutSetEditor({
   );
 }
 
+function ExercisePickerRow({
+  exerciseName,
+  muscleGroup,
+  onPress,
+}: {
+  exerciseName: string;
+  muscleGroup: string;
+  onPress: () => void;
+}): React.JSX.Element {
+  return (
+    <Surface variant="card" className="rounded-xl">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Add ${exerciseName}`}
+        className="px-3 py-3"
+        onPress={onPress}
+      >
+        <Body className="font-semibold">{exerciseName}</Body>
+        <Muted>{muscleGroup}</Muted>
+      </Pressable>
+    </Surface>
+  );
+}
+
+function ActiveWorkoutExercisePicker({
+  exerciseIdsInSession,
+  onAddExercise,
+}: {
+  exerciseIdsInSession: string[];
+  onAddExercise: (exerciseId: string, exerciseName: string) => void;
+}): React.JSX.Element | null {
+  const { exercises } = useExercises();
+  const [showPicker, setShowPicker] = useState(false);
+
+  const availableExercises = exercises.filter(
+    (exercise) => !exerciseIdsInSession.includes(exercise.id),
+  );
+
+  if (exercises.length === 0) {
+    return (
+      <Surface variant="card" className="w-full rounded-xl p-4">
+        <Muted className="text-center">
+          No exercises available yet. Create one in Routines first.
+        </Muted>
+      </Surface>
+    );
+  }
+
+  if (availableExercises.length === 0) {
+    return (
+      <Surface variant="card" className="w-full rounded-xl p-4">
+        <Muted className="text-center">
+          All exercises are already in this workout.
+        </Muted>
+      </Surface>
+    );
+  }
+
+  return (
+    <Surface variant="card" className="w-full rounded-xl p-4 gap-3">
+      <View className="gap-1">
+        <Body className="font-semibold">Add exercise</Body>
+        <Muted>Pick an exercise to add to the current workout.</Muted>
+      </View>
+
+      {showPicker ? (
+        <View className="gap-3">
+          <FlatList
+            data={availableExercises}
+            keyExtractor={(exercise) => exercise.id}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator={false}
+            style={{ maxHeight: 256 }}
+            contentContainerStyle={{ gap: 8 }}
+            renderItem={({ item }) => (
+              <ExercisePickerRow
+                exerciseName={item.name}
+                muscleGroup={item.muscle_group}
+                onPress={() => {
+                  onAddExercise(item.id, item.name);
+                  setShowPicker(false);
+                }}
+              />
+            )}
+          />
+
+          <Button variant="ghost" onPress={() => setShowPicker(false)}>
+            Cancel
+          </Button>
+        </View>
+      ) : (
+        <Button variant="ghost" onPress={() => setShowPicker(true)}>
+          Add Exercise
+        </Button>
+      )}
+    </Surface>
+  );
+}
+
 export function WorkoutScreen(): React.JSX.Element {
   const { isWorkoutActive } = useWorkoutStore();
   const {
@@ -124,6 +224,8 @@ export function WorkoutScreen(): React.JSX.Element {
   } = useWorkoutStarter();
   const {
     activeSession,
+    addExercise,
+    removeExercise,
     addSet,
     deleteSet,
     updateReps,
@@ -177,6 +279,15 @@ export function WorkoutScreen(): React.JSX.Element {
             </Body>
           </Card>
 
+          {activeSession ? (
+            <ActiveWorkoutExercisePicker
+              exerciseIdsInSession={activeSession.exercises.map(
+                (exercise) => exercise.exerciseId,
+              )}
+              onAddExercise={addExercise}
+            />
+          ) : null}
+
           {activeSession && activeSession.exercises.length > 0 ? (
             <ScrollView className="w-full">
               <View className="gap-3">
@@ -212,6 +323,16 @@ export function WorkoutScreen(): React.JSX.Element {
                     >
                       Add Set
                     </Button>
+
+                    {exercise.targetSets === null &&
+                    exercise.targetReps === null ? (
+                      <Button
+                        variant="danger"
+                        onPress={() => removeExercise(exercise.exerciseId)}
+                      >
+                        Remove Exercise
+                      </Button>
+                    ) : null}
                   </Card>
                 ))}
               </View>
@@ -219,7 +340,9 @@ export function WorkoutScreen(): React.JSX.Element {
           ) : (
             <Surface variant="card" className="w-full rounded-xl p-4">
               <Muted className="text-center">
-                No exercises in this session yet.
+                {activeSession?.isFreeWorkout
+                  ? 'No exercises in this free workout yet.'
+                  : 'No exercises in this session yet.'}
               </Muted>
             </Surface>
           )}

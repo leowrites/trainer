@@ -5,6 +5,7 @@ import type { ActiveWorkoutSession } from '../types';
 import {
   completeWorkoutSessionRecord,
   createWorkoutSetRecord,
+  deleteWorkoutSetsForExercise,
   deleteWorkoutSetRecord,
   loadActiveWorkoutSession,
   updateWorkoutSetReps,
@@ -30,6 +31,8 @@ function normalizeWeight(value: number): number {
 
 export function useActiveWorkout(): {
   activeSession: ActiveWorkoutSession | null;
+  addExercise: (exerciseId: string, exerciseName: string) => void;
+  removeExercise: (exerciseId: string) => void;
   addSet: (exerciseId: string) => void;
   deleteSet: (setId: string) => void;
   updateReps: (setId: string, reps: number) => void;
@@ -41,6 +44,8 @@ export function useActiveWorkout(): {
     activeSession,
     activeSessionId,
     startWorkout,
+    addExercise: addExerciseToStore,
+    removeExercise: removeExerciseFromStore,
     addSet: addSetToStore,
     deleteSet: deleteSetFromStore,
     updateSet,
@@ -57,6 +62,70 @@ export function useActiveWorkout(): {
       startWorkout(session);
     }
   }, [activeSession, activeSessionId, db, startWorkout]);
+
+  const addExercise = useCallback(
+    (exerciseId: string, exerciseName: string): void => {
+      const currentState = useWorkoutStore.getState();
+      const currentActiveSession = currentState.activeSession;
+      const currentActiveSessionId = currentState.activeSessionId;
+
+      if (
+        !currentActiveSessionId ||
+        !currentActiveSession ||
+        currentActiveSession.exercises.some(
+          (item) => item.exerciseId === exerciseId,
+        )
+      ) {
+        return;
+      }
+
+      const newSet = createWorkoutSetRecord(
+        db,
+        currentActiveSessionId,
+        exerciseId,
+        0,
+        0,
+        null,
+        null,
+      );
+
+      addExerciseToStore({
+        exerciseId,
+        exerciseName,
+        targetSets: null,
+        targetReps: null,
+        sets: [newSet],
+      });
+    },
+    [addExerciseToStore, db],
+  );
+
+  const removeExercise = useCallback(
+    (exerciseId: string): void => {
+      const currentState = useWorkoutStore.getState();
+      const currentActiveSession = currentState.activeSession;
+      const currentActiveSessionId = currentState.activeSessionId;
+
+      if (!currentActiveSessionId || !currentActiveSession) {
+        return;
+      }
+
+      const exercise = currentActiveSession.exercises.find(
+        (item) => item.exerciseId === exerciseId,
+      );
+      if (
+        !exercise ||
+        exercise.targetSets !== null ||
+        exercise.targetReps !== null
+      ) {
+        return;
+      }
+
+      deleteWorkoutSetsForExercise(db, currentActiveSessionId, exerciseId);
+      removeExerciseFromStore(exerciseId);
+    },
+    [db, removeExerciseFromStore],
+  );
 
   const updateReps = useCallback(
     (setId: string, reps: number): void => {
@@ -121,6 +190,8 @@ export function useActiveWorkout(): {
 
   return {
     activeSession,
+    addExercise,
+    removeExercise,
     addSet,
     deleteSet,
     updateReps,

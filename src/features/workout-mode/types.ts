@@ -26,6 +26,7 @@ export interface ActiveWorkoutSession {
   id: string;
   title: string;
   startTime: number;
+  isFreeWorkout: boolean;
   exercises: ActiveWorkoutExercise[];
 }
 

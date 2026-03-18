@@ -5,6 +5,7 @@ const mockSession: ActiveWorkoutSession = {
   id: 'session-1',
   title: 'Push A',
   startTime: 1_700_000_000_000,
+  isFreeWorkout: false,
   exercises: [
     {
       exerciseId: 'exercise-1',
@@ -90,6 +91,44 @@ describe('useWorkoutStore', () => {
         .getState()
         .activeSession?.exercises[0].sets.map((setItem) => setItem.id),
     ).toEqual(['set-1', 'set-2']);
+  });
+
+  it('adds and removes exercise blocks from the active session', () => {
+    useWorkoutStore.getState().startWorkout(mockSession);
+
+    useWorkoutStore.getState().addExercise({
+      exerciseId: 'exercise-2',
+      exerciseName: 'Goblet Squat',
+      targetSets: null,
+      targetReps: null,
+      sets: [],
+    });
+
+    expect(
+      useWorkoutStore
+        .getState()
+        .activeSession?.exercises.map((exercise) => exercise.exerciseId),
+    ).toEqual(['exercise-1', 'exercise-2']);
+
+    useWorkoutStore.getState().removeExercise('exercise-2');
+
+    expect(
+      useWorkoutStore
+        .getState()
+        .activeSession?.exercises.map((exercise) => exercise.exerciseId),
+    ).toEqual(['exercise-1']);
+  });
+
+  it('does not remove planned routine exercise blocks from the store', () => {
+    useWorkoutStore.getState().startWorkout(mockSession);
+
+    useWorkoutStore.getState().removeExercise('exercise-1');
+
+    expect(
+      useWorkoutStore
+        .getState()
+        .activeSession?.exercises.map((exercise) => exercise.exerciseId),
+    ).toEqual(['exercise-1']);
   });
 
   it('removes a set but preserves the exercise block for future additions', () => {
