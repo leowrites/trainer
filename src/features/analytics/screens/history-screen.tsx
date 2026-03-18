@@ -300,8 +300,8 @@ export function HistoryScreen({
       >
         <View className="border-surface-border pb-3">
           <View accessibilityRole="header" className="gap-2">
-            <Heading className="text-[34px] leading-[36px]">History</Heading>
-            <Muted className="text-[14px] leading-[19px]">
+            <Heading className="text-4xl leading-[36px]">History</Heading>
+            <Muted className="text-sm leading-[19px]">
               Review past sessions, volume trends, and simple progression cues.
             </Muted>
           </View>
@@ -311,14 +311,14 @@ export function HistoryScreen({
           <Card label="Latest Session" className="rounded-[20px] px-4 py-4">
             {latestSession ? (
               <>
-                <Body className="font-heading text-[26px] leading-[30px]">
+                <Body className="font-heading text-2xl leading-[30px]">
                   {latestSession.routineName}
                 </Body>
-                <Muted className="mt-2 text-[12px] leading-[17px]">
+                <Muted className="mt-2 text-sm leading-[17px]">
                   {formatSessionDate(latestSession.startTime)} •{' '}
                   {formatSessionSummary(latestSession)}
                 </Muted>
-                <Muted className="mt-1 text-[12px] leading-[17px]">
+                <Muted className="mt-1 text-sm leading-[17px]">
                   {formatDurationMinutes(latestSession.durationMinutes)} •{' '}
                   {formatWeight(
                     latestSession.totalVolume,
@@ -334,7 +334,7 @@ export function HistoryScreen({
         </View>
 
         <View className="pb-1">
-          <Muted className="text-[12px] leading-[17px]">
+          <Muted className="text-sm leading-[17px]">
             Trends update from completed sessions saved on this device.
           </Muted>
         </View>
@@ -358,8 +358,8 @@ export function HistoryScreen({
         </View>
 
         <View className="border-b border-t border-surface-border px-3 py-3">
-          <Heading className="text-[22px] leading-[24px]">Sessions</Heading>
-          <Muted className="mt-2 text-[12px] leading-[17px]">
+          <Heading className="text-2xl leading-[24px]">Sessions</Heading>
+          <Muted className="mt-2 text-sm leading-[17px]">
             Expand a session to inspect exercise details and recommendations.
           </Muted>
         </View>

@@ -140,8 +140,8 @@ export function ProfileScreen(): React.JSX.Element {
       >
         <View className="border-surface-border pb-3">
           <View accessibilityRole="header" className="gap-2">
-            <Heading className="text-[34px] leading-[36px]">Profile</Heading>
-            <Muted className="text-[14px] leading-[19px]">
+            <Heading className="text-4xl leading-[36px]">Profile</Heading>
+            <Muted className="text-sm leading-[19px]">
               Log body weight offline and keep a practical review history on
               this device.
             </Muted>
@@ -194,8 +194,8 @@ export function ProfileScreen(): React.JSX.Element {
         </View>
 
         <View className="border-b border-t border-surface-border py-3">
-          <Heading className="text-[22px] leading-[24px]">Recent logs</Heading>
-          <Muted className="mt-2 text-[12px] leading-[17px]">
+          <Heading className="text-2xl leading-[24px]">Recent logs</Heading>
+          <Muted className="mt-2 text-sm leading-[17px]">
             {entries.length === 0
               ? 'Your saved history will appear here.'
               : `${entries.length} entries saved locally for offline review.`}

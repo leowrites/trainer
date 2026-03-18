@@ -84,7 +84,7 @@ function TabNavigator({
             navigation.navigate('ActiveWorkout');
           }}
         >
-          <Text className="font-heading text-[24px] text-foreground">W</Text>
+          <Text className="font-heading text-2xl text-foreground">W</Text>
         </Pressable>
       ) : null}
     </View>

@@ -42,14 +42,14 @@ export function TrendCard({
         <>
           <View>
             <View className="flex-row items-end gap-2">
-              <Heading className="text-[42px] leading-[42px] text-foreground">
+              <Heading className="text-4xl leading-[42px] text-foreground">
                 {formatCompactNumber(latestPoint.value)}
               </Heading>
-              <Body className="pb-1 text-[14px] font-semibold uppercase text-muted-foreground">
+              <Body className="pb-1 text-sm font-semibold uppercase text-muted-foreground">
                 {unit}
               </Body>
             </View>
-            <Muted className="mt-2 text-[11px] leading-[16px] text-muted-foreground">
+            <Muted className="mt-2 text-xs leading-[16px] text-muted-foreground">
               Last {points.length} workout days
             </Muted>
           </View>
@@ -65,7 +65,7 @@ export function TrendCard({
                     }}
                   />
                 </View>
-                <Caption className="mt-2 text-[11px] text-muted-foreground">
+                <Caption className="mt-2 text-xs text-muted-foreground">
                   {point.label}
                 </Caption>
               </View>

@@ -54,7 +54,7 @@ export function DisplayHeading({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackHeading
-      className={`font-heading text-[40px] leading-[44px] tracking-[-1.6px] text-foreground ${className}`}
+      className={`font-heading text-4xl leading-[44px] tracking-[-1.6px] text-foreground ${className}`}
       size="4xl"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
@@ -129,7 +129,7 @@ export function Label({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`font-body text-[11px] font-semibold tracking-[0.3px] text-muted ${className}`}
+      className={`font-body text-xs font-semibold tracking-[0.3px] text-muted ${className}`}
       size="xs"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
@@ -218,7 +218,7 @@ export function Muted({
 /**
  * Large metric / stat value — maps to `.stat-value` in the design spec.
  * Always renders at `42px` bold; pass `className` to override the size
- * (e.g. `className="text-[32px]"` for a smaller layout slot).
+ * (e.g. `className="text-3xl"` for a smaller layout slot).
  */
 export function StatValue({
   children,

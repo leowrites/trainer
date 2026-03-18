@@ -77,7 +77,7 @@ export function Checkbox({
       >
         {checked ? (
           <Text
-            className="text-[10px] font-bold"
+            className="text-2xs font-bold"
             style={{ color: tokens.accentForeground }}
           >
             {badgeText ?? '✓'}
@@ -88,14 +88,14 @@ export function Checkbox({
       {/* Labels */}
       <View className="flex-1">
         <Text
-          className="text-[13px] leading-[18px]"
+          className="text-sm leading-[18px]"
           style={{ color: tokens.textPrimary }}
         >
           {label}
         </Text>
         {sublabel !== undefined && sublabel !== '' ? (
           <Text
-            className="mt-1 font-mono text-[10px] uppercase tracking-[1.5px]"
+            className="mt-1 font-mono text-2xs uppercase tracking-[1.5px]"
             style={{ color: tokens.textMuted }}
           >
             {sublabel}

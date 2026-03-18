@@ -44,7 +44,7 @@ export function BodyWeightEntryCard({
 
         <View className="items-end">
           <Label>Weight</Label>
-          <StatValue className="mt-1 text-[30px]">
+          <StatValue className="mt-1 text-3xl">
             {formatBodyWeightValue(entry.weight)}
           </StatValue>
           <Caption className="mt-1 uppercase">{entry.unit}</Caption>

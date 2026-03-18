@@ -86,7 +86,7 @@ function ScheduleRow({
       >
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1">
-            <Body className="font-heading text-[22px] leading-[24px]">
+            <Body className="font-heading text-2xl leading-[24px]">
               {item.name}
             </Body>
             <Meta className="mt-1">
@@ -107,7 +107,7 @@ function ScheduleRow({
       {expanded ? (
         <View className="border-t border-surface-border px-4 pb-4 pt-3">
           {entries.length === 0 ? (
-            <Muted className="text-[12px] leading-[17px]">
+            <Muted className="text-sm leading-[17px]">
               No routines in this schedule.
             </Muted>
           ) : (
@@ -122,7 +122,7 @@ function ScheduleRow({
                     idx === 0 ? 'pb-2' : 'border-t border-surface-border py-2'
                   }
                 >
-                  <Body className="text-[13px] leading-[18px]">
+                  <Body className="text-sm leading-[18px]">
                     {idx + 1}. {routine ? routine.name : entry.routine_id}
                   </Body>
                 </View>
@@ -266,8 +266,8 @@ export function ScheduleScreen(): React.JSX.Element {
     <Container className="px-0 pb-0" edges={['top']}>
       <View className="border-surface-border px-0 pb-3">
         <View accessibilityRole="header" className="gap-2">
-          <Heading className="text-[34px] leading-[36px]">Schedule</Heading>
-          <Muted className="text-[14px] leading-[19px]">
+          <Heading className="text-4xl leading-[36px]">Schedule</Heading>
+          <Muted className="text-sm leading-[19px]">
             Arrange routines into a steady rotation and keep the next session
             predictable.
           </Muted>
@@ -286,10 +286,10 @@ export function ScheduleScreen(): React.JSX.Element {
                 : `${routines.length} routines`}
             </Meta>
           </View>
-          <DisplayHeading className="text-[28px] leading-[32px]">
+          <DisplayHeading className="text-3xl leading-[32px]">
             {activeSchedule?.name ?? 'No active schedule'}
           </DisplayHeading>
-          <Muted className="mt-2 text-[12px] leading-[17px]">
+          <Muted className="mt-2 text-sm leading-[17px]">
             {activeSchedule
               ? activeSchedule.current_position >= 0
                 ? `Rotation position ${activeSchedule.current_position + 1}`
@@ -356,7 +356,7 @@ export function ScheduleScreen(): React.JSX.Element {
           />
         )}
         ListEmptyComponent={
-          <Muted className="mt-3 px-0 text-center text-[13px] leading-[18px]">
+          <Muted className="mt-3 px-0 text-center text-sm leading-[18px]">
             No schedules yet. Create one below.
           </Muted>
         }

@@ -194,7 +194,7 @@ function ExercisesSection({
       <Card className="mx-0 mb-3 rounded-[20px] px-4 py-4">
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1">
-            <Body className="font-heading text-[22px] leading-[24px]">
+            <Body className="font-heading text-2xl leading-[24px]">
               {item.name}
             </Body>
             <Caption className="mt-1 uppercase tracking-[1.5px]">
@@ -478,7 +478,7 @@ function RoutinesSection({
                     last ? '' : 'border-b border-surface-border'
                   }`}
                 >
-                  <Body className="flex-1 font-heading text-[18px] leading-[22px]">
+                  <Body className="flex-1 font-heading text-lg leading-[22px]">
                     {ex ? ex.name : re.exercise_id}
                   </Body>
                   <Caption className="ml-3 text-right">
@@ -591,8 +591,8 @@ export function RoutinesScreen(): React.JSX.Element {
     <Container>
       <View className="border-surface-border px-0 pb-3">
         <View accessibilityRole="header" className="gap-2">
-          <Heading className="text-[34px] leading-[36px]">Routines</Heading>
-          <Muted className="text-[14px] leading-[19px]">
+          <Heading className="text-4xl leading-[36px]">Routines</Heading>
+          <Muted className="text-sm leading-[19px]">
             Build your exercise library and shape reliable templates for the
             sessions you repeat most.
           </Muted>
@@ -611,10 +611,10 @@ export function RoutinesScreen(): React.JSX.Element {
                 : `${routines.length} saved`}
             </Caption>
           </View>
-          <Heading className="text-[22px] leading-[24px]">
+          <Heading className="text-2xl leading-[24px]">
             {section === 'exercises' ? 'Exercises' : 'Routines'}
           </Heading>
-          <Muted className="mt-2 text-[12px] leading-[17px]">
+          <Muted className="mt-2 text-sm leading-[17px]">
             {section === 'exercises'
               ? 'Keep names and muscle groups clean so adding exercises in a session stays quick.'
               : 'Group exercises into dependable templates you can schedule and run without extra setup.'}

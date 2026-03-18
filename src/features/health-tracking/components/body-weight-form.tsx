@@ -109,7 +109,7 @@ export function BodyWeightForm({
           </View>
         </View>
 
-        <Caption className="text-[11px] leading-[15px]">
+        <Caption className="text-xs leading-[15px]">
           Use YYYY-MM-DD and 24-hour HH:mm.
         </Caption>
 
