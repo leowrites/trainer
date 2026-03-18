@@ -5,4 +5,4 @@
  * wired up here as feature slices are implemented.
  */
 export { RootNavigator } from './root-navigator';
-export type { RootTabParamList } from './root-navigator';
+export type { RootStackParamList, RootTabParamList } from './root-navigator';

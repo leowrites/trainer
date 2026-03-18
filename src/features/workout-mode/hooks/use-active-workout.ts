@@ -8,6 +8,7 @@ import {
   deleteWorkoutSetsForExercise,
   deleteWorkoutSetRecord,
   loadActiveWorkoutSession,
+  updateWorkoutSetCompletion,
   updateWorkoutSetReps,
   updateWorkoutSetWeight,
 } from '../session-repository';
@@ -37,6 +38,7 @@ export function useActiveWorkout(): {
   deleteSet: (setId: string) => void;
   updateReps: (setId: string, reps: number) => void;
   updateWeight: (setId: string, weight: number) => void;
+  toggleSetLogged: (setId: string, isCompleted: boolean) => void;
   completeWorkout: () => boolean;
 } {
   const db = useDatabase();
@@ -110,17 +112,6 @@ export function useActiveWorkout(): {
         return;
       }
 
-      const exercise = currentActiveSession.exercises.find(
-        (item) => item.exerciseId === exerciseId,
-      );
-      if (
-        !exercise ||
-        exercise.targetSets !== null ||
-        exercise.targetReps !== null
-      ) {
-        return;
-      }
-
       deleteWorkoutSetsForExercise(db, currentActiveSessionId, exerciseId);
       removeExerciseFromStore(exerciseId);
     },
@@ -178,6 +169,14 @@ export function useActiveWorkout(): {
     [db, deleteSetFromStore],
   );
 
+  const toggleSetLogged = useCallback(
+    (setId: string, isCompleted: boolean): void => {
+      updateWorkoutSetCompletion(db, setId, isCompleted);
+      updateSet(setId, { isCompleted });
+    },
+    [db, updateSet],
+  );
+
   const completeWorkout = useCallback((): boolean => {
     if (!activeSessionId) {
       return false;
@@ -196,6 +195,7 @@ export function useActiveWorkout(): {
     deleteSet,
     updateReps,
     updateWeight,
+    toggleSetLogged,
     completeWorkout,
   };
 }

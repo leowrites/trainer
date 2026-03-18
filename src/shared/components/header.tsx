@@ -63,7 +63,7 @@ export function Header({
       {/* Left — logo / title */}
       <Box>
         <Text
-          className="text-[36px] font-bold leading-tight"
+          className="font-heading text-[40px] font-bold leading-[42px] tracking-[-1.5px]"
           style={{ color: tokens.textPrimary }}
           accessibilityRole="header"
         >
@@ -74,7 +74,7 @@ export function Header({
         </Text>
         {subtitle !== undefined && subtitle !== '' ? (
           <Text
-            className="text-[11px] mt-0.5"
+            className="mt-1 max-w-[220px] font-body text-[13px] leading-[19px]"
             style={{ color: tokens.textMuted }}
           >
             {subtitle}
@@ -88,7 +88,7 @@ export function Header({
         <Box className="items-end">
           {metaLabel !== undefined && metaLabel !== '' ? (
             <Text
-              className="text-[13px] font-semibold"
+              className="font-mono text-[11px] uppercase tracking-[1.8px]"
               style={{ color: tokens.secondary }}
             >
               {metaLabel}
@@ -96,7 +96,7 @@ export function Header({
           ) : null}
           {metaDetail !== undefined && metaDetail !== '' ? (
             <Text
-              className="text-[11px] mt-0.5"
+              className="mt-1 font-mono text-[10px] uppercase tracking-[1.5px]"
               style={{ color: tokens.textMuted }}
             >
               {metaDetail}

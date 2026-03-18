@@ -61,14 +61,14 @@ export function Checkbox({
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled }}
       accessibilityLabel={accessibilityLabel ?? label}
-      className={`flex-row items-center py-2.5 ${className}`}
+      className={`mb-2 flex-row items-center rounded-[18px] border border-surface-border bg-surface-elevated px-4 py-3 ${className}`}
       onPress={disabled ? undefined : onToggle}
       disabled={disabled}
       style={{ opacity: disabled ? 0.5 : 1 }}
     >
       {/* Check box indicator */}
       <View
-        className="w-5 h-5 rounded mr-3 items-center justify-center"
+        className="mr-3 h-6 w-6 items-center justify-center rounded-[10px]"
         style={{
           borderWidth: 1.5,
           borderColor: checked ? tokens.accent : tokens.bgBorder,
@@ -87,12 +87,15 @@ export function Checkbox({
 
       {/* Labels */}
       <View className="flex-1">
-        <Text className="text-[13px]" style={{ color: tokens.textPrimary }}>
+        <Text
+          className="text-[13px] leading-[18px]"
+          style={{ color: tokens.textPrimary }}
+        >
           {label}
         </Text>
         {sublabel !== undefined && sublabel !== '' ? (
           <Text
-            className="text-[11px] mt-0.5"
+            className="mt-1 font-mono text-[10px] uppercase tracking-[1.5px]"
             style={{ color: tokens.textMuted }}
           >
             {sublabel}

@@ -8,7 +8,7 @@ import type {
   ScheduleEntry,
 } from '@core/database/types';
 import { generateId } from '@core/database/utils';
-import { getNextPosition, selectNextRoutineId } from '@features/schedule';
+import { selectNextRoutineId } from '@features/schedule';
 import { buildRoutineSnapshot } from '@features/routines';
 import type { WorkoutSnapshotInput } from '@features/routines';
 import { loadActiveWorkoutSession } from '../session-repository';
@@ -20,6 +20,8 @@ export interface NextRoutinePreview {
   routineId: string;
   routineName: string;
   scheduleName: string;
+  exerciseCount: number;
+  estimatedMinutes: number;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -30,8 +32,8 @@ export interface NextRoutinePreview {
  * - `nextRoutine`: preview of the routine that would be started (null if no
  *   active schedule or the schedule is empty).
  * - `startWorkoutFromSchedule()`: creates a WorkoutSession with a routine
- *   snapshot and eagerly creates WorkoutSet placeholders; advances the
- *   schedule's `current_position`; updates ephemeral Zustand state.
+ *   snapshot and eagerly creates WorkoutSet placeholders; updates ephemeral
+ *   Zustand state.
  * - `startFreeWorkout()`: creates a session without a routine/schedule.
  * - `refreshPreview()`: manually refreshes the next-routine preview (call
  *   after schedule changes).
@@ -93,10 +95,26 @@ export function useWorkoutStarter(): {
       return;
     }
 
+    const routineExercises = db.getAllSync<RoutineExercise>(
+      'SELECT id, routine_id, exercise_id, position, target_sets, target_reps FROM routine_exercises WHERE routine_id = ?',
+      [routineId],
+    );
+    const exerciseCount = routineExercises.length;
+    const totalSets = routineExercises.reduce(
+      (sum: number, exercise: RoutineExercise) => sum + exercise.target_sets,
+      0,
+    );
+    const estimatedMinutes = Math.max(
+      20,
+      Math.ceil((exerciseCount * 4 + totalSets * 2.5) / 5) * 5,
+    );
+
     setNextRoutine({
       routineId,
       routineName: routine.name,
       scheduleName: activeSchedule.name,
+      exerciseCount,
+      estimatedMinutes,
     });
   }, [db, refreshKey]);
 
@@ -180,16 +198,6 @@ export function useWorkoutStarter(): {
           );
         }
       }
-
-      // Advance the schedule's position so the next call picks the next routine.
-      const nextPos = getNextPosition(
-        activeSchedule.current_position,
-        entries.length,
-      );
-      db.runSync('UPDATE schedules SET current_position = ? WHERE id = ?', [
-        nextPos,
-        activeSchedule.id,
-      ]);
     });
 
     if (sessionId) {

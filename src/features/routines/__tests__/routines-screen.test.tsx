@@ -101,6 +101,7 @@ describe('RoutinesScreen', () => {
     fireEvent.press(screen.getByLabelText('routines'));
     fireEvent.press(screen.getByLabelText('Expand Push A'));
 
-    expect(screen.getByText('Bench Press — 3 × 10')).toBeTruthy();
+    expect(screen.getAllByText('Bench Press').length).toBeGreaterThan(0);
+    expect(screen.getByText('3 × 10')).toBeTruthy();
   });
 });

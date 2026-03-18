@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 
-import { Body, Caption } from './typography';
+import { Body, Caption, Meta } from './typography';
 import { Card } from './card';
 import { Surface } from './surface';
 
@@ -32,19 +32,20 @@ export function DisclosureCard({
 }: DisclosureCardProps): React.JSX.Element {
   return (
     <Card
-      className={`mb-2 overflow-hidden rounded-xl p-0 ${className}`}
+      className={`mb-3 overflow-hidden p-0 ${className}`}
       onPress={onToggle}
       accessibilityLabel={accessibilityLabel}
     >
       <View
-        className={`flex-row items-center justify-between px-4 py-3 ${headerClassName}`}
+        className={`flex-row items-start justify-between gap-3 px-5 py-4 ${headerClassName}`}
       >
         <View className="flex-1">
-          <Body className="font-medium">{title}</Body>
+          <Body className="font-heading text-lg leading-tight">{title}</Body>
           {headerMeta}
         </View>
         <View className="flex-row items-center gap-2">
           {actions}
+          <Meta className="text-muted">{expanded ? 'OPEN' : 'MORE'}</Meta>
           <Caption>{expanded ? '▲' : '▼'}</Caption>
         </View>
       </View>
@@ -52,7 +53,7 @@ export function DisclosureCard({
       {expanded ? (
         <Surface
           variant="elevated"
-          className={`px-4 pb-3 pt-2 ${contentClassName}`}
+          className={`border-t border-surface-border px-5 pb-4 pt-3 ${contentClassName}`}
         >
           {children}
         </Surface>

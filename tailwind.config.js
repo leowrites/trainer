@@ -189,9 +189,9 @@ module.exports = {
       },
       fontFamily: {
         sans: ['System'],
-        heading: undefined,
-        body: undefined,
-        mono: undefined,
+        heading: ['Georgia', 'serif'],
+        body: ['System'],
+        mono: ['Menlo', 'Courier New', 'monospace'],
       },
       fontWeight: {
         extrablack: '950',

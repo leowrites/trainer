@@ -31,18 +31,22 @@ describe('useWorkoutStore', () => {
   beforeEach(() => {
     useWorkoutStore.setState({
       isWorkoutActive: false,
+      isWorkoutCollapsed: false,
       activeSessionId: null,
       startTime: null,
       activeSession: null,
+      restTimerEndsAt: null,
     });
   });
 
   it('starts with an inactive workout session', () => {
     const state = useWorkoutStore.getState();
     expect(state.isWorkoutActive).toBe(false);
+    expect(state.isWorkoutCollapsed).toBe(false);
     expect(state.activeSessionId).toBeNull();
     expect(state.startTime).toBeNull();
     expect(state.activeSession).toBeNull();
+    expect(state.restTimerEndsAt).toBeNull();
   });
 
   it('activates a workout session with the session snapshot', () => {
@@ -50,9 +54,20 @@ describe('useWorkoutStore', () => {
 
     const state = useWorkoutStore.getState();
     expect(state.isWorkoutActive).toBe(true);
+    expect(state.isWorkoutCollapsed).toBe(false);
     expect(state.activeSessionId).toBe(mockSession.id);
     expect(state.startTime).toBe(mockSession.startTime);
     expect(state.activeSession).toEqual(mockSession);
+  });
+
+  it('collapses and expands an active workout session', () => {
+    useWorkoutStore.getState().startWorkout(mockSession);
+
+    useWorkoutStore.getState().collapseWorkout();
+    expect(useWorkoutStore.getState().isWorkoutCollapsed).toBe(true);
+
+    useWorkoutStore.getState().expandWorkout();
+    expect(useWorkoutStore.getState().isWorkoutCollapsed).toBe(false);
   });
 
   it('updates an existing set in the active session', () => {
@@ -119,16 +134,12 @@ describe('useWorkoutStore', () => {
     ).toEqual(['exercise-1']);
   });
 
-  it('does not remove planned routine exercise blocks from the store', () => {
+  it('removes planned routine exercise blocks from the store', () => {
     useWorkoutStore.getState().startWorkout(mockSession);
 
     useWorkoutStore.getState().removeExercise('exercise-1');
 
-    expect(
-      useWorkoutStore
-        .getState()
-        .activeSession?.exercises.map((exercise) => exercise.exerciseId),
-    ).toEqual(['exercise-1']);
+    expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([]);
   });
 
   it('removes a set but preserves the exercise block for future additions', () => {
@@ -141,6 +152,16 @@ describe('useWorkoutStore', () => {
     );
   });
 
+  it('starts and clears a rest timer for the active workout', () => {
+    useWorkoutStore.getState().startWorkout(mockSession);
+
+    useWorkoutStore.getState().startRestTimer(120);
+    expect(useWorkoutStore.getState().restTimerEndsAt).not.toBeNull();
+
+    useWorkoutStore.getState().clearRestTimer();
+    expect(useWorkoutStore.getState().restTimerEndsAt).toBeNull();
+  });
+
   it('resets all state on endWorkout', () => {
     useWorkoutStore.getState().startWorkout(mockSession);
 
@@ -148,8 +169,10 @@ describe('useWorkoutStore', () => {
 
     const state = useWorkoutStore.getState();
     expect(state.isWorkoutActive).toBe(false);
+    expect(state.isWorkoutCollapsed).toBe(false);
     expect(state.activeSessionId).toBeNull();
     expect(state.startTime).toBeNull();
     expect(state.activeSession).toBeNull();
+    expect(state.restTimerEndsAt).toBeNull();
   });
 });

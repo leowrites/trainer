@@ -1,6 +1,7 @@
 import './global.css';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DatabaseProvider } from '@core/database';
 import { RootNavigator } from '@core/navigation';
@@ -18,13 +19,15 @@ function ThemedStatusBar(): React.JSX.Element {
 
 export default function App(): React.JSX.Element {
   return (
-    <ThemeProvider>
-      <GluestackUIProvider>
-        <DatabaseProvider>
-          <ThemedStatusBar />
-          <RootNavigator />
-        </DatabaseProvider>
-      </GluestackUIProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <GluestackUIProvider>
+          <DatabaseProvider>
+            <ThemedStatusBar />
+            <RootNavigator />
+          </DatabaseProvider>
+        </GluestackUIProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

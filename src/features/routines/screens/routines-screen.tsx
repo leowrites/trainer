@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -16,7 +16,6 @@ import {
   Input,
   Label,
   Muted,
-  Surface,
 } from '@shared/components';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutines } from '../hooks/use-routines';
@@ -33,6 +32,76 @@ const DEFAULT_TARGET_SETS = 3;
 const DEFAULT_TARGET_REPS = 10;
 
 type Section = 'exercises' | 'routines';
+
+function SectionSwitcher({
+  section,
+  onChange,
+}: {
+  section: Section;
+  onChange: (section: Section) => void;
+}): React.JSX.Element {
+  return (
+    <View className="flex-row border-y border-surface-border">
+      {(['exercises', 'routines'] as const).map((item, index) => {
+        const active = section === item;
+        return (
+          <Pressable
+            key={item}
+            accessibilityRole="button"
+            accessibilityLabel={item}
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange(item)}
+            className={`flex-1 px-2 py-2.5 ${
+              index === 0 ? 'border-r border-surface-border' : ''
+            }`}
+          >
+            <View className="flex-row items-center justify-between">
+              <Label className={active ? 'text-secondary' : 'text-muted'}>
+                {item}
+              </Label>
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function FormSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <Card className="mx-0 rounded-none border-x-0 border-y border-surface-border px-2 py-3">
+      <View className="mb-2 flex-row items-center gap-3">
+        <Label className="text-secondary">{label}</Label>
+        <View className="h-px flex-1 bg-surface-border" />
+      </View>
+      {children}
+    </Card>
+  );
+}
+
+function NewItemButton({
+  label,
+  onPress,
+}: {
+  label: string;
+  onPress: () => void;
+}): React.JSX.Element {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="px-2 py-3"
+      onPress={onPress}
+    >
+      <Label className="text-secondary">{label}</Label>
+    </Pressable>
+  );
+}
 
 // ─── Exercises section ─────────────────────────────────────────────────────────
 
@@ -95,7 +164,7 @@ function ExercisesSection({
   const renderExercise = ({ item }: { item: Exercise }): React.JSX.Element => {
     if (editingId === item.id) {
       return (
-        <Card className="mb-2 rounded-xl">
+        <View className="border-b border-surface-border px-2 py-3">
           <Input
             className="mb-2"
             placeholder="Exercise name"
@@ -116,16 +185,20 @@ function ExercisesSection({
             primaryLoading={editSaving}
             onSecondaryPress={() => setEditingId(null)}
           />
-        </Card>
+        </View>
       );
     }
 
     return (
-      <Card className="mb-2 rounded-xl p-0">
-        <View className="flex-row items-center justify-between px-4 py-3">
+      <View className="border-b border-surface-border px-2 py-3">
+        <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1">
-            <Body className="font-medium">{item.name}</Body>
-            <Caption className="mt-0.5">{item.muscle_group}</Caption>
+            <Body className="font-heading text-[22px] leading-[24px]">
+              {item.name}
+            </Body>
+            <Caption className="mt-1 uppercase tracking-[1.5px]">
+              {item.muscle_group}
+            </Caption>
           </View>
           <View className="flex-row gap-2">
             <Button
@@ -146,25 +219,29 @@ function ExercisesSection({
             </Button>
           </View>
         </View>
-      </Card>
+      </View>
     );
   };
 
   return (
-    <View className="flex-1 pt-2">
+    <View className="flex-1">
       <FlatList
         data={exercises}
         keyExtractor={(item: Exercise) => item.id}
         renderItem={renderExercise}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 0,
+          paddingBottom: 0,
+        }}
         ListEmptyComponent={
-          <Muted className="text-center mt-8">
+          <Muted className="px-2 py-4 text-center">
             No exercises yet. Add one below.
           </Muted>
         }
         ListFooterComponent={
           showForm ? (
-            <Card label="New Exercise" className="mt-4 rounded-xl mx-0">
+            <FormSection label="New Exercise">
               <Input
                 className="mb-2"
                 placeholder="Exercise name"
@@ -189,15 +266,12 @@ function ExercisesSection({
                   setMuscleGroup('');
                 }}
               />
-            </Card>
+            </FormSection>
           ) : (
-            <Button
-              variant="ghost"
-              className="mt-4 mx-4"
+            <NewItemButton
+              label="+ New Exercise"
               onPress={() => setShowForm(true)}
-            >
-              + New Exercise
-            </Button>
+            />
           )
         }
       />
@@ -229,14 +303,11 @@ function RoutinesSection({
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // expandedId: which routine row is showing its exercises
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  // expandedExercises: cached exercises for the expanded routine
   const [expandedExercises, setExpandedExercises] = useState<RoutineExercise[]>(
     [],
   );
 
-  // editingId: which routine row is in edit mode
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editSelectedIds, setEditSelectedIds] = useState<string[]>([]);
@@ -282,7 +353,6 @@ function RoutinesSection({
     setEditSelectedIds(
       currentExercises.map((re: RoutineExercise) => re.exercise_id),
     );
-    // close expand when entering edit mode
     setExpandedId(null);
     setExpandedExercises([]);
   };
@@ -313,15 +383,10 @@ function RoutinesSection({
     } else {
       setExpandedId(item.id);
       setExpandedExercises(getRoutineExercises(item.id));
-      // close edit when expanding
       setEditingId(null);
     }
   };
 
-  // Re-fetch exercises for the currently expanded routine whenever that
-  // specific routine's data changes (e.g. after an updateRoutine call).
-  // We narrow the dependency to the expanded routine's identity so we
-  // don't trigger a redundant query when unrelated routines change.
   const expandedRoutine = routines.find((r) => r.id === expandedId) ?? null;
   useEffect(() => {
     if (expandedId !== null) {
@@ -332,7 +397,7 @@ function RoutinesSection({
   const renderRoutine = ({ item }: { item: Routine }): React.JSX.Element => {
     if (editingId === item.id) {
       return (
-        <Card className="mb-2 rounded-xl">
+        <View className="border-b border-surface-border px-2 py-3">
           <Input
             className="mb-4"
             placeholder="Routine name"
@@ -355,11 +420,12 @@ function RoutinesSection({
             ))
           )}
           <ActionRow
+            className="mt-3"
             onPrimaryPress={() => handleSaveEdit(item.id)}
             primaryLoading={editSaving}
             onSecondaryPress={() => setEditingId(null)}
           />
-        </Card>
+        </View>
       );
     }
 
@@ -370,6 +436,9 @@ function RoutinesSection({
         title={item.name}
         expanded={isExpanded}
         onToggle={() => handleToggleExpand(item)}
+        className="rounded-none border-x-0 border-b-0"
+        headerClassName="px-2 py-2.5"
+        contentClassName="px-2 pb-2.5"
         accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${item.name}`}
         actions={
           <>
@@ -395,35 +464,53 @@ function RoutinesSection({
         {expandedExercises.length === 0 ? (
           <Muted className="pt-1">No exercises in this routine.</Muted>
         ) : (
-          expandedExercises.map((re: RoutineExercise) => {
-            const ex = exercises.find((e: Exercise) => e.id === re.exercise_id);
-            return (
-              <Body key={re.id} className="pt-2">
-                {ex ? ex.name : re.exercise_id} — {re.target_sets} ×{' '}
-                {re.target_reps}
-              </Body>
-            );
-          })
+          <View className="pt-1">
+            {expandedExercises.map((re: RoutineExercise, index: number) => {
+              const ex = exercises.find(
+                (e: Exercise) => e.id === re.exercise_id,
+              );
+              const last = index === expandedExercises.length - 1;
+              return (
+                <View
+                  key={re.id}
+                  className={`flex-row items-start justify-between py-2 ${
+                    last ? '' : 'border-b border-surface-border'
+                  }`}
+                >
+                  <Body className="flex-1 font-heading text-[18px] leading-[22px]">
+                    {ex ? ex.name : re.exercise_id}
+                  </Body>
+                  <Caption className="ml-3 text-right">
+                    {re.target_sets} × {re.target_reps}
+                  </Caption>
+                </View>
+              );
+            })}
+          </View>
         )}
       </DisclosureCard>
     );
   };
 
   return (
-    <View className="flex-1 pt-2">
+    <View className="flex-1">
       <FlatList
         data={routines}
         keyExtractor={(item: Routine) => item.id}
         renderItem={renderRoutine}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 0,
+          paddingBottom: 0,
+        }}
         ListEmptyComponent={
-          <Muted className="text-center mt-8">
+          <Muted className="px-2 py-4 text-center">
             No routines yet. Create one below.
           </Muted>
         }
         ListFooterComponent={
           showForm ? (
-            <Card label="New Routine" className="mt-4 rounded-xl mx-0">
+            <FormSection label="New Routine">
               <Input
                 className="mb-4"
                 placeholder="Routine name (e.g. Push A)"
@@ -448,6 +535,7 @@ function RoutinesSection({
                 ))
               )}
               <ActionRow
+                className="mt-3"
                 onPrimaryPress={handleCreate}
                 primaryLoading={saving}
                 onSecondaryPress={() => {
@@ -456,15 +544,12 @@ function RoutinesSection({
                   setSelectedExerciseIds([]);
                 }}
               />
-            </Card>
+            </FormSection>
           ) : (
-            <Button
-              variant="ghost"
-              className="mt-4 mx-4"
+            <NewItemButton
+              label="+ New Routine"
               onPress={() => setShowForm(true)}
-            >
-              + New Routine
-            </Button>
+            />
           )
         }
       />
@@ -502,29 +587,17 @@ export function RoutinesScreen(): React.JSX.Element {
   );
 
   return (
-    <Container className="pt-14 px-0">
-      {/* Header */}
-      <View className="px-4 pb-4">
-        <Heading>Routines</Heading>
+    <Container
+      className="px-0 pb-0"
+      style={{ paddingBottom: 0 }}
+      edges={['top', 'left', 'right']}
+    >
+      <View className="mb-0 border-b border-surface-border pb-2 pt-0">
+        <Heading className="text-[34px] leading-[36px]">Routines</Heading>
       </View>
 
-      {/* Section tabs */}
-      <Surface variant="elevated" className="flex-row mx-4 mb-2 rounded-lg p-1">
-        {(['exercises', 'routines'] as const).map((s) => (
-          <Button
-            key={s}
-            variant={section === s ? 'primary' : 'ghost'}
-            size="sm"
-            className="flex-1 capitalize"
-            accessibilityLabel={s}
-            onPress={() => setSection(s)}
-          >
-            {s}
-          </Button>
-        ))}
-      </Surface>
+      <SectionSwitcher section={section} onChange={setSection} />
 
-      {/* Active section */}
       {section === 'exercises' ? (
         <ExercisesSection
           exercises={exercises}

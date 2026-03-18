@@ -1,6 +1,6 @@
 # Trainer
 
-A premium, offline-first mobile fitness application built for serious lifters. Trainer combines intelligent progressive overload tracking with dynamic rotational scheduling (e.g. Push A / Pull A / Push B / Pull B) to help athletes consistently improve over time.
+A premium, offline-first mobile fitness application for iOS and Android built for serious lifters. Trainer combines intelligent progressive overload tracking with dynamic rotational scheduling (e.g. Push A / Pull A / Push B / Pull B) to help athletes consistently improve over time.
 
 ---
 
@@ -57,14 +57,12 @@ This launches the Expo dev server. From the terminal you can then press:
 | --- | ---------------------------- |
 | `i` | Open iOS Simulator           |
 | `a` | Open Android Emulator/Device |
-| `w` | Open in web browser          |
 
 Alternatively, run a platform directly:
 
 ```bash
 npm run ios      # iOS Simulator
 npm run android  # Android Emulator / device
-npm run web      # Browser (Expo Web)
 ```
 
 ---
@@ -185,7 +183,6 @@ import type { RecordId } from '@shared/types';
 | `npm start`            | Start Expo dev server                    |
 | `npm run ios`          | Launch on iOS Simulator                  |
 | `npm run android`      | Launch on Android Emulator / device      |
-| `npm run web`          | Launch in browser                        |
 | `npm run seed:dev`     | Start Expo with the development seed set |
 | `npm run lint`         | Run ESLint across all `.ts`/`.tsx` files |
 | `npm run lint:fix`     | Run ESLint and auto-fix issues           |

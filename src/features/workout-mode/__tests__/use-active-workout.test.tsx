@@ -137,7 +137,7 @@ describe('useActiveWorkout', () => {
     expect(useWorkoutStore.getState().activeSession?.exercises).toHaveLength(1);
   });
 
-  it('does not remove planned routine exercises', () => {
+  it('removes planned routine exercises during an active workout', () => {
     const db = createMockDb();
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useActiveWorkout(), { wrapper });
@@ -146,11 +146,11 @@ describe('useActiveWorkout', () => {
       result.current.removeExercise('exercise-1');
     });
 
-    expect(db.runSync).not.toHaveBeenCalledWith(
+    expect(db.runSync).toHaveBeenCalledWith(
       'DELETE FROM workout_sets WHERE session_id = ? AND exercise_id = ?',
       ['session-1', 'exercise-1'],
     );
-    expect(useWorkoutStore.getState().activeSession?.exercises).toHaveLength(1);
+    expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([]);
   });
 
   it('persists set edits/additions/deletions and keeps the store in sync', () => {
@@ -207,6 +207,33 @@ describe('useActiveWorkout', () => {
     jest.setSystemTime(1_700_000_123_000);
 
     const db = createMockDb();
+    db.getFirstSync.mockImplementation((query: string, params?: unknown[]) => {
+      if (query.includes('FROM workout_sessions WHERE id = ?')) {
+        expect(params).toEqual(['session-1']);
+        return {
+          id: 'session-1',
+          schedule_id: 'schedule-1',
+        };
+      }
+
+      if (query.includes('FROM schedules WHERE id = ?')) {
+        expect(params).toEqual(['schedule-1']);
+        return {
+          id: 'schedule-1',
+          current_position: -1,
+        };
+      }
+
+      return null;
+    });
+    db.getAllSync.mockImplementation((query: string, params?: unknown[]) => {
+      if (query.includes('FROM schedule_entries WHERE schedule_id = ?')) {
+        expect(params).toEqual(['schedule-1']);
+        return [{ position: 0 }, { position: 1 }];
+      }
+
+      return [];
+    });
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useActiveWorkout(), { wrapper });
 
@@ -217,6 +244,10 @@ describe('useActiveWorkout', () => {
     expect(db.runSync).toHaveBeenCalledWith(
       'UPDATE workout_sessions SET end_time = ? WHERE id = ?',
       [1_700_000_123_000, 'session-1'],
+    );
+    expect(db.runSync).toHaveBeenCalledWith(
+      'UPDATE schedules SET current_position = ? WHERE id = ?',
+      [0, 'schedule-1'],
     );
     expect(useWorkoutStore.getState().isWorkoutActive).toBe(false);
     expect(useWorkoutStore.getState().activeSession).toBeNull();

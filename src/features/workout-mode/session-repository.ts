@@ -1,6 +1,12 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import type {
+  Schedule,
+  ScheduleEntry,
+  WorkoutSession,
+} from '@core/database/types';
 import { generateId } from '@core/database/utils';
+import { getNextPosition } from '@features/schedule';
 import type {
   ActiveWorkoutExercise,
   ActiveWorkoutSession,
@@ -136,6 +142,17 @@ export function updateWorkoutSetWeight(
   );
 }
 
+export function updateWorkoutSetCompletion(
+  db: SQLiteDatabase,
+  setId: string,
+  isCompleted: boolean,
+): void {
+  db.runSync('UPDATE workout_sets SET is_completed = ? WHERE id = ?', [
+    isCompleted ? 1 : 0,
+    setId,
+  ]);
+}
+
 export function deleteWorkoutSetRecord(
   db: SQLiteDatabase,
   setId: string,
@@ -159,8 +176,48 @@ export function completeWorkoutSessionRecord(
   sessionId: string,
   endTime: number,
 ): void {
-  db.runSync('UPDATE workout_sessions SET end_time = ? WHERE id = ?', [
-    endTime,
-    sessionId,
-  ]);
+  db.withTransactionSync(() => {
+    db.runSync('UPDATE workout_sessions SET end_time = ? WHERE id = ?', [
+      endTime,
+      sessionId,
+    ]);
+
+    const sessionRow = db.getFirstSync<
+      Pick<WorkoutSession, 'id' | 'schedule_id'>
+    >('SELECT id, schedule_id FROM workout_sessions WHERE id = ? LIMIT 1', [
+      sessionId,
+    ]);
+
+    if (!sessionRow?.schedule_id) {
+      return;
+    }
+
+    const schedule = db.getFirstSync<Pick<Schedule, 'id' | 'current_position'>>(
+      'SELECT id, current_position FROM schedules WHERE id = ? LIMIT 1',
+      [sessionRow.schedule_id],
+    );
+
+    if (!schedule) {
+      return;
+    }
+
+    const entries = db.getAllSync<Pick<ScheduleEntry, 'position'>>(
+      'SELECT position FROM schedule_entries WHERE schedule_id = ? ORDER BY position ASC',
+      [sessionRow.schedule_id],
+    );
+
+    if (entries.length === 0) {
+      return;
+    }
+
+    const nextCompletedPosition = getNextPosition(
+      schedule.current_position,
+      entries.length,
+    );
+
+    db.runSync('UPDATE schedules SET current_position = ? WHERE id = ?', [
+      nextCompletedPosition,
+      sessionRow.schedule_id,
+    ]);
+  });
 }

@@ -6,12 +6,14 @@
  *
  * | Component   | Role                | Size  | Weight    |
  * |-------------|---------------------|-------|-----------|
- * | `Heading`   | Screen / section title | xl  | bold      |
- * | `Body`      | Default body copy   | sm    | regular   |
- * | `Label`     | Card / field label  | xs    | regular   |
- * | `Caption`   | Timestamp / sub-info | xs   | regular   |
- * | `Muted`     | De-emphasised text  | sm    | regular   |
- * | `StatValue` | Large metric display | 4xl  | bold      |
+ * | `DisplayHeading` | Editorial hero / large title | custom | bold |
+ * | `Heading`        | Screen / section title | xl  | bold      |
+ * | `Body`           | Default body copy   | sm    | regular   |
+ * | `Label`          | Card / field label  | xs    | regular   |
+ * | `Caption`        | Timestamp / sub-info | xs   | regular   |
+ * | `Meta`           | Compact mono utility copy | 2xs | regular |
+ * | `Muted`          | De-emphasised text  | sm    | regular   |
+ * | `StatValue`      | Large metric display | 4xl  | bold      |
  *
  * Props (all variants):
  * - `children`   — text content
@@ -43,6 +45,26 @@ interface TypographyProps extends Pick<
 
 // ─── Heading ──────────────────────────────────────────────────────────────────
 
+export function DisplayHeading({
+  children,
+  className = '',
+  numberOfLines,
+  accessibilityRole = 'header',
+  accessibilityLabel,
+}: TypographyProps): React.JSX.Element {
+  return (
+    <GluestackHeading
+      className={`font-heading text-[40px] leading-[44px] tracking-[-1.6px] text-foreground ${className}`}
+      size="4xl"
+      numberOfLines={numberOfLines}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+    >
+      {children}
+    </GluestackHeading>
+  );
+}
+
 /**
  * Large display heading — used for screen titles and card headings.
  * Maps to `font-size: 24px, font-weight: 700` in the design spec.
@@ -56,7 +78,7 @@ export function Heading({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackHeading
-      className={`text-foreground ${className}`}
+      className={`font-heading text-foreground tracking-tight ${className}`}
       size="xl"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
@@ -81,7 +103,7 @@ export function Body({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`text-foreground ${className}`}
+      className={`font-body leading-[20px] text-foreground ${className}`}
       size="sm"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
@@ -107,7 +129,7 @@ export function Label({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`text-muted uppercase tracking-widest ${className}`}
+      className={`font-mono text-muted uppercase tracking-[2.2px] ${className}`}
       size="xs"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
@@ -132,8 +154,30 @@ export function Caption({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`text-muted ${className}`}
+      className={`font-mono text-muted tracking-[0.3px] ${className}`}
       size="xs"
+      numberOfLines={numberOfLines}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+    >
+      {children}
+    </GluestackText>
+  );
+}
+
+// ─── Meta ─────────────────────────────────────────────────────────────────────
+
+export function Meta({
+  children,
+  className = '',
+  numberOfLines,
+  accessibilityRole = 'text',
+  accessibilityLabel,
+}: TypographyProps): React.JSX.Element {
+  return (
+    <GluestackText
+      className={`font-mono uppercase text-muted tracking-[2px] ${className}`}
+      size="2xs"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
@@ -158,7 +202,7 @@ export function Muted({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`text-muted ${className}`}
+      className={`font-body leading-[20px] text-muted ${className}`}
       size="sm"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
@@ -185,7 +229,7 @@ export function StatValue({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`text-foreground font-bold leading-none ${className}`}
+      className={`font-heading text-foreground font-bold leading-none tracking-tight ${className}`}
       size="4xl"
       bold
       numberOfLines={numberOfLines}

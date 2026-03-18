@@ -25,9 +25,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.trainer.app"
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
     "plugins": ["expo-sqlite"]
   }
 }

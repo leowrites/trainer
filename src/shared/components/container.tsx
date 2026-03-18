@@ -21,6 +21,7 @@
 
 import React from 'react';
 import type { ViewProps } from 'react-native';
+import type { Edge } from 'react-native-safe-area-context';
 
 import { SafeAreaView } from '@shared/ui/safe-area-view';
 
@@ -31,16 +32,19 @@ export interface ContainerProps extends Pick<ViewProps, 'style'> {
    * Use this to override padding, background, flex direction, etc.
    */
   className?: string;
+  edges?: Edge[];
 }
 
 export function Container({
   children,
   className = '',
+  edges,
   style,
 }: ContainerProps): React.JSX.Element {
   return (
     <SafeAreaView
-      className={`flex-1 bg-surface px-6 ${className}`}
+      edges={edges}
+      className={`flex-1 w-full bg-surface px-5 pb-8 web:self-center web:max-w-5xl ${className}`}
       style={style}
       accessibilityRole="none"
     >

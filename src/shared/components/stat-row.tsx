@@ -58,7 +58,7 @@ export function StatRow({
       {label !== undefined && label !== '' ? (
         <Box className="flex-row items-center mb-3">
           <Text
-            className="text-[10px] uppercase tracking-widest"
+            className="font-mono text-[10px] uppercase tracking-[2.2px]"
             style={{ color: tokens.textMuted }}
           >
             {label}
@@ -72,7 +72,7 @@ export function StatRow({
 
       <Box className="flex-row items-baseline gap-1">
         <Text
-          className="text-[42px] font-bold leading-none"
+          className="font-heading text-[42px] font-bold leading-none tracking-tight"
           style={{ color: tokens.textPrimary }}
           accessibilityLabel={a11yLabel}
           accessibilityRole="text"
@@ -81,7 +81,7 @@ export function StatRow({
         </Text>
         {unit !== undefined && unit !== '' ? (
           <Text
-            className="text-sm"
+            className="font-mono text-sm uppercase tracking-[1.2px]"
             style={{ color: tokens.textMuted }}
             accessibilityRole="text"
             accessible={false}
@@ -93,7 +93,7 @@ export function StatRow({
 
       {sub !== undefined && sub !== '' ? (
         <Text
-          className="text-[11px] mt-1"
+          className="mt-1 font-body text-[11px] leading-[16px]"
           style={{ color: tokens.textMuted }}
           accessibilityRole="text"
         >
