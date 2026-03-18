@@ -5,7 +5,7 @@ import type { ActiveWorkoutSession } from '../types';
 import {
   completeWorkoutSessionRecord,
   createWorkoutSetRecord,
-  deleteWorkoutExerciseRecords,
+  deleteWorkoutSetsForExercise,
   deleteWorkoutSetRecord,
   loadActiveWorkoutSession,
   updateWorkoutSetReps,
@@ -65,17 +65,23 @@ export function useActiveWorkout(): {
 
   const addExercise = useCallback(
     (exerciseId: string, exerciseName: string): void => {
+      const currentState = useWorkoutStore.getState();
+      const currentActiveSession = currentState.activeSession;
+      const currentActiveSessionId = currentState.activeSessionId;
+
       if (
-        !activeSessionId ||
-        !activeSession ||
-        activeSession.exercises.some((item) => item.exerciseId === exerciseId)
+        !currentActiveSessionId ||
+        !currentActiveSession ||
+        currentActiveSession.exercises.some(
+          (item) => item.exerciseId === exerciseId,
+        )
       ) {
         return;
       }
 
       const newSet = createWorkoutSetRecord(
         db,
-        activeSessionId,
+        currentActiveSessionId,
         exerciseId,
         0,
         0,
@@ -91,16 +97,20 @@ export function useActiveWorkout(): {
         sets: [newSet],
       });
     },
-    [activeSession, activeSessionId, addExerciseToStore, db],
+    [addExerciseToStore, db],
   );
 
   const removeExercise = useCallback(
     (exerciseId: string): void => {
-      if (!activeSessionId || !activeSession) {
+      const currentState = useWorkoutStore.getState();
+      const currentActiveSession = currentState.activeSession;
+      const currentActiveSessionId = currentState.activeSessionId;
+
+      if (!currentActiveSessionId || !currentActiveSession) {
         return;
       }
 
-      const exercise = activeSession.exercises.find(
+      const exercise = currentActiveSession.exercises.find(
         (item) => item.exerciseId === exerciseId,
       );
       if (
@@ -111,10 +121,10 @@ export function useActiveWorkout(): {
         return;
       }
 
-      deleteWorkoutExerciseRecords(db, activeSessionId, exerciseId);
+      deleteWorkoutSetsForExercise(db, currentActiveSessionId, exerciseId);
       removeExerciseFromStore(exerciseId);
     },
-    [activeSession, activeSessionId, db, removeExerciseFromStore],
+    [db, removeExerciseFromStore],
   );
 
   const updateReps = useCallback(

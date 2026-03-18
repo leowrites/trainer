@@ -90,6 +90,17 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
         return state;
       }
 
+      const exercise = state.activeSession.exercises.find(
+        (item) => item.exerciseId === exerciseId,
+      );
+      if (
+        !exercise ||
+        exercise.targetSets !== null ||
+        exercise.targetReps !== null
+      ) {
+        return state;
+      }
+
       return {
         activeSession: {
           ...state.activeSession,

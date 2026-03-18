@@ -106,6 +106,37 @@ describe('useActiveWorkout', () => {
     expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([]);
   });
 
+  it('does not insert duplicate ad hoc exercises when addExercise is triggered twice', () => {
+    const db = createMockDb();
+    const wrapper = createDatabaseWrapper(db);
+    useWorkoutStore.setState({
+      isWorkoutActive: true,
+      activeSessionId: 'session-2',
+      startTime: activeSession.startTime,
+      activeSession: {
+        ...activeSession,
+        id: 'session-2',
+        exercises: [],
+      },
+    });
+
+    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
+
+    act(() => {
+      result.current.addExercise('exercise-2', 'Goblet Squat');
+      result.current.addExercise('exercise-2', 'Goblet Squat');
+    });
+
+    expect(
+      db.runSync.mock.calls.filter(
+        ([sql]) =>
+          sql ===
+          'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      ),
+    ).toHaveLength(1);
+    expect(useWorkoutStore.getState().activeSession?.exercises).toHaveLength(1);
+  });
+
   it('does not remove planned routine exercises', () => {
     const db = createMockDb();
     const wrapper = createDatabaseWrapper(db);

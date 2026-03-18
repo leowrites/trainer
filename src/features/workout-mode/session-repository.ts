@@ -143,7 +143,7 @@ export function deleteWorkoutSetRecord(
   db.runSync('DELETE FROM workout_sets WHERE id = ?', [setId]);
 }
 
-export function deleteWorkoutExerciseRecords(
+export function deleteWorkoutSetsForExercise(
   db: SQLiteDatabase,
   sessionId: string,
   exerciseId: string,

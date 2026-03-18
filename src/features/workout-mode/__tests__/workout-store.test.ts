@@ -119,6 +119,18 @@ describe('useWorkoutStore', () => {
     ).toEqual(['exercise-1']);
   });
 
+  it('does not remove planned routine exercise blocks from the store', () => {
+    useWorkoutStore.getState().startWorkout(mockSession);
+
+    useWorkoutStore.getState().removeExercise('exercise-1');
+
+    expect(
+      useWorkoutStore
+        .getState()
+        .activeSession?.exercises.map((exercise) => exercise.exerciseId),
+    ).toEqual(['exercise-1']);
+  });
+
   it('removes a set but preserves the exercise block for future additions', () => {
     useWorkoutStore.getState().startWorkout(mockSession);
 

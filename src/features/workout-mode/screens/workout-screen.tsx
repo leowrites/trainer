@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -11,7 +11,6 @@ import {
   Button,
   Caption,
   Card,
-  Checkbox,
   Container,
   Heading,
   Input,
@@ -116,6 +115,30 @@ function WorkoutSetEditor({
   );
 }
 
+function ExercisePickerRow({
+  exerciseName,
+  muscleGroup,
+  onPress,
+}: {
+  exerciseName: string;
+  muscleGroup: string;
+  onPress: () => void;
+}): React.JSX.Element {
+  return (
+    <Surface variant="card" className="rounded-xl">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Add ${exerciseName}`}
+        className="px-3 py-3"
+        onPress={onPress}
+      >
+        <Body className="font-semibold">{exerciseName}</Body>
+        <Muted>{muscleGroup}</Muted>
+      </Pressable>
+    </Surface>
+  );
+}
+
 function ActiveWorkoutExercisePicker({
   exerciseIdsInSession,
   onAddExercise,
@@ -159,26 +182,24 @@ function ActiveWorkoutExercisePicker({
 
       {showPicker ? (
         <View className="gap-3">
-          <ScrollView
-            className="max-h-64"
+          <FlatList
+            data={availableExercises}
+            keyExtractor={(exercise) => exercise.id}
             nestedScrollEnabled
             showsVerticalScrollIndicator={false}
-          >
-            <View className="gap-2">
-              {availableExercises.map((exercise) => (
-                <Checkbox
-                  key={exercise.id}
-                  checked={false}
-                  onToggle={() => {
-                    onAddExercise(exercise.id, exercise.name);
-                    setShowPicker(false);
-                  }}
-                  label={exercise.name}
-                  sublabel={exercise.muscle_group}
-                />
-              ))}
-            </View>
-          </ScrollView>
+            style={{ maxHeight: 256 }}
+            contentContainerStyle={{ gap: 8 }}
+            renderItem={({ item }) => (
+              <ExercisePickerRow
+                exerciseName={item.name}
+                muscleGroup={item.muscle_group}
+                onPress={() => {
+                  onAddExercise(item.id, item.name);
+                  setShowPicker(false);
+                }}
+              />
+            )}
+          />
 
           <Button variant="ghost" onPress={() => setShowPicker(false)}>
             Cancel

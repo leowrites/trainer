@@ -230,7 +230,7 @@ describe('WorkoutScreen', () => {
     render(<WorkoutScreen />);
 
     fireEvent.press(screen.getByText('Add Exercise'));
-    fireEvent.press(screen.getByLabelText('Goblet Squat'));
+    fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
 
     expect(addExercise).toHaveBeenCalledWith('exercise-2', 'Goblet Squat');
   });
@@ -286,7 +286,7 @@ describe('WorkoutScreen', () => {
     const { rerender } = render(<WorkoutScreen />);
 
     fireEvent.press(screen.getByText('Add Exercise'));
-    fireEvent.press(screen.getByLabelText('Goblet Squat'));
+    fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
 
     expect(addExercise).toHaveBeenCalledWith('exercise-2', 'Goblet Squat');
 
