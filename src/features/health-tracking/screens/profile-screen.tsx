@@ -132,62 +132,70 @@ export function ProfileScreen(): React.JSX.Element {
   const latestEntry = entries[0] ?? null;
 
   return (
-    <Container className="pt-8">
+    <Container>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="pb-5">
-          <Heading>Health</Heading>
-          <Muted className="mt-2">
-            Log body weight offline and keep a practical review history on this
-            device.
-          </Muted>
+        <View className="border-surface-border pb-3">
+          <View accessibilityRole="header" className="gap-2">
+            <Heading className="text-[34px] leading-[36px]">Profile</Heading>
+            <Muted className="text-[14px] leading-[19px]">
+              Log body weight offline and keep a practical review history on
+              this device.
+            </Muted>
+          </View>
         </View>
 
-        <Card label="Latest Reading" className="mb-4 rounded-2xl">
-          {latestEntry ? (
-            <StatRow
-              value={formatBodyWeightValue(latestEntry.weight)}
-              unit={latestEntry.unit}
-              sub={`${formatLoggedAtLabel(latestEntry.loggedAt)} | ${entries.length} total logs`}
-            />
-          ) : (
-            <View>
-              <Body>No body-weight entries yet.</Body>
-              <Muted className="mt-2">
-                Your first offline log will appear here.
-              </Muted>
-            </View>
-          )}
-        </Card>
+        <View className="py-3">
+          <Card label="Latest Reading" className="rounded-[20px] px-4 py-4">
+            {latestEntry ? (
+              <StatRow
+                value={formatBodyWeightValue(latestEntry.weight)}
+                unit={latestEntry.unit}
+                sub={`${formatLoggedAtLabel(latestEntry.loggedAt)} | ${entries.length} total logs`}
+              />
+            ) : (
+              <View>
+                <Body>No body-weight entries yet.</Body>
+                <Muted className="mt-2">
+                  Your first offline log will appear here.
+                </Muted>
+              </View>
+            )}
+          </Card>
+        </View>
 
         {error ? (
-          <Card label="Status" className="mb-4 rounded-2xl">
-            <Body className="text-red-400">{error}</Body>
-          </Card>
+          <View className="pb-3">
+            <Card label="Status" className="rounded-[20px] px-4 py-4">
+              <Body className="text-red-400">{error}</Body>
+            </Card>
+          </View>
         ) : null}
 
-        <BodyWeightForm
-          title={editingEntry ? 'Edit body-weight log' : 'Log body weight'}
-          form={form}
-          saveLabel={editingEntry ? 'Update entry' : 'Save entry'}
-          secondaryLabel={editingEntry ? 'Cancel edit' : 'Reset'}
-          saving={saving}
-          errorMessage={formError}
-          onWeightChange={handleWeightChange}
-          onUnitChange={handleUnitChange}
-          onDateChange={handleDateChange}
-          onTimeChange={handleTimeChange}
-          onNotesChange={handleNotesChange}
-          onSave={handleSave}
-          onSecondaryPress={resetForm}
-        />
+        <View>
+          <BodyWeightForm
+            title={editingEntry ? 'Edit body-weight log' : 'Log body weight'}
+            form={form}
+            saveLabel={editingEntry ? 'Update entry' : 'Save entry'}
+            secondaryLabel={editingEntry ? 'Cancel edit' : 'Reset'}
+            saving={saving}
+            errorMessage={formError}
+            onWeightChange={handleWeightChange}
+            onUnitChange={handleUnitChange}
+            onDateChange={handleDateChange}
+            onTimeChange={handleTimeChange}
+            onNotesChange={handleNotesChange}
+            onSave={handleSave}
+            onSecondaryPress={resetForm}
+          />
+        </View>
 
-        <View className="pb-3 pt-6">
-          <Heading className="text-[20px]">Recent logs</Heading>
-          <Muted className="mt-2">
+        <View className="border-b border-t border-surface-border py-3">
+          <Heading className="text-[22px] leading-[24px]">Recent logs</Heading>
+          <Muted className="mt-2 text-[12px] leading-[17px]">
             {entries.length === 0
               ? 'Your saved history will appear here.'
               : `${entries.length} entries saved locally for offline review.`}
@@ -195,20 +203,24 @@ export function ProfileScreen(): React.JSX.Element {
         </View>
 
         {entries.length === 0 ? (
-          <Card className="rounded-2xl">
-            <Body>Log your first entry to start a body-weight history.</Body>
-          </Card>
+          <View className="pt-3">
+            <Card className="rounded-[20px] px-4 py-4">
+              <Body>Log your first entry to start a body-weight history.</Body>
+            </Card>
+          </View>
         ) : (
-          entries.map((entry) => (
-            <View key={entry.id} className="mb-3">
-              <BodyWeightEntryCard
-                entry={entry}
-                isEditing={editingEntry?.id === entry.id}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            </View>
-          ))
+          <View className="pt-3">
+            {entries.map((entry) => (
+              <View key={entry.id} className="mb-3">
+                <BodyWeightEntryCard
+                  entry={entry}
+                  isEditing={editingEntry?.id === entry.id}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              </View>
+            ))}
+          </View>
         )}
       </ScrollView>
     </Container>

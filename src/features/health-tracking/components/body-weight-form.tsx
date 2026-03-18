@@ -48,7 +48,7 @@ export function BodyWeightForm({
   onSecondaryPress,
 }: BodyWeightFormProps): React.JSX.Element {
   return (
-    <Card label={title} className="rounded-2xl">
+    <Card label={title} className="rounded-[20px] px-4 py-4">
       <View className="gap-4">
         <View>
           <Label className="mb-2">Weight</Label>
@@ -109,7 +109,9 @@ export function BodyWeightForm({
           </View>
         </View>
 
-        <Caption>Use YYYY-MM-DD and 24-hour HH:mm.</Caption>
+        <Caption className="text-[11px] leading-[15px]">
+          Use YYYY-MM-DD and 24-hour HH:mm.
+        </Caption>
 
         <View>
           <Label className="mb-2">Notes</Label>

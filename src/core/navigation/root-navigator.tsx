@@ -1,14 +1,16 @@
 import { createNativeBottomTabNavigator } from '@react-navigation/bottom-tabs/unstable';
 import {
   DarkTheme,
-  type NavigationProp,
   type NavigatorScreenParams,
   NavigationContainer,
-  useNavigation,
 } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import {
+  createNativeStackNavigator,
+  type NativeStackScreenProps,
+} from '@react-navigation/native-stack';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { HistoryScreen } from '@features/analytics';
 import { ProfileScreen } from '@features/health-tracking';
@@ -38,10 +40,22 @@ export type RootStackParamList = {
 const Tab = createNativeBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function TabNavigator(): React.JSX.Element {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const { isWorkoutActive, isWorkoutCollapsed, activeSession, expandWorkout } =
-    useWorkoutStore();
+function TabNavigator({
+  navigation,
+}: NativeStackScreenProps<RootStackParamList, 'Tabs'>): React.JSX.Element {
+  const {
+    isWorkoutActive,
+    isWorkoutCollapsed,
+    activeWorkoutTitle,
+    expandWorkout,
+  } = useWorkoutStore(
+    useShallow((state) => ({
+      isWorkoutActive: state.isWorkoutActive,
+      isWorkoutCollapsed: state.isWorkoutCollapsed,
+      activeWorkoutTitle: state.activeSession?.title ?? 'Workout',
+      expandWorkout: state.expandWorkout,
+    })),
+  );
 
   return (
     <View
@@ -60,10 +74,10 @@ function TabNavigator(): React.JSX.Element {
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
 
-      {isWorkoutActive && isWorkoutCollapsed && activeSession ? (
+      {isWorkoutActive && isWorkoutCollapsed ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Return to ${activeSession.title}`}
+          accessibilityLabel={`Return to ${activeWorkoutTitle}`}
           className="absolute bottom-24 right-5 h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-surface-card"
           onPress={() => {
             expandWorkout();
@@ -111,7 +125,6 @@ export function RootNavigator(): React.JSX.Element {
             title: '',
             headerTintColor: colors.text.primary,
             headerBackButtonDisplayMode: 'minimal',
-            headerShadowVisible: false,
             headerStyle: {
               backgroundColor: colors.surface.DEFAULT,
             },

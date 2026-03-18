@@ -30,7 +30,7 @@ export function BodyWeightEntryCard({
   onDelete,
 }: BodyWeightEntryCardProps): React.JSX.Element {
   return (
-    <Card className="rounded-2xl">
+    <Card className="rounded-[20px] px-4 py-4">
       <View className="flex-row items-start justify-between gap-4">
         <View className="flex-1">
           <Label>Logged</Label>

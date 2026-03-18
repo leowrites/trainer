@@ -27,7 +27,7 @@ module.exports = {
           950: 'rgb(var(--color-primary-950)/<alpha-value>)',
         },
         secondary: {
-          DEFAULT: '#f5a742',
+          DEFAULT: '#7ea6c9',
           0: 'rgb(var(--color-secondary-0)/<alpha-value>)',
           50: 'rgb(var(--color-secondary-50)/<alpha-value>)',
           100: 'rgb(var(--color-secondary-100)/<alpha-value>)',
@@ -55,7 +55,7 @@ module.exports = {
           950: 'rgb(var(--color-tertiary-950)/<alpha-value>)',
         },
         error: {
-          DEFAULT: '#f05a4f',
+          DEFAULT: '#d46a6a',
           0: 'rgb(var(--color-error-0)/<alpha-value>)',
           50: 'rgb(var(--color-error-50)/<alpha-value>)',
           100: 'rgb(var(--color-error-100)/<alpha-value>)',
@@ -169,22 +169,22 @@ module.exports = {
           error: 'rgb(var(--color-indicator-error)/<alpha-value>)',
         },
         foreground: {
-          DEFAULT: '#e8e8e8',
+          DEFAULT: '#f1f5f9',
         },
         accent: {
-          DEFAULT: '#c8f542',
-          subtle: 'rgba(200,245,66,0.1)',
-          border: 'rgba(200,245,66,0.25)',
+          DEFAULT: '#007AFF',
+          subtle: 'rgba(46,230,166,0.16)',
+          border: 'rgba(46,230,166,0.32)',
         },
         surface: {
-          DEFAULT: '#0e0e0e',
-          card: '#161616',
-          elevated: '#1e1e1e',
-          border: '#2a2a2a',
+          DEFAULT: '#000000',
+          card: '#151b22',
+          elevated: '#1e2630',
+          border: '#2f3a46',
         },
         muted: {
-          DEFAULT: '#666666',
-          foreground: '#999999',
+          DEFAULT: '#7f8c9b',
+          foreground: '#a9b3bf',
         },
       },
       fontFamily: {

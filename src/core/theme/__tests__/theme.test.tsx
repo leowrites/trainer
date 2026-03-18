@@ -31,7 +31,7 @@ describe('darkTokens', () => {
     });
   });
 
-  it('accent is the lime value from palette', () => {
+  it('accent matches the primary palette value', () => {
     expect(darkTokens.accent).toBe(palette.lime);
   });
 
@@ -59,9 +59,9 @@ describe('lightTokens', () => {
   });
 
   it('has a lighter background than dark mode', () => {
-    // Light mode bgBase should be a light hex value
-    expect(lightTokens.bgBase).toBe('#f5f5f5');
-    expect(darkTokens.bgBase).toBe('#0e0e0e');
+    expect(lightTokens.bgBase).not.toBe(darkTokens.bgBase);
+    expect(lightTokens.bgBase).toBe('#f3f6f9');
+    expect(darkTokens.bgBase).toBe('#0f1216');
   });
 });
 

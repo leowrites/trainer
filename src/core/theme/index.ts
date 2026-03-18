@@ -13,43 +13,43 @@
 /** All concrete colour values used in the design system. */
 export const palette = {
   // Greens (primary)
-  green50: '#f0fdf4',
-  green100: '#dcfce7',
-  green200: '#bbf7d0',
-  green300: '#86efac',
-  green400: '#4ade80',
-  green500: '#22c55e',
-  green600: '#16a34a',
-  green700: '#15803d',
-  green800: '#166534',
-  green900: '#14532d',
-  green950: '#052e16',
+  green50: '#ecfdf5',
+  green100: '#d1fae5',
+  green200: '#a7f3d0',
+  green300: '#6ee7b7',
+  green400: '#34d399',
+  green500: '#10b981',
+  green600: '#059669',
+  green700: '#047857',
+  green800: '#065f46',
+  green900: '#064e3b',
+  green950: '#022c22',
 
-  // Accent (lime-green) — CSS --accent
-  lime: '#c8f542',
-  limeSubtle: 'rgba(200,245,66,0.1)',
-  limeBorder: 'rgba(200,245,66,0.25)',
+  // Accent (emerald) — CSS --accent
+  lime: '#3dd6a0',
+  limeSubtle: 'rgba(61,214,160,0.14)',
+  limeBorder: 'rgba(61,214,160,0.28)',
 
-  // Secondary (amber-orange) — CSS --accent2
-  amber: '#f5a742',
-  amberSubtle: 'rgba(245,167,66,0.1)',
-  amberBorder: 'rgba(245,167,66,0.25)',
+  // Secondary (steel blue) — CSS --accent2
+  amber: '#7ea6c9',
+  amberSubtle: 'rgba(126,166,201,0.14)',
+  amberBorder: 'rgba(126,166,201,0.28)',
 
   // Error (red) — CSS --red
-  red: '#f05a4f',
-  redSubtle: 'rgba(240,90,79,0.1)',
-  redBorder: 'rgba(240,90,79,0.25)',
+  red: '#d46a6a',
+  redSubtle: 'rgba(212,106,106,0.14)',
+  redBorder: 'rgba(212,106,106,0.28)',
 
   // Neutral backgrounds — CSS --bg / --surface / --surface2 / --border
-  bg: '#0e0e0e',
-  surface: '#161616',
-  surface2: '#1e1e1e',
-  border: '#2a2a2a',
+  bg: '#0f1216',
+  surface: '#161b21',
+  surface2: '#1f2630',
+  border: '#323c49',
 
   // Text — CSS --text / --muted
-  text: '#e8e8e8',
-  muted: '#666666',
-  mutedForeground: '#999999',
+  text: '#edf2f7',
+  muted: '#7d8998',
+  mutedForeground: '#a8b2bf',
 
   // Pure
   white: '#ffffff',
@@ -131,31 +131,31 @@ export const darkTokens: ThemeTokens = {
  */
 export const lightTokens: ThemeTokens = {
   // Backgrounds
-  bgBase: '#f5f5f5',
+  bgBase: '#f3f6f9',
   bgCard: '#ffffff',
-  bgElevated: '#ebebeb',
-  bgBorder: '#d4d4d4',
+  bgElevated: '#e7edf3',
+  bgBorder: '#cfd8e3',
 
   // Text
-  textPrimary: '#0e0e0e',
-  textMuted: '#888888',
-  textMutedForeground: '#aaaaaa',
+  textPrimary: '#15202b',
+  textMuted: '#667487',
+  textMutedForeground: '#8391a3',
 
   // Brand / accent colours (same hues, readable on light bg)
-  accent: '#6abf00',
-  accentSubtle: 'rgba(106,191,0,0.1)',
-  accentBorder: 'rgba(106,191,0,0.25)',
+  accent: '#148f68',
+  accentSubtle: 'rgba(20,143,104,0.12)',
+  accentBorder: 'rgba(20,143,104,0.24)',
   accentForeground: palette.white,
 
-  secondary: '#c97800',
-  secondarySubtle: 'rgba(201,120,0,0.1)',
-  secondaryBorder: 'rgba(201,120,0,0.25)',
+  secondary: '#557da2',
+  secondarySubtle: 'rgba(85,125,162,0.12)',
+  secondaryBorder: 'rgba(85,125,162,0.24)',
   secondaryForeground: palette.white,
 
   // Status
-  error: '#d93025',
-  errorSubtle: 'rgba(217,48,37,0.1)',
-  errorBorder: 'rgba(217,48,37,0.25)',
+  error: '#c65d5d',
+  errorSubtle: 'rgba(198,93,93,0.12)',
+  errorBorder: 'rgba(198,93,93,0.24)',
   errorForeground: palette.white,
 };
 
@@ -243,7 +243,7 @@ export const colors = {
   },
   text: {
     primary: palette.text,
-    secondary: 'rgba(232,232,232,0.6)',
+    secondary: palette.mutedForeground,
     muted: palette.muted,
   },
   accent: {

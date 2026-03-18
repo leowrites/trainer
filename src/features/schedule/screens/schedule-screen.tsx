@@ -12,6 +12,7 @@ import {
   Checkbox,
   Container,
   DisplayHeading,
+  Heading,
   Input,
   Label,
   Muted,
@@ -75,7 +76,7 @@ function ScheduleRow({
   return (
     <Surface
       variant="card"
-      className="mb-3 overflow-hidden rounded-[18px] border border-surface-border p-0"
+      className="mx-0 mb-3 overflow-hidden rounded-[20px] border border-surface-border p-0"
     >
       <Pressable
         accessibilityRole="button"
@@ -262,53 +263,44 @@ export function ScheduleScreen(): React.JSX.Element {
   };
 
   return (
-    <Container className="px-0">
-      <View className="border-b border-surface-border px-3 pt-7 pb-3">
-        <View accessibilityRole="header">
-          <View className="flex-row items-end justify-between gap-4">
-            <View className="flex-1">
-              <Body className="font-heading text-[34px] leading-[36px]">
-                Schedules
-              </Body>
-              <Muted className="mt-2 text-[14px] leading-[19px]">
-                Arrange routines into a steady rotation with clearer order and
-                tighter setup.
-              </Muted>
-            </View>
-            <View className="items-end">
-              <Label className="text-secondary">
-                {activeSchedule ? 'Active' : 'Setup'}
-              </Label>
-              <Meta className="mt-1 text-foreground">
-                {activeSchedule?.name ?? `${routines.length} routines`}
-              </Meta>
-            </View>
-          </View>
+    <Container className="px-0 pb-0" edges={['top']}>
+      <View className="border-surface-border px-0 pb-3">
+        <View accessibilityRole="header" className="gap-2">
+          <Heading className="text-[34px] leading-[36px]">Schedule</Heading>
+          <Muted className="text-[14px] leading-[19px]">
+            Arrange routines into a steady rotation and keep the next session
+            predictable.
+          </Muted>
         </View>
       </View>
 
-      {activeSchedule ? (
-        <Surface
-          variant="card"
-          className="border-b border-surface-border px-3 py-3"
-        >
-          <View className="flex-row items-center justify-between">
-            <Label className="text-secondary">Active schedule</Label>
-            <Meta>{activeEntries.length} routines</Meta>
+      <View className="py-3">
+        <Surface variant="card" className="mx-0 rounded-[20px] px-4 py-4">
+          <View className="mb-3 flex-row items-center justify-between gap-3">
+            <Label className="text-secondary">
+              {activeSchedule ? 'Active Schedule' : 'Schedule Setup'}
+            </Label>
+            <Meta className="text-foreground">
+              {activeSchedule
+                ? `${activeEntries.length} routines`
+                : `${routines.length} routines`}
+            </Meta>
           </View>
-          <DisplayHeading className="mt-2 text-[28px] leading-[32px]">
-            {activeSchedule.name}
+          <DisplayHeading className="text-[28px] leading-[32px]">
+            {activeSchedule?.name ?? 'No active schedule'}
           </DisplayHeading>
           <Muted className="mt-2 text-[12px] leading-[17px]">
-            {activeSchedule.current_position >= 0
-              ? `Rotation position ${activeSchedule.current_position + 1}`
-              : 'Ready to start from the first routine.'}
+            {activeSchedule
+              ? activeSchedule.current_position >= 0
+                ? `Rotation position ${activeSchedule.current_position + 1}`
+                : 'Ready to start from the first routine.'
+              : 'Create a schedule to queue your next workout from the routines you already trust.'}
           </Muted>
         </Surface>
-      ) : null}
+      </View>
 
       {editingSchedule ? (
-        <Card label="Edit Schedule" className="mx-0 mb-3 p-3">
+        <Card label="Edit Schedule" className="mx-0 mb-3 rounded-[20px] p-4">
           <Input
             className="mb-4"
             placeholder="Schedule name"
@@ -351,7 +343,7 @@ export function ScheduleScreen(): React.JSX.Element {
       <FlatList
         data={schedules}
         keyExtractor={(item: Schedule) => item.id}
-        contentContainerStyle={{ paddingHorizontal: 0, paddingTop: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 0, paddingBottom: 12 }}
         renderItem={({ item }: { item: Schedule }) => (
           <ScheduleRow
             item={item}
@@ -364,13 +356,13 @@ export function ScheduleScreen(): React.JSX.Element {
           />
         )}
         ListEmptyComponent={
-          <Muted className="mt-6 px-3 text-center text-[13px] leading-[18px]">
+          <Muted className="mt-3 px-0 text-center text-[13px] leading-[18px]">
             No schedules yet. Create one below.
           </Muted>
         }
         ListFooterComponent={
           showForm ? (
-            <Card label="New Schedule" className="mx-0 mt-3 p-3">
+            <Card label="New Schedule" className="mx-0 mt-3 rounded-[20px] p-4">
               <Input
                 className="mb-4"
                 placeholder="Schedule name (e.g. Push/Pull Split)"
@@ -413,7 +405,7 @@ export function ScheduleScreen(): React.JSX.Element {
           ) : (
             <Button
               variant="ghost"
-              className="mx-0 mt-3 w-full"
+              className="mx-0 mt-3 w-auto"
               onPress={() => setShowForm(true)}
             >
               + New Schedule

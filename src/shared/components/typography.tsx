@@ -129,7 +129,7 @@ export function Label({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`font-mono text-muted uppercase tracking-[2.2px] ${className}`}
+      className={`font-body text-[11px] font-semibold tracking-[0.3px] text-muted ${className}`}
       size="xs"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
@@ -154,7 +154,7 @@ export function Caption({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`font-mono text-muted tracking-[0.3px] ${className}`}
+      className={`font-body text-muted tracking-[0.2px] ${className}`}
       size="xs"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
@@ -176,7 +176,7 @@ export function Meta({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`font-mono uppercase text-muted tracking-[2px] ${className}`}
+      className={`font-body text-muted tracking-[0.4px] ${className}`}
       size="2xs"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}

@@ -82,7 +82,7 @@ export function StatRow({
         {unit !== undefined && unit !== '' ? (
           <Text
             className="font-mono text-sm uppercase tracking-[1.2px]"
-            style={{ color: tokens.textMuted }}
+            style={{ color: tokens.textMutedForeground }}
             accessibilityRole="text"
             accessible={false}
           >
@@ -94,7 +94,7 @@ export function StatRow({
       {sub !== undefined && sub !== '' ? (
         <Text
           className="mt-1 font-body text-[11px] leading-[16px]"
-          style={{ color: tokens.textMuted }}
+          style={{ color: tokens.textMutedForeground }}
           accessibilityRole="text"
         >
           {sub}

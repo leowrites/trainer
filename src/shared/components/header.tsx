@@ -57,7 +57,6 @@ export function Header({
   return (
     <Box
       className={`flex-row items-end justify-between pb-6 mb-8 ${className}`}
-      style={{ borderBottomWidth: 1, borderBottomColor: tokens.bgBorder }}
       accessibilityRole="header"
     >
       {/* Left — logo / title */}

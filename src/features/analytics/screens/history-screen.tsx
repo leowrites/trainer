@@ -233,11 +233,6 @@ function HistoryList({
                 ) : null}
               </>
             }
-            actions={
-              <Badge variant={session.endTime === null ? 'warning' : 'muted'}>
-                {formatWeight(session.totalVolume, progressionConfig.unit)}
-              </Badge>
-            }
           >
             <SessionDetail
               session={session}
@@ -298,82 +293,100 @@ export function HistoryScreen({
   const latestSession = sessions[0] ?? null;
 
   return (
-    <Container className="pt-14">
+    <Container>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
       >
-        <View className="pb-4">
-          <Heading>History</Heading>
-          <Muted className="mt-1">
-            Review past sessions, volume trends, and simple progression cues.
+        <View className="border-surface-border pb-3">
+          <View accessibilityRole="header" className="gap-2">
+            <Heading className="text-[34px] leading-[36px]">History</Heading>
+            <Muted className="text-[14px] leading-[19px]">
+              Review past sessions, volume trends, and simple progression cues.
+            </Muted>
+          </View>
+        </View>
+
+        <View className="py-3">
+          <Card label="Latest Session" className="rounded-[20px] px-4 py-4">
+            {latestSession ? (
+              <>
+                <Body className="font-heading text-[26px] leading-[30px]">
+                  {latestSession.routineName}
+                </Body>
+                <Muted className="mt-2 text-[12px] leading-[17px]">
+                  {formatSessionDate(latestSession.startTime)} •{' '}
+                  {formatSessionSummary(latestSession)}
+                </Muted>
+                <Muted className="mt-1 text-[12px] leading-[17px]">
+                  {formatDurationMinutes(latestSession.durationMinutes)} •{' '}
+                  {formatWeight(
+                    latestSession.totalVolume,
+                    progressionConfig.unit,
+                  )}{' '}
+                  volume
+                </Muted>
+              </>
+            ) : (
+              <Muted>No sessions recorded yet.</Muted>
+            )}
+          </Card>
+        </View>
+
+        <View className="pb-1">
+          <Muted className="text-[12px] leading-[17px]">
+            Trends update from completed sessions saved on this device.
           </Muted>
         </View>
 
-        <TrendCard
-          title="Volume Over Time"
-          points={volumeTrend}
-          unit={progressionConfig.unit}
-          accentClassName="bg-accent"
-          emptyMessage="Complete a workout to start tracking volume over time."
-        />
+        <View>
+          <TrendCard
+            title="Volume Over Time"
+            points={volumeTrend}
+            unit={progressionConfig.unit}
+            accentClassName="bg-accent"
+            emptyMessage="Complete a workout to start tracking volume over time."
+          />
 
-        <TrendCard
-          title="Hours Over Time"
-          points={hoursTrend}
-          unit="hr"
-          accentClassName="bg-secondary"
-          emptyMessage="Finished sessions with an end time will show up here."
-        />
+          <TrendCard
+            title="Hours Over Time"
+            points={hoursTrend}
+            unit="hr"
+            accentClassName="bg-secondary"
+            emptyMessage="Finished sessions with an end time will show up here."
+          />
+        </View>
 
-        <Card label="Latest Session" className="mb-4 rounded-xl">
-          {latestSession ? (
-            <>
-              <Body className="font-medium">{latestSession.routineName}</Body>
-              <Caption className="mt-1">
-                {formatSessionDate(latestSession.startTime)} •{' '}
-                {formatSessionSummary(latestSession)}
-              </Caption>
-              <Caption className="mt-1">
-                {formatDurationMinutes(latestSession.durationMinutes)} •{' '}
-                {formatWeight(
-                  latestSession.totalVolume,
-                  progressionConfig.unit,
-                )}{' '}
-                volume
-              </Caption>
-            </>
-          ) : (
-            <Muted>No sessions recorded yet.</Muted>
-          )}
-        </Card>
-
-        <View className="pb-2">
-          <Heading className="text-xl">Sessions</Heading>
-          <Muted className="mt-1">
+        <View className="border-b border-t border-surface-border px-3 py-3">
+          <Heading className="text-[22px] leading-[24px]">Sessions</Heading>
+          <Muted className="mt-2 text-[12px] leading-[17px]">
             Expand a session to inspect exercise details and recommendations.
           </Muted>
         </View>
 
         {sessions.length > 0 ? (
-          <HistoryList
-            sessions={sessions}
-            expandedSessionId={expandedSessionId}
-            onToggleSession={(sessionId: string) =>
-              setExpandedSessionId((currentValue: string | null) =>
-                currentValue === sessionId ? null : sessionId,
-              )
-            }
-            progressionConfig={progressionConfig}
-          />
+          <View className="pt-3">
+            <HistoryList
+              sessions={sessions}
+              expandedSessionId={expandedSessionId}
+              onToggleSession={(sessionId: string) =>
+                setExpandedSessionId((currentValue: string | null) =>
+                  currentValue === sessionId ? null : sessionId,
+                )
+              }
+              progressionConfig={progressionConfig}
+            />
+          </View>
         ) : (
-          <Card className="rounded-xl">
-            <Body className="font-medium">No workout history yet</Body>
-            <Muted className="mt-2">
-              Completed sessions will appear here with routine, date, set
-              summaries, and duration.
-            </Muted>
-          </Card>
+          <View className="pt-3">
+            <Card className="rounded-[20px] px-4 py-4">
+              <Body className="font-medium">No workout history yet</Body>
+              <Muted className="mt-2">
+                Completed sessions will appear here with routine, date, set
+                summaries, and duration.
+              </Muted>
+            </Card>
+          </View>
         )}
       </ScrollView>
     </Container>

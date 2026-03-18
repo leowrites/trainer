@@ -10,17 +10,18 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { TrueSheet } from '@lodev09/react-native-true-sheet';
 
-import {
-  type NavigationProp,
-  useFocusEffect,
-  useNavigation,
-} from '@react-navigation/native';
+import { type CompositeScreenProps } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useShallow } from 'zustand/react/shallow';
 
-import type { RootStackParamList } from '@core/navigation';
+import type { RootStackParamList, RootTabParamList } from '@core/navigation';
 import { useExercises } from '@features/routines';
 import {
+  Body,
   Button,
   Container,
   DisplayHeading,
@@ -31,10 +32,21 @@ import {
   Surface,
 } from '@shared/components';
 import { DEFAULT_REST_SECONDS } from '@shared/constants';
+import { useTheme } from '@core/theme/theme-context';
 import { useActiveWorkout } from '../hooks/use-active-workout';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
 import { useWorkoutStore } from '../store';
 import { type ActiveWorkoutSet } from '../types';
+
+type WorkoutHomeScreenProps = CompositeScreenProps<
+  BottomTabScreenProps<RootTabParamList, 'Workout'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
+
+type WorkoutActiveScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'ActiveWorkout'
+>;
 
 function parseWholeNumber(value: string): number {
   if (value.trim() === '') {
@@ -55,7 +67,7 @@ function parseDecimalNumber(value: string): number {
 }
 
 function formatElapsedDuration(ms: number): string {
-  const totalMinutes = Math.max(0, Math.floor(ms / 60_000));
+  const totalMinutes = Math.max(0, Math.floor(ms / 1_000));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 
@@ -94,6 +106,7 @@ function WorkoutSetRow({
   onUpdateWeight: (weight: number) => void;
   onToggleLogged: (isCompleted: boolean) => void;
 }): React.JSX.Element {
+  const { tokens } = useTheme();
   const [repsText, setRepsText] = useState(String(setItem.reps));
   const [weightText, setWeightText] = useState(String(setItem.weight));
 
@@ -114,10 +127,14 @@ function WorkoutSetRow({
   }, [onUpdateWeight, weightText]);
 
   return (
-    <View className="flex-row items-center gap-1.5 border-t border-surface-border px-2 py-1.5">
-      <Meta className="w-7 text-center text-[10px]">{index + 1}</Meta>
+    <View className="mb-2.5 flex-row items-center gap-2 rounded-[16px] border border-surface-border bg-surface-elevated px-3 py-3">
+      <View className="h-8 w-8 items-center justify-center rounded-full bg-surface-card">
+        <Body className="text-[13px] font-semibold text-foreground">
+          {index + 1}
+        </Body>
+      </View>
       <TextInput
-        className="h-9 flex-1 rounded-[10px] border border-surface-border bg-surface-card px-2 py-0 font-mono text-[12px] text-foreground"
+        className="h-11 flex-1 rounded-[12px] border border-surface-border bg-surface-card px-3 py-0 font-body text-[13px] text-foreground"
         value={repsText}
         onChangeText={setRepsText}
         onEndEditing={handlePersistReps}
@@ -125,10 +142,10 @@ function WorkoutSetRow({
         keyboardType="number-pad"
         returnKeyType="done"
         accessibilityLabel={`${exerciseName} set ${index + 1} reps`}
-        placeholderTextColor="#666666"
+        placeholderTextColor={tokens.textMuted}
       />
       <TextInput
-        className="h-9 flex-1 rounded-[10px] border border-surface-border bg-surface-card px-2 py-0 font-mono text-[12px] text-foreground"
+        className="h-11 flex-1 rounded-[12px] border border-surface-border bg-surface-card px-3 py-0 font-body text-[13px] text-foreground"
         value={weightText}
         onChangeText={setWeightText}
         onEndEditing={handlePersistWeight}
@@ -136,12 +153,12 @@ function WorkoutSetRow({
         keyboardType="decimal-pad"
         returnKeyType="done"
         accessibilityLabel={`${exerciseName} set ${index + 1} weight`}
-        placeholderTextColor="#666666"
+        placeholderTextColor={tokens.textMuted}
       />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${setItem.isCompleted ? 'Unlog' : 'Log'} ${exerciseName} set ${index + 1}`}
-        className={`h-9 min-w-[48px] items-center justify-center rounded-[10px] border px-2 ${
+        className={`h-11 min-w-[58px] items-center justify-center rounded-[12px] border px-3 ${
           setItem.isCompleted
             ? 'border-accent bg-accent'
             : 'border-surface-border bg-surface-card'
@@ -149,7 +166,7 @@ function WorkoutSetRow({
         onPress={() => onToggleLogged(!setItem.isCompleted)}
       >
         <Text
-          className={`font-mono text-[10px] uppercase tracking-[1px] ${
+          className={`font-body text-[12px] font-semibold ${
             setItem.isCompleted ? 'text-black' : 'text-foreground'
           }`}
         >
@@ -159,7 +176,7 @@ function WorkoutSetRow({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Delete ${exerciseName} set ${index + 1}`}
-        className="h-8 w-8 items-center justify-center rounded-[10px] border border-surface-border"
+        className="h-11 w-11 items-center justify-center rounded-[12px] border border-surface-border bg-surface-card"
         onPress={onDelete}
       >
         <Text className="font-mono text-[12px] text-muted">×</Text>
@@ -181,7 +198,7 @@ function ExercisePickerRow({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Add ${exerciseName}`}
-      className="border-b border-surface-border px-3 py-2.5"
+      className="p-3"
       onPress={onPress}
     >
       <Text className="text-[12px] text-foreground">{exerciseName}</Text>
@@ -202,31 +219,68 @@ function ExercisePickerBottomSheet({
   exerciseIdsInSession: string[];
   onClose: () => void;
   onAddExercise: (exerciseId: string, exerciseName: string) => void;
-}): React.JSX.Element | null {
+}): React.JSX.Element {
   const { exercises } = useExercises();
+  const sheetRef = React.useRef<TrueSheet>(null);
+  const isPresentedRef = React.useRef(false);
+  const isTransitioningRef = React.useRef(false);
+  const latestVisibleRef = React.useRef(visible);
 
   const availableExercises = exercises.filter(
     (exercise) => !exerciseIdsInSession.includes(exercise.id),
   );
 
-  if (!visible) {
-    return null;
-  }
+  useEffect(() => {
+    latestVisibleRef.current = visible;
+  }, [visible]);
+
+  useEffect(() => {
+    if (visible) {
+      if (isPresentedRef.current || isTransitioningRef.current) {
+        return;
+      }
+
+      isTransitioningRef.current = true;
+      void sheetRef.current?.present().catch(() => {
+        isTransitioningRef.current = false;
+      });
+
+      return;
+    }
+
+    if (!isPresentedRef.current || isTransitioningRef.current) {
+      return;
+    }
+
+    isTransitioningRef.current = true;
+    void sheetRef.current?.dismiss().catch(() => {
+      isTransitioningRef.current = false;
+    });
+  }, [visible]);
 
   return (
-    <View className="absolute inset-0 z-20 justify-end">
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Close add exercise sheet"
-        className="flex-1"
-        style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
-        onPress={onClose}
-      />
-      <Surface
-        variant="card"
-        className="max-h-[420px] rounded-t-[24px] border border-surface-border border-b-0"
-      >
-        <View className="border-b border-surface-border px-3 py-2.5">
+    <TrueSheet
+      ref={sheetRef}
+      detents={['auto', 1]}
+      cornerRadius={28}
+      grabber
+      scrollable
+      backgroundBlur="dark"
+      onDidPresent={() => {
+        isPresentedRef.current = true;
+        isTransitioningRef.current = false;
+      }}
+      onDidDismiss={() => {
+        isPresentedRef.current = false;
+        isTransitioningRef.current = false;
+
+        if (latestVisibleRef.current) {
+          onClose();
+        }
+      }}
+    >
+      <View>
+        <View className="p-4">
           <Heading className="text-[18px] leading-[20px]">Add Exercise</Heading>
           <Muted className="mt-1 text-[11px] leading-[15px]">
             Pick an exercise to bring into the current session.
@@ -234,7 +288,7 @@ function ExercisePickerBottomSheet({
         </View>
 
         {availableExercises.length === 0 ? (
-          <View className="px-3 py-3">
+          <View className="bg-surface-card px-4 py-4">
             <Muted className="text-[11px]">
               All exercises are already added.
             </Muted>
@@ -255,8 +309,8 @@ function ExercisePickerBottomSheet({
             )}
           />
         )}
-      </Surface>
-    </View>
+      </View>
+    </TrueSheet>
   );
 }
 
@@ -299,8 +353,8 @@ function ExerciseCard({
   }, [onDelete, title]);
 
   return (
-    <View className="mt-2 overflow-hidden rounded-[18px] border border-surface-border bg-surface-card p-2">
-      <View className="relative border-b border-surface-border px-2 py-2">
+    <View className="mt-3 overflow-hidden rounded-[22px] border border-surface-border bg-surface-card p-4">
+      <View className="relative border-b border-surface-border/80 pb-3">
         <View className="flex-row items-center justify-between gap-3">
           <Heading className="flex-1 text-[18px] leading-[20px]">
             {title}
@@ -373,7 +427,11 @@ function ActiveWorkoutContent({
   const dockHeight = 62 + dockOffset;
 
   return (
-    <View className="flex-1 bg-surface">
+    <Container
+      className="px-0 pb-0"
+      style={{ paddingBottom: 0 }}
+      edges={['left', 'right']}
+    >
       <View className="flex-1">
         <ScrollView
           className="flex-1"
@@ -383,18 +441,12 @@ function ActiveWorkoutContent({
           automaticallyAdjustContentInsets={false}
           contentContainerStyle={{ paddingBottom: dockHeight + 8 }}
         >
-          <View className="border-b border-surface-border bg-surface">
-            <View className="px-2 py-1.5">
+          <View className="border-surface-border bg-surface">
+            <View className="px-2 py-2">
               <Heading className="text-[22px] leading-[24px]">
                 {sessionTitle}
               </Heading>
-              <Meta className="mt-0.5 text-[10px]">
-                {activeSession.isFreeWorkout
-                  ? 'Free workout'
-                  : 'Session in progress'}
-              </Meta>
             </View>
-
             <View className="flex-row flex-wrap gap-x-2 gap-y-0.5 border-t border-surface-border px-2 py-1.5">
               <Meta className="text-[10px]">{durationLabel}</Meta>
               <Meta className="text-[10px]">{exerciseCount} exercises</Meta>
@@ -443,12 +495,14 @@ function ActiveWorkoutContent({
                 title={exercise.exerciseName}
                 onDelete={() => removeExercise(exercise.exerciseId)}
               >
-                <View className="flex-row items-center gap-1.5 px-2 py-1.5">
-                  <Meta className="w-7 text-center text-[10px]">Set</Meta>
-                  <Meta className="flex-1 text-[10px]">Reps</Meta>
-                  <Meta className="flex-1 text-[10px]">Weight</Meta>
-                  <Meta className="w-[48px] text-center text-[10px]">Log</Meta>
-                  <Meta className="w-8 text-center text-[10px]">Del</Meta>
+                <View className="flex-row items-center gap-2 px-1 pb-3 pt-1">
+                  <Label className="w-8 text-center text-[11px]">Set</Label>
+                  <Label className="flex-1 text-[11px]">Reps</Label>
+                  <Label className="flex-1 text-[11px]">Weight</Label>
+                  <Label className="w-[58px] text-center text-[11px]">
+                    Log
+                  </Label>
+                  <Label className="w-11 text-center text-[11px]">Del</Label>
                 </View>
                 {exercise.sets.map((setItem, index) => (
                   <WorkoutSetRow
@@ -470,10 +524,12 @@ function ActiveWorkoutContent({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Add set to ${exercise.exerciseName}`}
-                  className="border-t border-surface-border px-2 py-1.5"
+                  className="mt-1 self-start rounded-[12px] border border-surface-border bg-surface-elevated px-3 py-2"
                   onPress={() => addSet(exercise.exerciseId)}
                 >
-                  <Meta className="text-[10px] text-secondary">Add Set</Meta>
+                  <Body className="text-[12px] font-semibold text-secondary">
+                    Add set
+                  </Body>
                 </Pressable>
               </ExerciseCard>
             ))
@@ -522,13 +578,26 @@ function ActiveWorkoutContent({
           onAddExercise={addExercise}
         />
       </View>
-    </View>
+    </Container>
   );
 }
 
-export function WorkoutScreen(): React.JSX.Element {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const { activeSession, expandWorkout, isWorkoutActive } = useWorkoutStore();
+export function WorkoutScreen({
+  navigation,
+}: WorkoutHomeScreenProps): React.JSX.Element {
+  const {
+    currentWorkoutTitle,
+    currentExerciseCount,
+    expandWorkout,
+    isWorkoutActive,
+  } = useWorkoutStore(
+    useShallow((state) => ({
+      currentWorkoutTitle: state.activeSession?.title ?? null,
+      currentExerciseCount: state.activeSession?.exercises.length ?? 0,
+      expandWorkout: state.expandWorkout,
+      isWorkoutActive: state.isWorkoutActive,
+    })),
+  );
   const {
     refreshPreview,
     nextRoutine,
@@ -537,18 +606,22 @@ export function WorkoutScreen(): React.JSX.Element {
   } = useWorkoutStarter();
   const [starting, setStarting] = useState(false);
 
-  const hasCurrentWorkout = isWorkoutActive && activeSession !== null;
+  const hasCurrentWorkout = isWorkoutActive && currentWorkoutTitle !== null;
   const inactiveSubtitle = hasCurrentWorkout
     ? 'Your current workout is still in progress.'
     : nextRoutine
       ? `Your next workout is ready, ${nextRoutine.routineName}.`
       : 'Your next workout will appear here once a schedule is active.';
 
-  useFocusEffect(
-    useCallback(() => {
+  useEffect(() => {
+    refreshPreview();
+
+    const unsubscribe = navigation.addListener('focus', () => {
       refreshPreview();
-    }, [refreshPreview]),
-  );
+    });
+
+    return unsubscribe;
+  }, [navigation, refreshPreview]);
 
   const handleStartScheduled = (): void => {
     if (starting) {
@@ -599,7 +672,7 @@ export function WorkoutScreen(): React.JSX.Element {
         }}
       >
         <View
-          className="mb-1 gap-2 border-b border-surface-border pb-3"
+          className="mb-1 gap-2 border-surface-border pb-3"
           accessibilityRole="header"
         >
           <Heading className="text-[34px] leading-[36px]">Workout</Heading>
@@ -608,7 +681,7 @@ export function WorkoutScreen(): React.JSX.Element {
           </Muted>
         </View>
 
-        {hasCurrentWorkout && activeSession ? (
+        {hasCurrentWorkout && currentWorkoutTitle ? (
           <Surface
             variant="card"
             className="w-full rounded-[18px] border border-surface-border p-4"
@@ -618,10 +691,10 @@ export function WorkoutScreen(): React.JSX.Element {
               <Meta>In progress</Meta>
             </View>
             <DisplayHeading className="text-[28px] leading-[32px]">
-              {activeSession.title}
+              {currentWorkoutTitle}
             </DisplayHeading>
             <Muted className="mt-3 text-[12px] leading-[17px]">
-              {activeSession.exercises.length} exercises in this session
+              {currentExerciseCount} exercises in this session
             </Muted>
           </Surface>
         ) : nextRoutine ? (
@@ -687,8 +760,9 @@ export function WorkoutScreen(): React.JSX.Element {
   );
 }
 
-export function WorkoutActiveScreen(): React.JSX.Element | null {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+export function WorkoutActiveScreen({
+  navigation,
+}: WorkoutActiveScreenProps): React.JSX.Element | null {
   const insets = useSafeAreaInsets();
   const {
     isWorkoutActive,
@@ -698,7 +772,17 @@ export function WorkoutActiveScreen(): React.JSX.Element | null {
     collapseWorkout,
     startRestTimer,
     clearRestTimer,
-  } = useWorkoutStore();
+  } = useWorkoutStore(
+    useShallow((state) => ({
+      isWorkoutActive: state.isWorkoutActive,
+      isWorkoutCollapsed: state.isWorkoutCollapsed,
+      startTime: state.startTime,
+      restTimerEndsAt: state.restTimerEndsAt,
+      collapseWorkout: state.collapseWorkout,
+      startRestTimer: state.startRestTimer,
+      clearRestTimer: state.clearRestTimer,
+    })),
+  );
   const {
     activeSession,
     addExercise,

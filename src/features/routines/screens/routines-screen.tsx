@@ -16,6 +16,7 @@ import {
   Input,
   Label,
   Muted,
+  Surface,
 } from '@shared/components';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutines } from '../hooks/use-routines';
@@ -41,7 +42,7 @@ function SectionSwitcher({
   onChange: (section: Section) => void;
 }): React.JSX.Element {
   return (
-    <View className="flex-row border-y border-surface-border">
+    <View className="mx-0 flex-row overflow-hidden rounded-[18px] border-y border-surface-border bg-surface-card">
       {(['exercises', 'routines'] as const).map((item, index) => {
         const active = section === item;
         return (
@@ -51,12 +52,12 @@ function SectionSwitcher({
             accessibilityLabel={item}
             accessibilityState={{ selected: active }}
             onPress={() => onChange(item)}
-            className={`flex-1 px-2 py-2.5 ${
+            className={`flex-1 px-3 py-3 ${
               index === 0 ? 'border-r border-surface-border' : ''
             }`}
           >
-            <View className="flex-row items-center justify-between">
-              <Label className={active ? 'text-secondary' : 'text-muted'}>
+            <View className="flex-row items-center justify-center">
+              <Label className={active ? 'text-foreground' : 'text-muted'}>
                 {item}
               </Label>
             </View>
@@ -75,7 +76,7 @@ function FormSection({
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <Card className="mx-0 rounded-none border-x-0 border-y border-surface-border px-2 py-3">
+    <Card className="mx-0 rounded-[20px] px-4 py-4">
       <View className="mb-2 flex-row items-center gap-3">
         <Label className="text-secondary">{label}</Label>
         <View className="h-px flex-1 bg-surface-border" />
@@ -95,7 +96,7 @@ function NewItemButton({
   return (
     <Pressable
       accessibilityRole="button"
-      className="px-2 py-3"
+      className="mx-0 rounded-[16px] border border-surface-border bg-surface-card px-4 py-3"
       onPress={onPress}
     >
       <Label className="text-secondary">{label}</Label>
@@ -164,7 +165,7 @@ function ExercisesSection({
   const renderExercise = ({ item }: { item: Exercise }): React.JSX.Element => {
     if (editingId === item.id) {
       return (
-        <View className="border-b border-surface-border px-2 py-3">
+        <Card className="mx-0 mb-3 rounded-[20px] px-4 py-4">
           <Input
             className="mb-2"
             placeholder="Exercise name"
@@ -185,12 +186,12 @@ function ExercisesSection({
             primaryLoading={editSaving}
             onSecondaryPress={() => setEditingId(null)}
           />
-        </View>
+        </Card>
       );
     }
 
     return (
-      <View className="border-b border-surface-border px-2 py-3">
+      <Card className="mx-0 mb-3 rounded-[20px] px-4 py-4">
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1">
             <Body className="font-heading text-[22px] leading-[24px]">
@@ -219,7 +220,7 @@ function ExercisesSection({
             </Button>
           </View>
         </View>
-      </View>
+      </Card>
     );
   };
 
@@ -232,10 +233,10 @@ function ExercisesSection({
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 0,
-          paddingBottom: 0,
+          paddingBottom: 12,
         }}
         ListEmptyComponent={
-          <Muted className="px-2 py-4 text-center">
+          <Muted className="px-0 py-4 text-center">
             No exercises yet. Add one below.
           </Muted>
         }
@@ -397,7 +398,7 @@ function RoutinesSection({
   const renderRoutine = ({ item }: { item: Routine }): React.JSX.Element => {
     if (editingId === item.id) {
       return (
-        <View className="border-b border-surface-border px-2 py-3">
+        <Card className="mx-0 mb-3 rounded-[20px] px-4 py-4">
           <Input
             className="mb-4"
             placeholder="Routine name"
@@ -425,7 +426,7 @@ function RoutinesSection({
             primaryLoading={editSaving}
             onSecondaryPress={() => setEditingId(null)}
           />
-        </View>
+        </Card>
       );
     }
 
@@ -436,9 +437,9 @@ function RoutinesSection({
         title={item.name}
         expanded={isExpanded}
         onToggle={() => handleToggleExpand(item)}
-        className="rounded-none border-x-0 border-b-0"
-        headerClassName="px-2 py-2.5"
-        contentClassName="px-2 pb-2.5"
+        className="mx-0 rounded-[20px] border border-surface-border"
+        headerClassName="px-4 py-4"
+        contentClassName="px-4 pb-4"
         accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${item.name}`}
         actions={
           <>
@@ -501,10 +502,10 @@ function RoutinesSection({
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 0,
-          paddingBottom: 0,
+          paddingBottom: 12,
         }}
         ListEmptyComponent={
-          <Muted className="px-2 py-4 text-center">
+          <Muted className="px-0 py-4 text-center">
             No routines yet. Create one below.
           </Muted>
         }
@@ -587,34 +588,61 @@ export function RoutinesScreen(): React.JSX.Element {
   );
 
   return (
-    <Container
-      className="px-0 pb-0"
-      style={{ paddingBottom: 0 }}
-      edges={['top', 'left', 'right']}
-    >
-      <View className="mb-0 border-b border-surface-border pb-2 pt-0">
-        <Heading className="text-[34px] leading-[36px]">Routines</Heading>
+    <Container>
+      <View className="border-surface-border px-0 pb-3">
+        <View accessibilityRole="header" className="gap-2">
+          <Heading className="text-[34px] leading-[36px]">Routines</Heading>
+          <Muted className="text-[14px] leading-[19px]">
+            Build your exercise library and shape reliable templates for the
+            sessions you repeat most.
+          </Muted>
+        </View>
+      </View>
+
+      <View className="py-3">
+        <Surface variant="card" className="mx-0 rounded-[20px] px-4 py-4">
+          <View className="mb-3 flex-row items-center justify-between gap-3">
+            <Label className="text-secondary">
+              {section === 'exercises' ? 'Exercise Library' : 'Routine Library'}
+            </Label>
+            <Caption className="text-foreground">
+              {section === 'exercises'
+                ? `${exercises.length} saved`
+                : `${routines.length} saved`}
+            </Caption>
+          </View>
+          <Heading className="text-[22px] leading-[24px]">
+            {section === 'exercises' ? 'Exercises' : 'Routines'}
+          </Heading>
+          <Muted className="mt-2 text-[12px] leading-[17px]">
+            {section === 'exercises'
+              ? 'Keep names and muscle groups clean so adding exercises in a session stays quick.'
+              : 'Group exercises into dependable templates you can schedule and run without extra setup.'}
+          </Muted>
+        </Surface>
       </View>
 
       <SectionSwitcher section={section} onChange={setSection} />
 
-      {section === 'exercises' ? (
-        <ExercisesSection
-          exercises={exercises}
-          createExercise={createExercise}
-          updateExercise={updateExercise}
-          deleteExercise={deleteExercise}
-        />
-      ) : (
-        <RoutinesSection
-          routines={routines}
-          exercises={exercises}
-          createRoutine={createRoutine}
-          updateRoutine={updateRoutine}
-          deleteRoutine={deleteRoutine}
-          getRoutineExercises={getRoutineExercises}
-        />
-      )}
+      <View className="flex-1 pt-3">
+        {section === 'exercises' ? (
+          <ExercisesSection
+            exercises={exercises}
+            createExercise={createExercise}
+            updateExercise={updateExercise}
+            deleteExercise={deleteExercise}
+          />
+        ) : (
+          <RoutinesSection
+            routines={routines}
+            exercises={exercises}
+            createRoutine={createRoutine}
+            updateRoutine={updateRoutine}
+            deleteRoutine={deleteRoutine}
+            getRoutineExercises={getRoutineExercises}
+          />
+        )}
+      </View>
     </Container>
   );
 }

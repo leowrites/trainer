@@ -31,6 +31,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, View } from 'react-native';
 
+import { useTheme } from '@core/theme/theme-context';
 import { Badge as GluestackBadge, BadgeText } from '@shared/ui/badge';
 
 export type BadgeVariant = 'accent' | 'error' | 'warning' | 'muted';
@@ -78,19 +79,27 @@ function PulseDot({ color }: { color: string }): React.JSX.Element {
   );
 }
 
-function resolveVariantProps(variant: BadgeVariant): {
+function resolveVariantProps(
+  variant: BadgeVariant,
+  colors: {
+    accent: string;
+    error: string;
+    secondary: string;
+    mutedForeground: string;
+  },
+): {
   action: 'success' | 'error' | 'warning' | 'muted';
   dotColor: string;
 } {
   switch (variant) {
     case 'error':
-      return { action: 'error', dotColor: '#f05a4f' };
+      return { action: 'error', dotColor: colors.error };
     case 'warning':
-      return { action: 'warning', dotColor: '#f5a742' };
+      return { action: 'warning', dotColor: colors.secondary };
     case 'muted':
-      return { action: 'muted', dotColor: '#666666' };
+      return { action: 'muted', dotColor: colors.mutedForeground };
     default: // accent
-      return { action: 'success', dotColor: '#c8f542' };
+      return { action: 'success', dotColor: colors.accent };
   }
 }
 
@@ -104,7 +113,13 @@ export function Badge({
   accessibilityLabel,
   className = '',
 }: BadgeProps): React.JSX.Element {
-  const { action, dotColor } = resolveVariantProps(variant);
+  const { tokens } = useTheme();
+  const { action, dotColor } = resolveVariantProps(variant, {
+    accent: tokens.accent,
+    error: tokens.error,
+    secondary: tokens.secondary,
+    mutedForeground: tokens.textMutedForeground,
+  });
 
   const inner = (
     <GluestackBadge

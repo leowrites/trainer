@@ -10,11 +10,6 @@ import { useExercises } from '@features/routines';
 
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (callback: () => void) => callback(),
-  useNavigation: () => ({
-    addListener: jest.fn(() => jest.fn()),
-    dispatch: jest.fn(),
-    navigate: jest.fn(),
-  }),
 }));
 
 jest.mock('react-native-safe-area-context', () => {
@@ -49,6 +44,30 @@ jest.mock('@features/routines', () => ({
   useExercises: jest.fn(),
 }));
 
+jest.mock('@lodev09/react-native-true-sheet', () => {
+  const React = require('react');
+  const ReactNative = require('react-native');
+
+  return {
+    TrueSheet: React.forwardRef(
+      (
+        { children }: React.PropsWithChildren,
+        ref: React.ForwardedRef<{
+          present: () => Promise<void>;
+          dismiss: () => Promise<void>;
+        }>,
+      ) => {
+        React.useImperativeHandle(ref, () => ({
+          present: async () => undefined,
+          dismiss: async () => undefined,
+        }));
+
+        return <ReactNative.View>{children}</ReactNative.View>;
+      },
+    ),
+  };
+});
+
 const mockUseWorkoutStore = jest.mocked(useWorkoutStore);
 const mockUseWorkoutStarter = jest.mocked(useWorkoutStarter);
 const mockUseActiveWorkout = jest.mocked(useActiveWorkout);
@@ -57,6 +76,59 @@ const mockShowActionSheetWithOptions = jest.spyOn(
   ActionSheetIOS,
   'showActionSheetWithOptions',
 );
+
+type WorkoutTabScreenProps = React.ComponentProps<typeof WorkoutScreen>;
+type WorkoutActiveScreenProps = React.ComponentProps<
+  typeof WorkoutActiveScreen
+>;
+type WorkoutStoreState = ReturnType<typeof useWorkoutStore>;
+
+function createWorkoutTabScreenProps(): WorkoutTabScreenProps {
+  return {
+    navigation: {
+      navigate: jest.fn(),
+      addListener: jest.fn(() => jest.fn()),
+      dispatch: jest.fn(),
+      getParent: jest.fn(),
+      setOptions: jest.fn(),
+      isFocused: jest.fn(() => true),
+    },
+    route: {
+      key: 'Workout-key',
+      name: 'Workout' as const,
+    },
+  } as unknown as WorkoutTabScreenProps;
+}
+
+function createWorkoutActiveScreenProps(): WorkoutActiveScreenProps {
+  return {
+    navigation: {
+      navigate: jest.fn(),
+      addListener: jest.fn(() => jest.fn()),
+      dispatch: jest.fn(),
+      goBack: jest.fn(),
+      setOptions: jest.fn(),
+      isFocused: jest.fn(() => true),
+    },
+    route: {
+      key: 'ActiveWorkout-key',
+      name: 'ActiveWorkout' as const,
+      params: undefined,
+    },
+  } as unknown as WorkoutActiveScreenProps;
+}
+
+function mockWorkoutStoreState(state: WorkoutStoreState): void {
+  mockUseWorkoutStore.mockImplementation(((
+    selector?: (store: WorkoutStoreState) => unknown,
+  ) => {
+    if (typeof selector === 'function') {
+      return selector(state);
+    }
+
+    return state;
+  }) as typeof useWorkoutStore);
+}
 
 describe('WorkoutScreen', () => {
   beforeEach(() => {
@@ -85,11 +157,12 @@ describe('WorkoutScreen', () => {
   });
 
   it('renders the next scheduled workout and starts either workout flow', () => {
+    const props = createWorkoutTabScreenProps();
     const startWorkoutFromSchedule = jest.fn();
     const startFreeWorkout = jest.fn();
     const refreshPreview = jest.fn();
 
-    mockUseWorkoutStore.mockReturnValue({
+    mockWorkoutStoreState({
       isWorkoutActive: false,
       isWorkoutCollapsed: false,
       activeSession: null,
@@ -99,7 +172,7 @@ describe('WorkoutScreen', () => {
       expandWorkout: jest.fn(),
       startRestTimer: jest.fn(),
       clearRestTimer: jest.fn(),
-    });
+    } as ReturnType<typeof useWorkoutStore>);
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: {
         routineId: 'routine-1',
@@ -113,7 +186,7 @@ describe('WorkoutScreen', () => {
       refreshPreview,
     });
 
-    render(<WorkoutScreen />);
+    render(<WorkoutScreen {...props} />);
 
     expect(refreshPreview).toHaveBeenCalledTimes(1);
     expect(
@@ -130,9 +203,10 @@ describe('WorkoutScreen', () => {
   });
 
   it('shows the current workout state on the home tab while a session is active', () => {
+    const props = createWorkoutTabScreenProps();
     const expandWorkout = jest.fn();
 
-    mockUseWorkoutStore.mockReturnValue({
+    mockWorkoutStoreState({
       isWorkoutActive: true,
       isWorkoutCollapsed: true,
       activeSession: {
@@ -156,7 +230,7 @@ describe('WorkoutScreen', () => {
       expandWorkout,
       startRestTimer: jest.fn(),
       clearRestTimer: jest.fn(),
-    });
+    } as ReturnType<typeof useWorkoutStore>);
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: {
         routineId: 'routine-2',
@@ -170,7 +244,7 @@ describe('WorkoutScreen', () => {
       refreshPreview: jest.fn(),
     });
 
-    render(<WorkoutScreen />);
+    render(<WorkoutScreen {...props} />);
 
     expect(screen.getByText('Current Workout')).toBeTruthy();
     expect(screen.getByText('Continue')).toBeTruthy();
@@ -183,6 +257,7 @@ describe('WorkoutScreen', () => {
   });
 
   it('renders the active workout session and forwards set editing actions', () => {
+    const props = createWorkoutActiveScreenProps();
     const addExercise = jest.fn();
     const removeExercise = jest.fn();
     const addSet = jest.fn();
@@ -192,7 +267,7 @@ describe('WorkoutScreen', () => {
     const toggleSetLogged = jest.fn();
     const completeWorkout = jest.fn().mockReturnValue(true);
 
-    mockUseWorkoutStore.mockReturnValue({
+    mockWorkoutStoreState({
       isWorkoutActive: true,
       isWorkoutCollapsed: false,
       activeSession: null,
@@ -202,7 +277,7 @@ describe('WorkoutScreen', () => {
       expandWorkout: jest.fn(),
       startRestTimer: jest.fn(),
       clearRestTimer: jest.fn(),
-    });
+    } as ReturnType<typeof useWorkoutStore>);
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: null,
       startWorkoutFromSchedule: jest.fn(),
@@ -245,7 +320,7 @@ describe('WorkoutScreen', () => {
       completeWorkout,
     });
 
-    render(<WorkoutActiveScreen />);
+    render(<WorkoutActiveScreen {...props} />);
 
     expect(screen.getByText('Push A')).toBeTruthy();
     expect(screen.getAllByText('Bench Press').length).toBeGreaterThan(0);
@@ -258,7 +333,7 @@ describe('WorkoutScreen', () => {
     fireEvent.changeText(weightInput, '140.5');
     fireEvent(weightInput, 'endEditing');
     fireEvent.press(screen.getByLabelText('Log Bench Press set 1'));
-    fireEvent.press(screen.getByText('Add Set'));
+    fireEvent.press(screen.getByText('Add set'));
     fireEvent.press(screen.getByLabelText('Delete Bench Press set 1'));
     fireEvent.press(screen.getByLabelText('Options for Bench Press'));
     fireEvent.press(screen.getByText('Complete Workout'));
@@ -273,6 +348,7 @@ describe('WorkoutScreen', () => {
   });
 
   it('allows adding ad hoc exercises during a scheduled workout', () => {
+    const props = createWorkoutActiveScreenProps();
     const addExercise = jest.fn();
 
     mockUseExercises.mockReturnValue({
@@ -293,7 +369,7 @@ describe('WorkoutScreen', () => {
       updateExercise: jest.fn(),
       deleteExercise: jest.fn(),
     });
-    mockUseWorkoutStore.mockReturnValue({
+    mockWorkoutStoreState({
       isWorkoutActive: true,
       isWorkoutCollapsed: false,
       activeSession: null,
@@ -303,7 +379,7 @@ describe('WorkoutScreen', () => {
       expandWorkout: jest.fn(),
       startRestTimer: jest.fn(),
       clearRestTimer: jest.fn(),
-    });
+    } as ReturnType<typeof useWorkoutStore>);
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: null,
       startWorkoutFromSchedule: jest.fn(),
@@ -346,7 +422,7 @@ describe('WorkoutScreen', () => {
       completeWorkout: jest.fn().mockReturnValue(true),
     });
 
-    render(<WorkoutActiveScreen />);
+    render(<WorkoutActiveScreen {...props} />);
 
     fireEvent.press(screen.getByLabelText('Add exercise'));
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
@@ -355,6 +431,7 @@ describe('WorkoutScreen', () => {
   });
 
   it('allows adding and removing exercises during a free workout', () => {
+    const props = createWorkoutActiveScreenProps();
     const addExercise = jest.fn();
     const removeExercise = jest.fn();
 
@@ -376,7 +453,7 @@ describe('WorkoutScreen', () => {
       updateExercise: jest.fn(),
       deleteExercise: jest.fn(),
     });
-    mockUseWorkoutStore.mockReturnValue({
+    mockWorkoutStoreState({
       isWorkoutActive: true,
       isWorkoutCollapsed: false,
       activeSession: null,
@@ -386,7 +463,7 @@ describe('WorkoutScreen', () => {
       expandWorkout: jest.fn(),
       startRestTimer: jest.fn(),
       clearRestTimer: jest.fn(),
-    });
+    } as ReturnType<typeof useWorkoutStore>);
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: null,
       startWorkoutFromSchedule: jest.fn(),
@@ -411,7 +488,7 @@ describe('WorkoutScreen', () => {
       completeWorkout: jest.fn().mockReturnValue(true),
     });
 
-    const { rerender } = render(<WorkoutActiveScreen />);
+    const { rerender } = render(<WorkoutActiveScreen {...props} />);
 
     fireEvent.press(screen.getByLabelText('Add exercise'));
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
@@ -454,7 +531,7 @@ describe('WorkoutScreen', () => {
       completeWorkout: jest.fn().mockReturnValue(true),
     });
 
-    rerender(<WorkoutActiveScreen />);
+    rerender(<WorkoutActiveScreen {...props} />);
 
     fireEvent.press(screen.getByLabelText('Options for Goblet Squat'));
 
