@@ -45,7 +45,16 @@ export { StatRow } from './stat-row';
 export type { StatRowProps } from './stat-row';
 
 // ── Typography ────────────────────────────────────────────────────────────────
-export { Heading, Body, Label, Caption, Muted, StatValue } from './typography';
+export {
+  DisplayHeading,
+  Heading,
+  Body,
+  Label,
+  Caption,
+  Meta,
+  Muted,
+  StatValue,
+} from './typography';
 
 // ── Interactive primitives ────────────────────────────────────────────────────
 export { Badge } from './badge';

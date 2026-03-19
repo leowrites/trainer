@@ -107,6 +107,6 @@ describe('ScheduleScreen', () => {
     fireEvent.press(screen.getByLabelText('Expand Upper Split'));
 
     expect(screen.getByText('1. Push A')).toBeTruthy();
-    expect(screen.getByText('Active')).toBeTruthy();
+    expect(screen.getAllByText('Active').length).toBeGreaterThan(0);
   });
 });

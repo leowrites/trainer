@@ -1,21 +1,34 @@
 import { create } from 'zustand';
 
+import {
+  DEFAULT_REST_SECONDS,
+  MAX_REST_SECONDS,
+  MIN_REST_SECONDS,
+} from '@shared/constants';
 import type { ActiveWorkoutSession, ActiveWorkoutSet } from './types';
 
 interface WorkoutState {
   /** Whether there is an active workout session in progress. */
   isWorkoutActive: boolean;
+  /** Whether the active workout view is minimized into a floating launcher. */
+  isWorkoutCollapsed: boolean;
   /** The database record ID of the active workout session, or null when idle. */
   activeSessionId: string | null;
   /** Unix timestamp (ms) when the current session was started, or null when idle. */
   startTime: number | null;
   /** In-memory representation of the active session. */
   activeSession: ActiveWorkoutSession | null;
+  /** Timestamp when the current rest timer ends, or null when no timer is running. */
+  restTimerEndsAt: number | null;
 }
 
 interface WorkoutActions {
   /** Begin a new workout session. */
   startWorkout: (session: ActiveWorkoutSession) => void;
+  /** Minimize the active workout into a floating launcher. */
+  collapseWorkout: () => void;
+  /** Restore the active workout from its minimized launcher. */
+  expandWorkout: () => void;
   /** Append a new exercise block to the active session. */
   addExercise: (exercise: ActiveWorkoutSession['exercises'][number]) => void;
   /** Remove an exercise block from the active session. */
@@ -29,6 +42,10 @@ interface WorkoutActions {
   addSet: (exerciseId: string, newSet: ActiveWorkoutSet) => void;
   /** Remove a set from the active session while preserving the exercise block. */
   deleteSet: (setId: string) => void;
+  /** Start or restart the workout rest timer. */
+  startRestTimer: (durationSeconds?: number) => void;
+  /** Clear any running rest timer. */
+  clearRestTimer: () => void;
   /** End the current workout session and reset all ephemeral state. */
   endWorkout: () => void;
 }
@@ -39,9 +56,11 @@ type WorkoutStore = WorkoutState & WorkoutActions;
 
 const initialState: WorkoutState = {
   isWorkoutActive: false,
+  isWorkoutCollapsed: false,
   activeSessionId: null,
   startTime: null,
   activeSession: null,
+  restTimerEndsAt: null,
 };
 
 // ─── Store ─────────────────────────────────────────────────────────────────────
@@ -58,10 +77,24 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
   startWorkout: (session: ActiveWorkoutSession): void => {
     set({
       isWorkoutActive: true,
+      isWorkoutCollapsed: false,
       activeSessionId: session.id,
       startTime: session.startTime,
       activeSession: session,
+      restTimerEndsAt: null,
     });
+  },
+
+  collapseWorkout: (): void => {
+    set((state) =>
+      state.isWorkoutActive ? { isWorkoutCollapsed: true } : state,
+    );
+  },
+
+  expandWorkout: (): void => {
+    set((state) =>
+      state.isWorkoutActive ? { isWorkoutCollapsed: false } : state,
+    );
   },
 
   addExercise: (exercise): void => {
@@ -87,17 +120,6 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
   removeExercise: (exerciseId): void => {
     set((state) => {
       if (!state.activeSession) {
-        return state;
-      }
-
-      const exercise = state.activeSession.exercises.find(
-        (item) => item.exerciseId === exerciseId,
-      );
-      if (
-        !exercise ||
-        exercise.targetSets !== null ||
-        exercise.targetReps !== null
-      ) {
         return state;
       }
 
@@ -167,6 +189,30 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
         },
       };
     });
+  },
+
+  startRestTimer: (durationSeconds = DEFAULT_REST_SECONDS): void => {
+    set((state) => {
+      if (!state.isWorkoutActive) {
+        return state;
+      }
+
+      const normalizedDuration = Number.isFinite(durationSeconds)
+        ? Math.round(durationSeconds)
+        : DEFAULT_REST_SECONDS;
+      const clampedDuration = Math.min(
+        MAX_REST_SECONDS,
+        Math.max(MIN_REST_SECONDS, normalizedDuration),
+      );
+
+      return {
+        restTimerEndsAt: Date.now() + clampedDuration * 1000,
+      };
+    });
+  },
+
+  clearRestTimer: (): void => {
+    set({ restTimerEndsAt: null });
   },
 
   endWorkout: (): void => {

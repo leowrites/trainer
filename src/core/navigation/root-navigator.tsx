@@ -1,13 +1,24 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer } from '@react-navigation/native';
+import { createNativeBottomTabNavigator } from '@react-navigation/bottom-tabs/unstable';
+import {
+  DefaultTheme,
+  type NavigatorScreenParams,
+  NavigationContainer,
+} from '@react-navigation/native';
+import {
+  createNativeStackNavigator,
+  type NativeStackScreenProps,
+} from '@react-navigation/native-stack';
 import React from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { HistoryScreen } from '@features/analytics';
 import { ProfileScreen } from '@features/health-tracking';
 import { RoutinesScreen } from '@features/routines';
 import { ScheduleScreen } from '@features/schedule';
-import { WorkoutScreen } from '@features/workout-mode';
-import { colors } from '@core/theme';
+import { WorkoutActiveScreen, WorkoutScreen } from '@features/workout-mode';
+import { useWorkoutStore } from '@features/workout-mode/store';
+import { useTheme } from '@core/theme/theme-context';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,26 +30,39 @@ export type RootTabParamList = {
   Profile: undefined;
 };
 
+export type RootStackParamList = {
+  Tabs: NavigatorScreenParams<RootTabParamList>;
+  ActiveWorkout: undefined;
+};
+
 // ─── Navigator ─────────────────────────────────────────────────────────────────
 
-const Tab = createBottomTabNavigator<RootTabParamList>();
+const Tab = createNativeBottomTabNavigator<RootTabParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
-/**
- * Root bottom-tab navigator.
- * Wraps all five primary app tabs: Workout, Routines, Schedule, History, Profile.
- */
-export function RootNavigator(): React.JSX.Element {
+function TabNavigator({
+  navigation,
+}: NativeStackScreenProps<RootStackParamList, 'Tabs'>): React.JSX.Element {
+  const { tokens } = useTheme();
+  const {
+    isWorkoutActive,
+    isWorkoutCollapsed,
+    activeWorkoutTitle,
+    expandWorkout,
+  } = useWorkoutStore(
+    useShallow((state) => ({
+      isWorkoutActive: state.isWorkoutActive,
+      isWorkoutCollapsed: state.isWorkoutCollapsed,
+      activeWorkoutTitle: state.activeSession?.title ?? 'Workout',
+      expandWorkout: state.expandWorkout,
+    })),
+  );
+
   return (
-    <NavigationContainer>
+    <View className="flex-1" style={{ backgroundColor: tokens.bgBase }}>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
-          tabBarStyle: {
-            backgroundColor: colors.surface.card,
-            borderTopColor: colors.surface.elevated,
-          },
-          tabBarActiveTintColor: colors.primary[400],
-          tabBarInactiveTintColor: colors.text.secondary,
         }}
       >
         <Tab.Screen name="Workout" component={WorkoutScreen} />
@@ -47,6 +71,69 @@ export function RootNavigator(): React.JSX.Element {
         <Tab.Screen name="History" component={HistoryScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
+
+      {isWorkoutActive && isWorkoutCollapsed ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Return to ${activeWorkoutTitle}`}
+          className="absolute bottom-24 right-5 h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-surface-card"
+          onPress={() => {
+            expandWorkout();
+            navigation.navigate('ActiveWorkout');
+          }}
+        >
+          <Text className="font-heading text-2xl text-foreground">W</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Root navigation with tabs as the base shell and workout mode promoted to a
+ * dedicated full-screen native stack screen.
+ */
+export function RootNavigator(): React.JSX.Element {
+  const { tokens } = useTheme();
+
+  const navigationTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      primary: tokens.accent,
+      background: tokens.bgBase,
+      card: tokens.bgCard,
+      text: tokens.textPrimary,
+      border: tokens.bgBorder,
+      notification: tokens.secondary,
+    },
+  };
+
+  return (
+    <NavigationContainer theme={navigationTheme}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen name="Tabs" component={TabNavigator} />
+        <Stack.Screen
+          name="ActiveWorkout"
+          component={WorkoutActiveScreen}
+          options={{
+            headerShown: true,
+            title: '',
+            headerTintColor: tokens.textPrimary,
+            headerBackButtonDisplayMode: 'minimal',
+            headerStyle: {
+              backgroundColor: tokens.bgBase,
+            },
+            contentStyle: {
+              backgroundColor: tokens.bgBase,
+            },
+          }}
+        />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

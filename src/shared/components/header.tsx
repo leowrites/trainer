@@ -57,13 +57,12 @@ export function Header({
   return (
     <Box
       className={`flex-row items-end justify-between pb-6 mb-8 ${className}`}
-      style={{ borderBottomWidth: 1, borderBottomColor: tokens.bgBorder }}
       accessibilityRole="header"
     >
       {/* Left — logo / title */}
       <Box>
         <Text
-          className="text-[36px] font-bold leading-tight"
+          className="font-heading text-4xl font-bold leading-[42px] tracking-[-1.5px]"
           style={{ color: tokens.textPrimary }}
           accessibilityRole="header"
         >
@@ -74,7 +73,7 @@ export function Header({
         </Text>
         {subtitle !== undefined && subtitle !== '' ? (
           <Text
-            className="text-[11px] mt-0.5"
+            className="mt-1 max-w-[220px] font-body text-sm leading-[19px]"
             style={{ color: tokens.textMuted }}
           >
             {subtitle}
@@ -88,7 +87,7 @@ export function Header({
         <Box className="items-end">
           {metaLabel !== undefined && metaLabel !== '' ? (
             <Text
-              className="text-[13px] font-semibold"
+              className="font-mono text-xs uppercase tracking-[1.8px]"
               style={{ color: tokens.secondary }}
             >
               {metaLabel}
@@ -96,7 +95,7 @@ export function Header({
           ) : null}
           {metaDetail !== undefined && metaDetail !== '' ? (
             <Text
-              className="text-[11px] mt-0.5"
+              className="mt-1 font-mono text-2xs uppercase tracking-[1.5px]"
               style={{ color: tokens.textMuted }}
             >
               {metaDetail}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 
-import { Card, Caption, Muted, StatRow } from '@shared/components';
+import { Body, Card, Caption, Heading, Muted } from '@shared/components';
 import { formatCompactNumber } from '../formatters';
 import type { TrendPoint } from '../types';
 
@@ -37,27 +37,37 @@ export function TrendCard({
   );
 
   return (
-    <Card label={title} className="mb-4 rounded-xl">
+    <Card label={title} className="mb-4 rounded-[24px] px-5 py-5">
       {latestPoint ? (
         <>
-          <StatRow
-            value={formatCompactNumber(latestPoint.value)}
-            unit={unit}
-            sub={`Last ${points.length} workout days`}
-          />
+          <View>
+            <View className="flex-row items-end gap-2">
+              <Heading className="text-4xl leading-[42px] text-foreground">
+                {formatCompactNumber(latestPoint.value)}
+              </Heading>
+              <Body className="pb-1 text-sm font-semibold uppercase text-muted-foreground">
+                {unit}
+              </Body>
+            </View>
+            <Muted className="mt-1 text-xs leading-[16px] text-muted-foreground">
+              Last {points.length} workout days
+            </Muted>
+          </View>
 
-          <View className="mt-4 flex-row items-end gap-2">
+          <View className="mt-5 flex-row items-end gap-3">
             {points.map((point: TrendPoint) => (
               <View key={point.key} className="flex-1 items-center">
-                <View className="h-16 w-full justify-end rounded-lg bg-surface-elevated px-1 pb-1">
+                <View className="h-[72px] w-full justify-end rounded-[16px] bg-surface-elevated px-2 pb-2">
                   <View
-                    className={`w-full rounded-md ${accentClassName}`}
+                    className={`w-full rounded-[10px] ${accentClassName}`}
                     style={{
                       height: buildBarHeight(point.value, maxValue),
                     }}
                   />
                 </View>
-                <Caption className="mt-2">{point.label}</Caption>
+                <Caption className="mt-2 text-xs text-muted-foreground">
+                  {point.label}
+                </Caption>
               </View>
             ))}
           </View>

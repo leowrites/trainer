@@ -37,33 +37,33 @@ cssInterop(PrimitiveIcon, {
 });
 
 const buttonStyle = tva({
-  base: 'group/button rounded bg-primary-500 flex-row items-center justify-center data-[focus-visible=true]:web:outline-none data-[focus-visible=true]:web:ring-2 data-[disabled=true]:opacity-40 gap-2',
+  base: 'group/button rounded-[20px] border border-surface-border/80 bg-primary-500 flex-row items-center justify-center data-[focus-visible=true]:web:outline-none data-[focus-visible=true]:web:ring-2 data-[disabled=true]:opacity-40 gap-1.5',
   variants: {
     action: {
       primary:
-        'bg-primary-500 data-[hover=true]:bg-primary-600 data-[active=true]:bg-primary-700 border-primary-300 data-[hover=true]:border-primary-400 data-[active=true]:border-primary-500 data-[focus-visible=true]:web:ring-indicator-info',
+        'bg-primary-500 data-[hover=true]:bg-primary-500 data-[active=true]:bg-primary-600 border-primary-400 data-[hover=true]:border-primary-400 data-[active=true]:border-primary-500 data-[focus-visible=true]:web:ring-indicator-info',
       secondary:
-        'bg-secondary-500 border-secondary-300 data-[hover=true]:bg-secondary-600 data-[hover=true]:border-secondary-400 data-[active=true]:bg-secondary-700 data-[active=true]:border-secondary-700 data-[focus-visible=true]:web:ring-indicator-info',
+        'bg-surface-card border-surface-border data-[hover=true]:bg-surface-elevated data-[active=true]:bg-surface-elevated data-[focus-visible=true]:web:ring-indicator-info',
       positive:
         'bg-success-500 border-success-300 data-[hover=true]:bg-success-600 data-[hover=true]:border-success-400 data-[active=true]:bg-success-700 data-[active=true]:border-success-500 data-[focus-visible=true]:web:ring-indicator-info',
       negative:
         'bg-error-500 border-error-300 data-[hover=true]:bg-error-600 data-[hover=true]:border-error-400 data-[active=true]:bg-error-700 data-[active=true]:border-error-500 data-[focus-visible=true]:web:ring-indicator-info',
       default:
-        'bg-transparent data-[hover=true]:bg-background-50 data-[active=true]:bg-transparent',
+        'bg-surface-card border-surface-border/80 data-[hover=true]:bg-surface-elevated data-[active=true]:bg-surface-elevated',
     },
     variant: {
       link: 'px-0',
       outline:
-        'bg-transparent border data-[hover=true]:bg-background-50 data-[active=true]:bg-transparent',
+        'bg-surface-card border border-surface-border/80 data-[hover=true]:bg-surface-elevated data-[active=true]:bg-surface-elevated',
       solid: '',
     },
 
     size: {
       xs: 'px-3.5 h-8',
-      sm: 'px-4 h-9',
-      md: 'px-5 h-10',
-      lg: 'px-6 h-11',
-      xl: 'px-7 h-12',
+      sm: 'px-4 h-10',
+      md: 'px-5 h-12',
+      lg: 'px-6 h-[52px]',
+      xl: 'px-7 h-14',
     },
   },
   compoundVariants: [
@@ -119,7 +119,7 @@ const buttonStyle = tva({
 });
 
 const buttonTextStyle = tva({
-  base: 'text-typography-0 font-semibold web:select-none',
+  base: 'text-typography-0 font-body font-semibold tracking-tight web:select-none',
   parentVariants: {
     action: {
       primary:
@@ -150,7 +150,7 @@ const buttonTextStyle = tva({
       variant: 'solid',
       action: 'primary',
       class:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0',
+        'text-black data-[hover=true]:text-black data-[active=true]:text-black',
     },
     {
       variant: 'solid',

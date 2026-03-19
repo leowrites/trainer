@@ -195,7 +195,7 @@ describe('useWorkoutStarter', () => {
       1,
       10,
     ]);
-    expect(db.runSync).toHaveBeenCalledWith(
+    expect(db.runSync).not.toHaveBeenCalledWith(
       'UPDATE schedules SET current_position = ? WHERE id = ?',
       [0, 'schedule-1'],
     );

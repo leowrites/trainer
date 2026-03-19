@@ -1,22 +1,23 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
 import {
   ActionRow,
-  Badge,
   Body,
   Button,
   Caption,
   Card,
   Checkbox,
   Container,
-  DisclosureCard,
+  DisplayHeading,
   Heading,
   Input,
   Label,
   Muted,
+  Meta,
+  Surface,
 } from '@shared/components';
 import { useRoutines } from '@features/routines';
 import type { Schedule, ScheduleEntry } from '@core/database/types';
@@ -48,6 +49,9 @@ function ScheduleRow({
 }: ScheduleRowProps): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
+  const routineCount = expanded
+    ? entries.length
+    : getScheduleEntries(item.id).length;
 
   // Re-fetch entries whenever the mutation version changes (covers
   // updateSchedule, deleteSchedule, setActiveSchedule, etc.) or the
@@ -70,66 +74,96 @@ function ScheduleRow({
   };
 
   return (
-    <DisclosureCard
-      title={item.name}
-      expanded={expanded}
-      onToggle={handleToggleExpand}
-      accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${item.name}`}
-      headerMeta={
-        item.is_active ? (
-          <Badge variant="accent" className="mt-1 self-start">
-            Active
-          </Badge>
-        ) : (
-          <Caption className="mt-0.5">Inactive</Caption>
-        )
-      }
-      actions={
-        <>
-          {!item.is_active && (
-            <Button
-              variant="ghost"
-              size="sm"
-              accessibilityLabel={`Set ${item.name} as active`}
-              onPress={() => onActivate(item.id)}
-            >
-              Set Active
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            accessibilityLabel={`Edit ${item.name}`}
-            onPress={() => onEdit(item)}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            accessibilityLabel={`Delete ${item.name}`}
-            onPress={() => onDelete(item.id)}
-          >
-            Delete
-          </Button>
-        </>
-      }
+    <Surface
+      variant="card"
+      className="mx-0 mb-3 overflow-hidden rounded-[24px] border border-surface-border/80 p-0"
     >
-      {entries.length === 0 ? (
-        <Muted className="pt-1">No routines in this schedule.</Muted>
-      ) : (
-        entries.map((entry: ScheduleEntry, idx: number) => {
-          const routine = routines.find(
-            (r: Routine) => r.id === entry.routine_id,
-          );
-          return (
-            <Body key={entry.id} className="pt-2">
-              {idx + 1}. {routine ? routine.name : entry.routine_id}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${item.name}`}
+        onPress={handleToggleExpand}
+        className="px-5 py-5"
+      >
+        <View className="flex-row items-start justify-between gap-3">
+          <View className="flex-1">
+            <Body className="font-heading text-2xl leading-[24px]">
+              {item.name}
             </Body>
-          );
-        })
-      )}
-    </DisclosureCard>
+            <Meta className="mt-1">
+              {routineCount} routine{routineCount === 1 ? '' : 's'}
+            </Meta>
+          </View>
+          <View className="items-end">
+            <Label className={item.is_active ? 'text-secondary' : ''}>
+              {item.is_active ? 'Active' : 'Inactive'}
+            </Label>
+            <Caption className="mt-1 text-muted-foreground">
+              {expanded ? 'Collapse' : 'Expand'}
+            </Caption>
+          </View>
+        </View>
+      </Pressable>
+
+      {expanded ? (
+        <View className="border-t border-surface-border/70 px-5 pb-5 pt-4">
+          {entries.length === 0 ? (
+            <Muted className="text-sm leading-[17px]">
+              No routines in this schedule.
+            </Muted>
+          ) : (
+            entries.map((entry: ScheduleEntry, idx: number) => {
+              const routine = routines.find(
+                (r: Routine) => r.id === entry.routine_id,
+              );
+              return (
+                <View
+                  key={entry.id}
+                  className={
+                    idx === 0 ? 'pb-2' : 'border-t border-surface-border py-2'
+                  }
+                >
+                  <Body className="text-sm leading-[18px]">
+                    {idx + 1}. {routine ? routine.name : entry.routine_id}
+                  </Body>
+                </View>
+              );
+            })
+          )}
+
+          <View className="mt-4 border-t border-surface-border/70 pt-4">
+            <View className="gap-2">
+              {!item.is_active ? (
+                <Button
+                  size="sm"
+                  className="w-full"
+                  accessibilityLabel={`Set ${item.name} as active`}
+                  onPress={() => onActivate(item.id)}
+                >
+                  Set Active
+                </Button>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full"
+                accessibilityLabel={`Edit ${item.name}`}
+                onPress={() => onEdit(item)}
+              >
+                Edit
+              </Button>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${item.name}`}
+              className="mt-3 self-start px-1 py-1"
+              onPress={() => onDelete(item.id)}
+            >
+              <Caption className="text-muted-foreground">Delete</Caption>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+    </Surface>
   );
 }
 
@@ -147,6 +181,11 @@ export function ScheduleScreen(): React.JSX.Element {
     deleteSchedule,
   } = useSchedules();
   const { routines, refresh: refreshRoutines } = useRoutines();
+  const activeSchedule =
+    schedules.find((schedule: Schedule) => schedule.is_active === 1) ?? null;
+  const activeEntries = activeSchedule
+    ? getScheduleEntries(activeSchedule.id)
+    : [];
 
   // ── Create form state ──
   const [showForm, setShowForm] = useState(false);
@@ -222,18 +261,42 @@ export function ScheduleScreen(): React.JSX.Element {
   };
 
   return (
-    <Container className="pt-14">
-      {/* Header */}
-      <View className="pb-4">
-        <Heading>Schedules</Heading>
-        <Muted className="mt-1">
-          Arrange routines into a rotating schedule (A → B → C → A)
-        </Muted>
+    <Container className="px-0 pb-0" edges={['top']}>
+      <View className="border-surface-border px-0 pb-3">
+        <View accessibilityRole="header" className="gap-2">
+          <Heading className="text-4xl leading-[36px]">Schedule</Heading>
+          <Muted className="text-sm leading-[19px]">
+            Arrange routines into a steady rotation and keep the next session
+            predictable.
+          </Muted>
+        </View>
       </View>
 
-      {/* Inline edit form */}
+      <View className="py-3">
+        <Surface variant="card" className="mx-0 rounded-[24px] px-5 py-5">
+          <View className="mb-3 flex-row items-center justify-between gap-3">
+            <Meta>{activeSchedule ? 'Active Schedule' : 'Schedule Setup'}</Meta>
+            <Meta className="text-foreground">
+              {activeSchedule
+                ? `${activeEntries.length} routines`
+                : `${routines.length} routines`}
+            </Meta>
+          </View>
+          <DisplayHeading className="text-[28px] leading-[30px]">
+            {activeSchedule?.name ?? 'No active schedule'}
+          </DisplayHeading>
+          <Muted className="mt-3 text-sm leading-[18px]">
+            {activeSchedule
+              ? activeSchedule.current_position >= 0
+                ? `Rotation position ${activeSchedule.current_position + 1}`
+                : 'Ready to start from the first routine.'
+              : 'Create a schedule to queue your next workout from the routines you already trust.'}
+          </Muted>
+        </Surface>
+      </View>
+
       {editingSchedule ? (
-        <Card label="Edit Schedule" className="mb-4 rounded-xl">
+        <Card label="Edit Schedule" className="mx-0 mb-3 rounded-[24px] p-5">
           <Input
             className="mb-4"
             placeholder="Schedule name"
@@ -276,6 +339,7 @@ export function ScheduleScreen(): React.JSX.Element {
       <FlatList
         data={schedules}
         keyExtractor={(item: Schedule) => item.id}
+        contentContainerStyle={{ paddingHorizontal: 0, paddingBottom: 12 }}
         renderItem={({ item }: { item: Schedule }) => (
           <ScheduleRow
             item={item}
@@ -288,13 +352,13 @@ export function ScheduleScreen(): React.JSX.Element {
           />
         )}
         ListEmptyComponent={
-          <Muted className="text-center mt-8">
+          <Muted className="mt-3 px-0 text-center text-sm leading-[18px]">
             No schedules yet. Create one below.
           </Muted>
         }
         ListFooterComponent={
           showForm ? (
-            <Card label="New Schedule" className="mt-4 rounded-xl">
+            <Card label="New Schedule" className="mx-0 mt-3 rounded-[20px] p-4">
               <Input
                 className="mb-4"
                 placeholder="Schedule name (e.g. Push/Pull Split)"
@@ -337,7 +401,7 @@ export function ScheduleScreen(): React.JSX.Element {
           ) : (
             <Button
               variant="ghost"
-              className="mt-4 w-full"
+              className="mx-0 mt-3 w-full rounded-[20px]"
               onPress={() => setShowForm(true)}
             >
               + New Schedule

@@ -60,7 +60,7 @@ describe('RoutinesScreen', () => {
       screen.getByPlaceholderText('Muscle group (e.g. Chest)'),
       ' Chest ',
     );
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('Save exercise'));
 
     expect(createExercise).toHaveBeenCalledWith({
       name: 'Bench Press',
@@ -101,6 +101,7 @@ describe('RoutinesScreen', () => {
     fireEvent.press(screen.getByLabelText('routines'));
     fireEvent.press(screen.getByLabelText('Expand Push A'));
 
-    expect(screen.getByText('Bench Press — 3 × 10')).toBeTruthy();
+    expect(screen.getAllByText('Bench Press').length).toBeGreaterThan(0);
+    expect(screen.getByText('3 × 10')).toBeTruthy();
   });
 });

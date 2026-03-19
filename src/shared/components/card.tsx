@@ -48,15 +48,15 @@ export function Card({
 }: CardProps): React.JSX.Element {
   const content = (
     <GluestackCard
-      className={`border border-surface-border bg-surface-card ${className}`}
+      className={`rounded-[28px] border border-surface-border/80 bg-surface-card px-5 py-5 ${className}`}
       style={style}
     >
       {label !== undefined && label !== '' ? (
-        <Box className="flex-row items-center mb-3">
+        <Box className="mb-5 flex-row items-center">
           <Box className="mr-2">
-            <Label>{label}</Label>
+            <Label className="text-muted-foreground">{label}</Label>
           </Box>
-          <Box className="h-px flex-1 bg-surface-border" />
+          <Box className="h-px flex-1 bg-surface-border/70" />
         </Box>
       ) : null}
       {children}
@@ -67,7 +67,7 @@ export function Card({
     return (
       <Pressable
         style={({ pressed }: PressableStateCallbackType) => [
-          { opacity: pressed ? 0.85 : 1 },
+          { opacity: pressed ? 0.92 : 1 },
         ]}
         onPress={onPress}
         accessibilityRole="button"

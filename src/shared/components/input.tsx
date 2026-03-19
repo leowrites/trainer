@@ -65,7 +65,7 @@ export function Input({
 
   return (
     <TextInput
-      className={`rounded-lg px-4 py-3 text-[13px] ${className}`}
+      className={`rounded-[18px] px-4 py-3.5 text-sm font-mono ${className}`}
       style={{
         backgroundColor: tokens.bgElevated,
         color: tokens.textPrimary,

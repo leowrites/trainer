@@ -30,10 +30,10 @@ export function BodyWeightEntryCard({
   onDelete,
 }: BodyWeightEntryCardProps): React.JSX.Element {
   return (
-    <Card className="rounded-2xl">
+    <Card className="rounded-[24px] px-5 py-5">
       <View className="flex-row items-start justify-between gap-4">
         <View className="flex-1">
-          <Label>Logged</Label>
+          <Label className="text-muted-foreground">Logged</Label>
           <Body className="mt-1">{formatLoggedAtLabel(entry.loggedAt)}</Body>
           <Caption className="mt-1">
             {isEditing
@@ -43,8 +43,8 @@ export function BodyWeightEntryCard({
         </View>
 
         <View className="items-end">
-          <Label>Weight</Label>
-          <StatValue className="mt-1 text-[30px]">
+          <Label className="text-muted-foreground">Weight</Label>
+          <StatValue className="mt-1 text-3xl">
             {formatBodyWeightValue(entry.weight)}
           </StatValue>
           <Caption className="mt-1 uppercase">{entry.unit}</Caption>
@@ -57,11 +57,10 @@ export function BodyWeightEntryCard({
         <Muted className="mt-4">No notes for this entry.</Muted>
       )}
 
-      <View className="mt-4 flex-row gap-2">
+      <View className="mt-5 flex-row items-center justify-end gap-2">
         <Button
           variant={isEditing ? 'secondary' : 'ghost'}
           size="sm"
-          className="flex-1"
           onPress={() => onEdit(entry)}
           accessibilityLabel={`Edit ${formatLoggedAtLabel(entry.loggedAt)}`}
         >
@@ -70,7 +69,6 @@ export function BodyWeightEntryCard({
         <Button
           variant="danger"
           size="sm"
-          className="flex-1"
           onPress={() => onDelete(entry.id)}
           accessibilityLabel={`Delete ${formatLoggedAtLabel(entry.loggedAt)}`}
         >
