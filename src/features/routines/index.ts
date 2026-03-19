@@ -8,6 +8,7 @@
 export { RoutinesScreen } from './screens/routines-screen';
 export { ExerciseDetailScreen } from './screens/exercise-detail-screen';
 export type { ExerciseDetailScreenProps } from './screens/exercise-detail-screen';
+export type { RoutinesStackParamList } from './types';
 export { useExercises } from './hooks/use-exercises';
 export { useRoutines } from './hooks/use-routines';
 export type {

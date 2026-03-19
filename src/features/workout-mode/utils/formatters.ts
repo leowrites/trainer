@@ -43,15 +43,17 @@ export function formatRestCountdown(ms: number): string {
 export const SWIPE_ACTION_WIDTH = 72;
 export const EXERCISE_TIMER_OPTIONS = [30, 60, 90, 120] as const;
 
+const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+});
+
 export function formatShortDate(timestamp: number | null): string {
   if (timestamp === null) {
     return 'No workouts yet';
   }
 
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-  }).format(timestamp);
+  return shortDateFormatter.format(timestamp);
 }
 
 export function formatTimerDuration(seconds: number): string {

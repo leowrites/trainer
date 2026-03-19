@@ -124,7 +124,8 @@ export function WorkoutSetRow({
           isDeleteActionVisible ? 'yes' : 'no-hide-descendants'
         }
         testID={`delete-set-${setItem.id}`}
-        className="absolute bottom-0 right-0 top-0 w-[72px] items-center justify-center rounded-[16px] bg-error"
+        className="absolute bottom-0 right-0 top-0 items-center justify-center rounded-[16px] bg-error"
+        style={{ width: SWIPE_ACTION_WIDTH }}
         onPress={() => {
           closeSwipe();
           onDelete();
