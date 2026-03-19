@@ -30,6 +30,7 @@ export function useRoutines(): {
   routines: Routine[];
   refresh: () => void;
   getRoutineExercises: (routineId: string) => RoutineExercise[];
+  getRoutineExerciseCounts: () => Record<string, number>;
   createRoutine: (input: NewRoutineInput) => Routine;
   updateRoutine: (id: string, input: NewRoutineInput) => void;
   deleteRoutine: (id: string) => void;
@@ -58,6 +59,20 @@ export function useRoutines(): {
     },
     [db],
   );
+
+  const getRoutineExerciseCounts = useCallback((): Record<string, number> => {
+    const rows = db.getAllSync<{
+      routine_id: string;
+      exercise_count: number;
+    }>(
+      'SELECT routine_id, COUNT(*) AS exercise_count FROM routine_exercises GROUP BY routine_id',
+    );
+
+    return rows.reduce<Record<string, number>>((accumulator, row) => {
+      accumulator[row.routine_id] = row.exercise_count;
+      return accumulator;
+    }, {});
+  }, [db]);
 
   const createRoutine = useCallback(
     (input: NewRoutineInput): Routine => {
@@ -133,6 +148,7 @@ export function useRoutines(): {
     routines,
     refresh,
     getRoutineExercises,
+    getRoutineExerciseCounts,
     createRoutine,
     updateRoutine,
     deleteRoutine,

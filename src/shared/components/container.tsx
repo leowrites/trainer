@@ -43,7 +43,7 @@ export function Container({
 }: ContainerProps): React.JSX.Element {
   return (
     <SafeAreaView
-      edges={edges ?? ['top', 'left', 'right']}
+      edges={edges ?? ['left', 'right']}
       className={`px-4 pb-0 flex-1 w-full bg-surface web:self-center web:max-w-5xl ${className}`}
       style={style}
       accessibilityRole="none"

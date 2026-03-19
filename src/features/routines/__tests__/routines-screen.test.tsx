@@ -1,14 +1,22 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import React, { type ForwardedRef, type PropsWithChildren } from 'react';
 
 import { RoutinesScreen } from '../screens/routines-screen';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutineInsights } from '../hooks/use-routine-insights';
 import { useRoutines } from '../hooks/use-routines';
 
-jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: (callback: () => void) => callback(),
-}));
+void React;
+
+jest.mock('@react-navigation/native', () => {
+  const actual = jest.requireActual('@react-navigation/native');
+
+  return {
+    ...actual,
+    useFocusEffect: (callback: () => void) => callback(),
+  };
+});
 
 jest.mock('../hooks/use-exercises', () => ({
   useExercises: jest.fn(),
@@ -22,9 +30,41 @@ jest.mock('../hooks/use-routines', () => ({
   useRoutines: jest.fn(),
 }));
 
+jest.mock('@lodev09/react-native-true-sheet', () => {
+  const React = require('react');
+  const ReactNative = require('react-native');
+
+  return {
+    TrueSheet: React.forwardRef(
+      (
+        { children }: PropsWithChildren,
+        ref: ForwardedRef<{
+          present: () => Promise<void>;
+          dismiss: () => Promise<void>;
+        }>,
+      ) => {
+        React.useImperativeHandle(ref, () => ({
+          present: async () => undefined,
+          dismiss: async () => undefined,
+        }));
+
+        return <ReactNative.View>{children}</ReactNative.View>;
+      },
+    ),
+  };
+});
+
 const mockUseExercises = jest.mocked(useExercises);
 const mockUseRoutineInsights = jest.mocked(useRoutineInsights);
 const mockUseRoutines = jest.mocked(useRoutines);
+
+function renderScreen(): ReturnType<typeof render> {
+  return render(
+    <NavigationContainer>
+      <RoutinesScreen />
+    </NavigationContainer>,
+  );
+}
 
 describe('RoutinesScreen', () => {
   beforeEach(() => {
@@ -92,9 +132,10 @@ describe('RoutinesScreen', () => {
       updateRoutine: jest.fn(),
       deleteRoutine: jest.fn(),
       getRoutineExercises: jest.fn().mockReturnValue([]),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
     });
 
-    render(<RoutinesScreen />);
+    renderScreen();
 
     expect(refreshExercises).toHaveBeenCalledTimes(1);
     expect(refreshRoutines).toHaveBeenCalledTimes(1);
@@ -148,12 +189,14 @@ describe('RoutinesScreen', () => {
       updateRoutine: jest.fn(),
       deleteRoutine: jest.fn(),
       getRoutineExercises: jest.fn().mockReturnValue([]),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
     });
 
-    render(<RoutinesScreen />);
+    renderScreen();
 
     fireEvent.press(screen.getByLabelText('Open Bench Press'));
 
+    expect(screen.getByText('Edit Exercise')).toBeTruthy();
     expect(screen.getByText('How To')).toBeTruthy();
     expect(
       screen.getByText('Drive your feet and keep the bar path stacked.'),
@@ -211,12 +254,17 @@ describe('RoutinesScreen', () => {
           target_reps: 8,
         },
       ]),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({
+        'routine-1': 2,
+      }),
     });
 
-    render(<RoutinesScreen />);
+    renderScreen();
 
     fireEvent.press(screen.getByLabelText('routines'));
     fireEvent.press(screen.getByLabelText('Open Push A'));
+    expect(screen.getByText('Edit Routine')).toBeTruthy();
+    fireEvent.press(screen.getByText('Edit Routine'));
     fireEvent.press(screen.getByLabelText('Move Overhead Press up'));
     fireEvent.press(screen.getByText('Save Routine'));
 

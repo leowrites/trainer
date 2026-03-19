@@ -21,7 +21,7 @@
  * ```
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { PressableStateCallbackType, ViewProps } from 'react-native';
 
 import { Box } from '@shared/ui/box';
@@ -46,9 +46,12 @@ export function Card({
   onPress,
   accessibilityLabel,
 }: CardProps): React.JSX.Element {
+  const [isPressed, setIsPressed] = useState(false);
   const content = (
     <GluestackCard
-      className={`rounded-[28px] border border-surface-border/80 bg-surface-card px-5 py-5 ${className}`}
+      className={`rounded-[28px] px-5 py-5 ${
+        isPressed ? 'bg-surface-elevated' : 'bg-surface-card'
+      } ${className}`}
       style={style}
     >
       {label !== undefined && label !== '' ? (
@@ -67,9 +70,14 @@ export function Card({
     return (
       <Pressable
         style={({ pressed }: PressableStateCallbackType) => [
-          { opacity: pressed ? 0.92 : 1 },
+          {
+            opacity: pressed ? 0.96 : 1,
+            transform: [{ scale: pressed ? 0.975 : 1 }],
+          },
         ]}
         onPress={onPress}
+        onPressIn={() => setIsPressed(true)}
+        onPressOut={() => setIsPressed(false)}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
       >
