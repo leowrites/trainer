@@ -379,9 +379,7 @@ function WorkoutSetRow({
         >
           <Text
             className={`font-body text-sm font-semibold ${
-              setItem.isCompleted
-                ? 'text-accent-foreground'
-                : 'text-foreground'
+              setItem.isCompleted ? 'text-accent-foreground' : 'text-foreground'
             }`}
           >
             Log
