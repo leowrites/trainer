@@ -15,6 +15,10 @@ jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (callback: () => void) => callback(),
 }));
 
+jest.mock('@react-navigation/elements', () => ({
+  useHeaderHeight: () => 96,
+}));
+
 jest.mock('react-native-safe-area-context', () => {
   const ReactNative = require('react-native');
 
