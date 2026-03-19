@@ -49,7 +49,7 @@ import { useTheme } from '@core/theme/theme-context';
 import { useActiveWorkout } from '../hooks/use-active-workout';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
 import { usePreviousExercisePerformance } from '../hooks/use-previous-exercise-performance';
-import { useWorkoutStore } from '../store';
+import { DEFAULT_EXERCISE_TIMER_SECONDS, useWorkoutStore } from '../store';
 import {
   type ActiveWorkoutSet,
   type PreviousExercisePerformance,
@@ -102,7 +102,6 @@ function formatRestCountdown(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-const EXERCISE_TIMER_SECONDS = 60;
 const SWIPE_ACTION_WIDTH = 72;
 const EXERCISE_TIMER_OPTIONS = [30, 60, 90, 120] as const;
 
@@ -239,6 +238,9 @@ function WorkoutSetRow({
   const [repsText, setRepsText] = useState(String(setItem.reps));
   const [weightText, setWeightText] = useState(String(setItem.weight));
   const translateX = React.useRef(new Animated.Value(0)).current;
+  const offsetRef = React.useRef(0);
+  const dragStartOffsetRef = React.useRef(0);
+  const [isDeleteActionVisible, setIsDeleteActionVisible] = useState(false);
 
   useEffect(() => {
     setRepsText(String(setItem.reps));
@@ -257,6 +259,8 @@ function WorkoutSetRow({
   }, [onUpdateWeight, weightText]);
 
   const closeSwipe = useCallback((): void => {
+    offsetRef.current = 0;
+    setIsDeleteActionVisible(false);
     Animated.spring(translateX, {
       toValue: 0,
       useNativeDriver: true,
@@ -265,6 +269,8 @@ function WorkoutSetRow({
   }, [translateX]);
 
   const openSwipe = useCallback((): void => {
+    offsetRef.current = -SWIPE_ACTION_WIDTH;
+    setIsDeleteActionVisible(true);
     Animated.spring(translateX, {
       toValue: -SWIPE_ACTION_WIDTH,
       useNativeDriver: true,
@@ -275,16 +281,28 @@ function WorkoutSetRow({
   const panResponder = useMemo(
     () =>
       PanResponder.create({
+        onPanResponderGrant: () => {
+          dragStartOffsetRef.current = offsetRef.current;
+        },
         onMoveShouldSetPanResponder: (_, gestureState) =>
           Math.abs(gestureState.dx) > Math.abs(gestureState.dy) &&
-          gestureState.dx < -6,
+          (gestureState.dx < -6 ||
+            (offsetRef.current < 0 && gestureState.dx > 6)),
         onPanResponderMove: (_, gestureState) => {
-          translateX.setValue(
-            Math.max(-SWIPE_ACTION_WIDTH, Math.min(0, gestureState.dx)),
+          const nextOffset = Math.max(
+            -SWIPE_ACTION_WIDTH,
+            Math.min(0, dragStartOffsetRef.current + gestureState.dx),
           );
+          translateX.setValue(nextOffset);
+          setIsDeleteActionVisible(nextOffset < -4);
         },
         onPanResponderRelease: (_, gestureState) => {
-          if (gestureState.dx <= -SWIPE_ACTION_WIDTH / 2) {
+          const finalOffset = Math.max(
+            -SWIPE_ACTION_WIDTH,
+            Math.min(0, dragStartOffsetRef.current + gestureState.dx),
+          );
+
+          if (finalOffset <= -SWIPE_ACTION_WIDTH / 2) {
             openSwipe();
             return;
           }
@@ -301,6 +319,11 @@ function WorkoutSetRow({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Delete ${exerciseName} set ${index + 1}`}
+        accessibilityElementsHidden={!isDeleteActionVisible}
+        importantForAccessibility={
+          isDeleteActionVisible ? 'yes' : 'no-hide-descendants'
+        }
+        testID={`delete-set-${setItem.id}`}
         className="absolute bottom-0 right-0 top-0 w-[72px] items-center justify-center rounded-[16px] bg-destructive"
         onPress={() => {
           closeSwipe();
@@ -621,11 +644,8 @@ function ExerciseCard({
           <Muted className="flex-1 text-sm">{previousPerformanceLabel}</Muted>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={
-              isExerciseTimerActive
-                ? `Clear ${title} timer`
-                : `Start ${title} timer`
-            }
+            accessibilityLabel={`${title} timer options`}
+            accessibilityHint={`Choose the timer duration for ${title}. Current setting: ${exerciseTimerDisplayLabel}.`}
             className={`rounded-[12px] px-3 py-2 ${isExerciseTimerActive ? 'bg-secondary/10' : 'bg-surface-elevated'}`}
             onPress={onToggleExerciseTimer}
           >
@@ -778,7 +798,7 @@ function ActiveWorkoutContent({
                     : `Timer ${formatTimerDuration(
                         exerciseTimerDurationByExerciseId[
                           exercise.exerciseId
-                        ] ?? EXERCISE_TIMER_SECONDS,
+                        ] ?? DEFAULT_EXERCISE_TIMER_SECONDS,
                       )}`
                 }
                 onOpenDetails={onOpenExerciseDetails}
@@ -1253,7 +1273,8 @@ export function WorkoutActiveScreen({
       : null;
   const showExerciseTimerOptions = (exerciseId: string): void => {
     const durationSeconds =
-      exerciseTimerDurationByExerciseId[exerciseId] ?? EXERCISE_TIMER_SECONDS;
+      exerciseTimerDurationByExerciseId[exerciseId] ??
+      DEFAULT_EXERCISE_TIMER_SECONDS;
     const exerciseName =
       activeSession.exercises.find(
         (exercise) => exercise.exerciseId === exerciseId,
@@ -1379,7 +1400,7 @@ export function WorkoutActiveScreen({
 
         const durationSeconds =
           exerciseTimerDurationByExerciseId[exerciseId] ??
-          EXERCISE_TIMER_SECONDS;
+          DEFAULT_EXERCISE_TIMER_SECONDS;
         startExerciseTimer(exerciseId, durationSeconds);
       }}
       exerciseTimerEndsAtByExerciseId={exerciseTimerEndsAtByExerciseId}

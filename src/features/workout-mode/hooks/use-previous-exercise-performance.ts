@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';
 import { loadPreviousExercisePerformanceMap } from '../session-repository';
@@ -10,19 +10,27 @@ export function usePreviousExercisePerformance(
 ): Record<string, PreviousExercisePerformance | null> {
   const db = useDatabase();
   const exerciseKey = exerciseIds.join('|');
+  const [performanceByExerciseId, setPerformanceByExerciseId] = useState<
+    Record<string, PreviousExercisePerformance | null>
+  >({});
 
-  return useMemo(() => {
+  useEffect(() => {
     const requestedExerciseIds =
       exerciseKey === '' ? [] : exerciseKey.split('|');
 
     if (!currentSessionId || requestedExerciseIds.length === 0) {
-      return {};
+      setPerformanceByExerciseId({});
+      return;
     }
 
-    return loadPreviousExercisePerformanceMap(
-      db,
-      currentSessionId,
-      requestedExerciseIds,
+    setPerformanceByExerciseId(
+      loadPreviousExercisePerformanceMap(
+        db,
+        currentSessionId,
+        requestedExerciseIds,
+      ),
     );
   }, [currentSessionId, db, exerciseKey]);
+
+  return performanceByExerciseId;
 }

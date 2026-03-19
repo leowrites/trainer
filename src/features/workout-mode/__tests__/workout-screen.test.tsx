@@ -469,10 +469,12 @@ describe('WorkoutScreen', () => {
     fireEvent.press(
       workoutRender.getByLabelText('View details for Bench Press'),
     );
-    fireEvent.press(workoutRender.getByLabelText('Start Bench Press timer'));
+    fireEvent.press(workoutRender.getByLabelText('Bench Press timer options'));
     fireEvent.press(workoutRender.getByLabelText('Log Bench Press set 1'));
     fireEvent.press(workoutRender.getByText('Add set'));
-    fireEvent.press(workoutRender.getByLabelText('Delete Bench Press set 1'));
+    fireEvent.press(
+      workoutRender.UNSAFE_getByProps({ testID: 'delete-set-set-1' }),
+    );
     mockShowActionSheetWithOptions.mockImplementationOnce((_, callback) => {
       callback(1);
     });

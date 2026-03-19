@@ -7,7 +7,7 @@ import {
 } from '@shared/constants';
 import type { ActiveWorkoutSession, ActiveWorkoutSet } from './types';
 
-const DEFAULT_EXERCISE_TIMER_SECONDS = 60;
+export const DEFAULT_EXERCISE_TIMER_SECONDS = 60;
 
 interface WorkoutState {
   /** Whether there is an active workout session in progress. */
