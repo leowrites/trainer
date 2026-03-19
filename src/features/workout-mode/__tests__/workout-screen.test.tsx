@@ -153,6 +153,7 @@ describe('WorkoutScreen', () => {
     });
     mockUseExercises.mockReturnValue({
       exercises: [],
+      hasLoaded: true,
       refresh: jest.fn(),
       createExercise: jest.fn(),
       updateExercise: jest.fn(),
@@ -309,6 +310,7 @@ describe('WorkoutScreen', () => {
 
   it('renders the active workout session and forwards set editing actions', () => {
     const props = createWorkoutActiveScreenProps();
+    const navigate = props.navigation.navigate as jest.Mock;
     const addExercise = jest.fn();
     const removeExercise = jest.fn();
     const addSet = jest.fn();
@@ -384,12 +386,19 @@ describe('WorkoutScreen', () => {
     fireEvent(repsInput, 'endEditing');
     fireEvent.changeText(weightInput, '140.5');
     fireEvent(weightInput, 'endEditing');
+    fireEvent.press(screen.getByLabelText('View details for Bench Press'));
     fireEvent.press(screen.getByLabelText('Log Bench Press set 1'));
     fireEvent.press(screen.getByText('Add set'));
     fireEvent.press(screen.getByLabelText('Delete Bench Press set 1'));
+    mockShowActionSheetWithOptions.mockImplementationOnce((_, callback) => {
+      callback(1);
+    });
     fireEvent.press(screen.getByLabelText('Options for Bench Press'));
     fireEvent.press(screen.getByText('Complete Workout'));
 
+    expect(navigate).toHaveBeenCalledWith('ExerciseDetail', {
+      exerciseId: 'exercise-1',
+    });
     expect(updateReps).toHaveBeenCalledWith('set-1', 10);
     expect(updateWeight).toHaveBeenCalledWith('set-1', 140.5);
     expect(toggleSetLogged).toHaveBeenCalledWith('set-1', true);
@@ -397,6 +406,66 @@ describe('WorkoutScreen', () => {
     expect(deleteSet).toHaveBeenCalledWith('set-1');
     expect(removeExercise).toHaveBeenCalledWith('exercise-1');
     expect(completeWorkout).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not collapse the workout when drilling into exercise detail', () => {
+    const props = createWorkoutActiveScreenProps();
+    const collapseWorkout = jest.fn();
+    const addListener = jest.fn();
+    props.navigation.addListener =
+      addListener as typeof props.navigation.addListener;
+
+    mockWorkoutStoreState({
+      isWorkoutActive: true,
+      isWorkoutCollapsed: false,
+      activeSession: null,
+      startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+      restTimerEndsAt: null,
+      collapseWorkout,
+      expandWorkout: jest.fn(),
+      startRestTimer: jest.fn(),
+      clearRestTimer: jest.fn(),
+    } as ReturnType<typeof useWorkoutStore>);
+    mockUseActiveWorkout.mockReturnValue({
+      activeSession: {
+        id: 'session-1',
+        title: 'Push A',
+        startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+        isFreeWorkout: false,
+        exercises: [],
+      },
+      addExercise: jest.fn(),
+      removeExercise: jest.fn(),
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      toggleSetLogged: jest.fn(),
+      completeWorkout: jest.fn().mockReturnValue(true),
+    });
+
+    render(<WorkoutActiveScreen {...props} />);
+
+    const beforeRemoveHandler = addListener.mock.calls.find(
+      ([eventName]) => eventName === 'beforeRemove',
+    )?.[1] as (event: {
+      preventDefault: jest.Mock;
+      data: { action: { type: string; payload: { name: string } } };
+    }) => void;
+
+    const preventDefault = jest.fn();
+    beforeRemoveHandler({
+      preventDefault,
+      data: {
+        action: {
+          type: 'NAVIGATE',
+          payload: { name: 'ExerciseDetail' },
+        },
+      },
+    });
+
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(collapseWorkout).not.toHaveBeenCalled();
   });
 
   it('allows adding ad hoc exercises during a scheduled workout', () => {
@@ -420,6 +489,7 @@ describe('WorkoutScreen', () => {
           equipment: null,
         },
       ],
+      hasLoaded: true,
       refresh: jest.fn(),
       createExercise: jest.fn(),
       updateExercise: jest.fn(),
@@ -508,6 +578,7 @@ describe('WorkoutScreen', () => {
           equipment: null,
         },
       ],
+      hasLoaded: true,
       refresh: jest.fn(),
       createExercise: jest.fn(),
       updateExercise: jest.fn(),
@@ -593,6 +664,9 @@ describe('WorkoutScreen', () => {
 
     rerender(<WorkoutActiveScreen {...props} />);
 
+    mockShowActionSheetWithOptions.mockImplementationOnce((_, callback) => {
+      callback(1);
+    });
     fireEvent.press(screen.getByLabelText('Options for Goblet Squat'));
 
     expect(removeExercise).toHaveBeenCalledWith('exercise-2');

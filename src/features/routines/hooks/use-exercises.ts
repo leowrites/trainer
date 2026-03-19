@@ -28,6 +28,7 @@ function normalizeMetadata(value: string | null | undefined): string | null {
  */
 export function useExercises(): {
   exercises: Exercise[];
+  hasLoaded: boolean;
   refresh: () => void;
   createExercise: (input: NewExerciseInput) => Exercise;
   updateExercise: (id: string, input: NewExerciseInput) => void;
@@ -35,6 +36,7 @@ export function useExercises(): {
 } {
   const db = useDatabase();
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
   const refresh = useCallback((): void => {
@@ -46,6 +48,7 @@ export function useExercises(): {
       'SELECT id, name, muscle_group, how_to, equipment FROM exercises ORDER BY name ASC',
     );
     setExercises(rows);
+    setHasLoaded(true);
   }, [db, refreshKey]);
 
   const createExercise = useCallback(
@@ -103,5 +106,12 @@ export function useExercises(): {
     [db, refresh],
   );
 
-  return { exercises, refresh, createExercise, updateExercise, deleteExercise };
+  return {
+    exercises,
+    hasLoaded,
+    refresh,
+    createExercise,
+    updateExercise,
+    deleteExercise,
+  };
 }

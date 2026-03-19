@@ -106,6 +106,27 @@ function formatShortDate(timestamp: number | null): string {
   }).format(timestamp);
 }
 
+function isExerciseDetailNavigationAction(action: unknown): boolean {
+  if (
+    typeof action !== 'object' ||
+    action === null ||
+    !('type' in action) ||
+    !('payload' in action)
+  ) {
+    return false;
+  }
+
+  const typedAction = action as {
+    type?: string;
+    payload?: { name?: string };
+  };
+
+  return (
+    typedAction.type === 'NAVIGATE' &&
+    typedAction.payload?.name === 'ExerciseDetail'
+  );
+}
+
 function getGreeting(
   displayName: string | null,
   now: number,
@@ -385,10 +406,14 @@ function ExercisePickerBottomSheet({
 
 function ExerciseCard({
   title,
+  exerciseId,
+  onOpenDetails,
   onDelete,
   children,
 }: {
   title: string;
+  exerciseId: string;
+  onOpenDetails: (exerciseId: string) => void;
   onDelete: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
@@ -397,13 +422,17 @@ function ExerciseCard({
       ActionSheetIOS.showActionSheetWithOptions(
         {
           title,
-          options: ['Delete Exercise', 'Cancel'],
-          destructiveButtonIndex: 0,
-          cancelButtonIndex: 1,
+          options: ['View Details', 'Delete Exercise', 'Cancel'],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 2,
           userInterfaceStyle: 'light',
         },
         (buttonIndex) => {
           if (buttonIndex === 0) {
+            onOpenDetails(exerciseId);
+          }
+
+          if (buttonIndex === 1) {
             onDelete();
           }
         },
@@ -412,6 +441,10 @@ function ExerciseCard({
     }
 
     Alert.alert(title, undefined, [
+      {
+        text: 'View Details',
+        onPress: () => onOpenDetails(exerciseId),
+      },
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete Exercise',
@@ -419,13 +452,20 @@ function ExerciseCard({
         onPress: onDelete,
       },
     ]);
-  }, [onDelete, title]);
+  }, [exerciseId, onDelete, onOpenDetails, title]);
 
   return (
     <View className="mt-3 overflow-hidden rounded-[22px] border border-surface-border bg-surface-card p-4">
       <View className="relative border-b border-surface-border/80 pb-3">
         <View className="flex-row items-center justify-between gap-3">
-          <Heading className="flex-1 text-lg leading-[20px]">{title}</Heading>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`View details for ${title}`}
+            className="flex-1"
+            onPress={() => onOpenDetails(exerciseId)}
+          >
+            <Heading className="text-lg leading-[20px]">{title}</Heading>
+          </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Options for ${title}`}
@@ -456,6 +496,7 @@ interface ActiveWorkoutContentProps {
   onComplete: () => void;
   startRestTimer: (durationSeconds?: number) => void;
   clearRestTimer: () => void;
+  onOpenExerciseDetails: (exerciseId: string) => void;
   addSet: (exerciseId: string) => void;
   addExercise: (exerciseId: string, exerciseName: string) => void;
   removeExercise: (exerciseId: string) => void;
@@ -479,6 +520,7 @@ function ActiveWorkoutContent({
   onComplete,
   startRestTimer,
   clearRestTimer,
+  onOpenExerciseDetails,
   addSet,
   addExercise,
   removeExercise,
@@ -560,6 +602,8 @@ function ActiveWorkoutContent({
               <ExerciseCard
                 key={exercise.exerciseId}
                 title={exercise.exerciseName}
+                exerciseId={exercise.exerciseId}
+                onOpenDetails={onOpenExerciseDetails}
                 onDelete={() => removeExercise(exercise.exerciseId)}
               >
                 <View className="flex-row items-center gap-2 px-1 pb-3 pt-1">
@@ -895,7 +939,12 @@ export function WorkoutActiveScreen({
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
-      if (allowExit || !isWorkoutActive || isWorkoutCollapsed) {
+      if (
+        allowExit ||
+        !isWorkoutActive ||
+        isWorkoutCollapsed ||
+        isExerciseDetailNavigationAction(event.data.action)
+      ) {
         return;
       }
 
@@ -975,6 +1024,9 @@ export function WorkoutActiveScreen({
       }}
       startRestTimer={startRestTimer}
       clearRestTimer={clearRestTimer}
+      onOpenExerciseDetails={(exerciseId) =>
+        navigation.navigate('ExerciseDetail', { exerciseId })
+      }
       addSet={addSet}
       addExercise={addExercise}
       removeExercise={removeExercise}
