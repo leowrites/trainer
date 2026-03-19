@@ -19,9 +19,9 @@ import {
   View,
 } from 'react-native';
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
-
 import { type CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useHeaderHeight } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
@@ -734,6 +734,7 @@ function ActiveWorkoutContent({
   setShowExerciseSheet,
   insets,
 }: ActiveWorkoutContentProps): React.JSX.Element {
+  const headerHeight = useHeaderHeight();
   const dockOffset = Math.max(insets.bottom, 2);
   const dockHeight = 70 + dockOffset;
 
@@ -749,7 +750,10 @@ function ActiveWorkoutContent({
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false}
-          contentContainerStyle={{ paddingBottom: dockHeight + 8 }}
+          contentContainerStyle={{
+            paddingTop: headerHeight + 8,
+            paddingBottom: dockHeight + 8,
+          }}
         >
           {activeSession.exercises.length > 0 ? (
             activeSession.exercises.map((exercise) => (
@@ -1208,6 +1212,7 @@ export function WorkoutActiveScreen({
       title: '',
       headerTitleAlign: 'left',
       headerShadowVisible: false,
+      headerTransparent: true,
       headerTitle: () => (
         <WorkoutHeaderTitle
           title={sessionTitle}

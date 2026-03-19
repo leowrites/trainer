@@ -109,6 +109,7 @@ function IosTabs(): React.JSX.Element {
     <NativeTab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        headerTransparent: true,
         title: getTabLabel(route.name),
         tabBarLabel: getTabLabel(route.name),
         tabBarActiveTintColor: tokens.accent,
@@ -222,6 +223,8 @@ export function RootNavigator(): React.JSX.Element {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          headerBackButtonDisplayMode: 'minimal',
+          headerTransparent: true,
         }}
       >
         <Stack.Screen name="Tabs" component={TabNavigator} />
@@ -231,14 +234,6 @@ export function RootNavigator(): React.JSX.Element {
           options={{
             headerShown: true,
             title: '',
-            headerTintColor: tokens.textPrimary,
-            headerBackButtonDisplayMode: 'minimal',
-            headerStyle: {
-              backgroundColor: tokens.bgBase,
-            },
-            contentStyle: {
-              backgroundColor: tokens.bgBase,
-            },
           }}
         />
         <Stack.Screen
@@ -246,14 +241,6 @@ export function RootNavigator(): React.JSX.Element {
           options={{
             headerShown: true,
             title: '',
-            headerTintColor: tokens.textPrimary,
-            headerBackButtonDisplayMode: 'minimal',
-            headerStyle: {
-              backgroundColor: tokens.bgBase,
-            },
-            contentStyle: {
-              backgroundColor: tokens.bgBase,
-            },
           }}
         >
           {(props) => (
