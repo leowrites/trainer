@@ -207,7 +207,7 @@ function TabNavigator({
  * dedicated full-screen native stack screen.
  */
 export function RootNavigator(): React.JSX.Element {
-  const { colorMode, tokens } = useTheme();
+  const { tokens } = useTheme();
 
   const navigationTheme = {
     ...DefaultTheme,
@@ -223,7 +223,7 @@ export function RootNavigator(): React.JSX.Element {
   };
 
   return (
-    <NavigationContainer key={colorMode} theme={navigationTheme}>
+    <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
