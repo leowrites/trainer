@@ -4,9 +4,20 @@
 
 import { renderHook } from '@testing-library/react-native';
 import React from 'react';
+import * as ReactNative from 'react-native';
 
 import { darkTokens, lightTokens, palette, typography } from '../index';
 import { ThemeProvider, useTheme } from '../theme-context';
+
+const mockUseColorScheme = jest.spyOn(ReactNative, 'useColorScheme');
+
+beforeEach(() => {
+  mockUseColorScheme.mockReturnValue('dark');
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
+});
 
 // ─── Token smoke tests ────────────────────────────────────────────────────────
 
@@ -32,12 +43,11 @@ describe('darkTokens', () => {
     });
   });
 
-  it('accent matches the primary palette value', () => {
-    expect(darkTokens.accent).toBe(palette.primary);
-  });
-
-  it('error is the red value from palette', () => {
-    expect(darkTokens.error).toBe(palette.error);
+  it('uses the provided dark palette values', () => {
+    expect(darkTokens.bgBase).toBe(palette.bgDark);
+    expect(darkTokens.bgCard).toBe(palette.surfaceDark);
+    expect(darkTokens.accent).toBe(palette.primaryDark);
+    expect(darkTokens.error).toBe(palette.errorDark);
   });
 });
 
@@ -60,9 +70,11 @@ describe('lightTokens', () => {
     });
   });
 
-  it('uses the requested soft background', () => {
-    expect(lightTokens.bgBase).toBe('#F6F7FB');
-    expect(darkTokens.bgBase).toBe('#F6F7FB');
+  it('uses the provided light palette values', () => {
+    expect(lightTokens.bgBase).toBe(palette.bg);
+    expect(lightTokens.bgCard).toBe(palette.surface);
+    expect(lightTokens.accent).toBe(palette.primary);
+    expect(lightTokens.error).toBe(palette.error);
   });
 });
 
@@ -78,8 +90,6 @@ describe('typography scale', () => {
 });
 
 // ─── Token ↔ Tailwind config consistency ──────────────────────────────────────
-// Ensures the `palette` / `darkTokens` values don't silently diverge from the
-// static values baked into tailwind.config.js.
 
 const tw = require('../../../../tailwind.config.js');
 
@@ -88,41 +98,35 @@ const twColors = tw.theme.extend.colors as Record<
   Record<string, string>
 >;
 
-describe('palette ↔ tailwind.config.js consistency', () => {
-  it('accent.DEFAULT matches palette.primary', () => {
-    expect(twColors.accent.DEFAULT).toBe(palette.primary);
+describe('theme ↔ tailwind.config.js consistency', () => {
+  it('accent.DEFAULT is driven by runtime theme variables', () => {
+    expect(twColors.accent.DEFAULT).toBe(
+      'rgb(var(--trainer-color-accent)/<alpha-value>)',
+    );
   });
 
-  it('secondary.DEFAULT matches palette.secondary', () => {
-    expect(twColors.secondary.DEFAULT).toBe(palette.secondary);
+  it('secondary.DEFAULT is driven by runtime theme variables', () => {
+    expect(twColors.secondary.DEFAULT).toBe(
+      'rgb(var(--trainer-color-secondary)/<alpha-value>)',
+    );
   });
 
-  it('error.DEFAULT matches palette.error', () => {
-    expect(twColors.error.DEFAULT).toBe(palette.error);
+  it('error.DEFAULT is driven by runtime theme variables', () => {
+    expect(twColors.error.DEFAULT).toBe(
+      'rgb(var(--trainer-color-error)/<alpha-value>)',
+    );
   });
 
-  it('surface.DEFAULT matches palette.bg', () => {
-    expect(twColors.surface.DEFAULT).toBe(palette.bg);
+  it('surface.DEFAULT is driven by runtime theme variables', () => {
+    expect(twColors.surface.DEFAULT).toBe(
+      'rgb(var(--trainer-color-surface)/<alpha-value>)',
+    );
   });
 
-  it('surface.card matches palette.surface', () => {
-    expect(twColors.surface.card).toBe(palette.surface);
-  });
-
-  it('surface.elevated matches palette.surface2', () => {
-    expect(twColors.surface.elevated).toBe(palette.surface2);
-  });
-
-  it('surface.border matches palette.border', () => {
-    expect(twColors.surface.border).toBe(palette.border);
-  });
-
-  it('muted.DEFAULT matches palette.muted', () => {
-    expect(twColors.muted.DEFAULT).toBe(palette.muted);
-  });
-
-  it('foreground.DEFAULT matches palette.text', () => {
-    expect(twColors.foreground.DEFAULT).toBe(palette.text);
+  it('foreground.DEFAULT is driven by runtime theme variables', () => {
+    expect(twColors.foreground.DEFAULT).toBe(
+      'rgb(var(--trainer-color-foreground)/<alpha-value>)',
+    );
   });
 });
 
@@ -159,5 +163,25 @@ describe('useTheme', () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
     expect(result.current.colorMode).toBe('light');
     expect(result.current.tokens.bgBase).toBe(lightTokens.bgBase);
+  });
+
+  it('follows system color scheme changes when no override is provided', () => {
+    mockUseColorScheme.mockReturnValue('light');
+    const wrapper = ({
+      children,
+    }: {
+      children: React.ReactNode;
+    }): React.JSX.Element => <ThemeProvider>{children}</ThemeProvider>;
+
+    const { result, rerender } = renderHook(() => useTheme(), { wrapper });
+
+    expect(result.current.colorMode).toBe('light');
+    expect(result.current.tokens.bgBase).toBe(lightTokens.bgBase);
+
+    mockUseColorScheme.mockReturnValue('dark');
+    rerender({});
+
+    expect(result.current.colorMode).toBe('dark');
+    expect(result.current.tokens.bgBase).toBe(darkTokens.bgBase);
   });
 });

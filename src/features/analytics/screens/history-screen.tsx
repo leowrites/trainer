@@ -293,7 +293,7 @@ export function HistoryScreen({
   const latestSession = sessions[0] ?? null;
 
   return (
-    <Container>
+    <Container className="px-0 pb-0" edges={['left', 'right']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 28 }}

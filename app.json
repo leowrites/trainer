@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "trainer",
-    "slug": "trainer",
+    "name": "forge",
+    "slug": "forge",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,9 +13,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.trainer.app"
+      "userInterfaceStyle": "automatic",
+      "bundleIdentifier": "com.leoliu.forge.dev"
     },
     "android": {
+      "userInterfaceStyle": "automatic",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -23,8 +25,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.trainer.app"
+      "package": "com.leoliu.forge.dev"
     },
-    "plugins": ["expo-sqlite"]
+    "plugins": ["expo-sqlite", "expo-system-ui"]
   }
 }

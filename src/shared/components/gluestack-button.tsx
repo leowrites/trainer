@@ -19,7 +19,8 @@ export function GluestackButton({
   disabled = false,
   ...rest
 }: GluestackButtonProps): React.ReactElement {
-  const textClassName = variant === 'ghost' ? 'text-foreground' : 'text-black';
+  const textClassName =
+    variant === 'ghost' ? 'text-foreground' : 'text-accent-foreground';
 
   return (
     <Button

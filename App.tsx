@@ -20,7 +20,7 @@ function ThemedStatusBar(): React.JSX.Element {
 export default function App(): React.JSX.Element {
   return (
     <SafeAreaProvider>
-      <ThemeProvider colorMode="light">
+      <ThemeProvider>
         <GluestackUIProvider>
           <DatabaseProvider>
             <ThemedStatusBar />

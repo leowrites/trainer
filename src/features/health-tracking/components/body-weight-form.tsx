@@ -126,7 +126,7 @@ export function BodyWeightForm({
         </View>
 
         {errorMessage ? (
-          <Body className="text-red-400" accessibilityRole="alert">
+          <Body className="text-error" accessibilityRole="alert">
             {errorMessage}
           </Body>
         ) : null}

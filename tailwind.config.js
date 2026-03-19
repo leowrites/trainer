@@ -27,7 +27,9 @@ module.exports = {
           950: 'rgb(var(--color-primary-950)/<alpha-value>)',
         },
         secondary: {
-          DEFAULT: '#7D8796',
+          DEFAULT: 'rgb(var(--trainer-color-secondary)/<alpha-value>)',
+          foreground:
+            'rgb(var(--trainer-color-secondary-foreground)/<alpha-value>)',
           0: 'rgb(var(--color-secondary-0)/<alpha-value>)',
           50: 'rgb(var(--color-secondary-50)/<alpha-value>)',
           100: 'rgb(var(--color-secondary-100)/<alpha-value>)',
@@ -55,7 +57,8 @@ module.exports = {
           950: 'rgb(var(--color-tertiary-950)/<alpha-value>)',
         },
         error: {
-          DEFAULT: '#F28B82',
+          DEFAULT: 'rgb(var(--trainer-color-error)/<alpha-value>)',
+          foreground: 'rgb(var(--trainer-color-error-foreground)/<alpha-value>)',
           0: 'rgb(var(--color-error-0)/<alpha-value>)',
           50: 'rgb(var(--color-error-50)/<alpha-value>)',
           100: 'rgb(var(--color-error-100)/<alpha-value>)',
@@ -70,6 +73,9 @@ module.exports = {
           950: 'rgb(var(--color-error-950)/<alpha-value>)',
         },
         success: {
+          DEFAULT: 'rgb(var(--trainer-color-success)/<alpha-value>)',
+          foreground:
+            'rgb(var(--trainer-color-success-foreground)/<alpha-value>)',
           0: 'rgb(var(--color-success-0)/<alpha-value>)',
           50: 'rgb(var(--color-success-50)/<alpha-value>)',
           100: 'rgb(var(--color-success-100)/<alpha-value>)',
@@ -169,22 +175,26 @@ module.exports = {
           error: 'rgb(var(--color-indicator-error)/<alpha-value>)',
         },
         foreground: {
-          DEFAULT: '#2B2F36',
+          DEFAULT: 'rgb(var(--trainer-color-foreground)/<alpha-value>)',
         },
         accent: {
-          DEFAULT: '#6C8CFF',
-          subtle: 'rgba(108,140,255,0.15)',
-          border: 'rgba(108,140,255,0.35)',
+          DEFAULT: 'rgb(var(--trainer-color-accent)/<alpha-value>)',
+          subtle: 'rgb(var(--trainer-color-accent-subtle)/<alpha-value>)',
+          border: 'rgb(var(--trainer-color-accent-border)/<alpha-value>)',
+          foreground:
+            'rgb(var(--trainer-color-accent-foreground)/<alpha-value>)',
         },
         surface: {
-          DEFAULT: '#F6F7FB',
-          card: '#FFFFFF',
-          elevated: '#F0F2F8',
-          border: '#E6EAF2',
+          DEFAULT: 'rgb(var(--trainer-color-surface)/<alpha-value>)',
+          card: 'rgb(var(--trainer-color-surface-card)/<alpha-value>)',
+          elevated:
+            'rgb(var(--trainer-color-surface-elevated)/<alpha-value>)',
+          border: 'rgb(var(--trainer-color-surface-border)/<alpha-value>)',
         },
         muted: {
-          DEFAULT: '#7D8796',
-          foreground: '#AAB3C2',
+          DEFAULT: 'rgb(var(--trainer-color-muted)/<alpha-value>)',
+          foreground:
+            'rgb(var(--trainer-color-muted-foreground)/<alpha-value>)',
         },
       },
       fontFamily: {

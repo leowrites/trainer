@@ -4,12 +4,12 @@
  * A fully accessible, multi-variant pressable button primitive.
  *
  * Variants:
- * | variant     | Background       | Text colour   | Use case         |
- * |-------------|-----------------|---------------|------------------|
- * | `primary`   | accent lime      | black         | Main CTA         |
- * | `secondary` | secondary amber  | black         | Secondary action |
- * | `ghost`     | elevated surface | muted text    | Tertiary action  |
- * | `danger`    | error red        | white         | Destructive      |
+ * | variant     | Background       | Text colour          | Use case         |
+ * |-------------|-----------------|----------------------|------------------|
+ * | `primary`   | accent lime      | accent-foreground    | Main CTA         |
+ * | `secondary` | secondary amber  | foreground           | Secondary action |
+ * | `ghost`     | elevated surface | foreground           | Tertiary action  |
+ * | `danger`    | error red        | error-foreground     | Destructive      |
  *
  * Sizes:
  * | size | Padding          | Font size |
@@ -80,9 +80,9 @@ function resolveTextClass(variant: ButtonVariant): string {
     case 'ghost':
       return 'text-foreground';
     case 'danger':
-      return 'text-white';
+      return 'text-error-foreground';
     default:
-      return 'text-black';
+      return 'text-accent-foreground';
   }
 }
 

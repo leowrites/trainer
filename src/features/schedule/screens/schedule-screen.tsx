@@ -167,6 +167,110 @@ function ScheduleRow({
   );
 }
 
+// ─── List header ───────────────────────────────────────────────────────────────
+
+function ScheduleListHeader({
+  activeSchedule,
+  activeEntries,
+  routines,
+  editingSchedule,
+  editName,
+  editRoutineIds,
+  editSaving,
+  onEditNameChange,
+  onToggleEditRoutine,
+  onSaveEdit,
+  onCancelEdit,
+}: {
+  activeSchedule: Schedule | null;
+  activeEntries: ScheduleEntry[];
+  routines: Routine[];
+  editingSchedule: Schedule | null;
+  editName: string;
+  editRoutineIds: string[];
+  editSaving: boolean;
+  onEditNameChange: (value: string) => void;
+  onToggleEditRoutine: (id: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+}): React.JSX.Element {
+  return (
+    <View>
+      <View accessibilityRole="header" className="gap-2">
+        <Heading className="text-4xl leading-[36px]">Schedule</Heading>
+        <Muted className="text-sm leading-[19px]">
+          Arrange routines into a steady rotation and keep the next session
+          predictable.
+        </Muted>
+      </View>
+
+      <View className="py-3">
+        <Surface variant="card" className="mx-0 rounded-[24px] px-5 py-5">
+          <View className="mb-3 flex-row items-center justify-between gap-3">
+            <Meta>{activeSchedule ? 'Active Schedule' : 'Schedule Setup'}</Meta>
+            <Meta className="text-foreground">
+              {activeSchedule
+                ? `${activeEntries.length} routines`
+                : `${routines.length} routines`}
+            </Meta>
+          </View>
+          <DisplayHeading className="text-[28px] leading-[30px]">
+            {activeSchedule?.name ?? 'No active schedule'}
+          </DisplayHeading>
+          <Muted className="mt-3 text-sm leading-[18px]">
+            {activeSchedule
+              ? activeSchedule.current_position >= 0
+                ? `Rotation position ${activeSchedule.current_position + 1}`
+                : 'Ready to start from the first routine.'
+              : 'Create a schedule to queue your next workout from the routines you already trust.'}
+          </Muted>
+        </Surface>
+      </View>
+
+      {editingSchedule ? (
+        <Card label="Edit Schedule" className="mx-0 mb-3 rounded-[24px] p-5">
+          <Input
+            className="mb-4"
+            placeholder="Schedule name"
+            value={editName}
+            onChangeText={onEditNameChange}
+            autoCapitalize="words"
+          />
+          <Label className="mb-2">Select Routines (in rotation order)</Label>
+          {routines.length === 0 ? (
+            <Muted className="mb-4">No routines available.</Muted>
+          ) : (
+            (() => {
+              // Pre-compute position map for O(1) lookups while preserving order.
+              const idxMap = new Map(
+                editRoutineIds.map((id, i) => [id, i] as const),
+              );
+              return routines.map((routine) => {
+                const idx = idxMap.get(routine.id) ?? -1;
+                const selected = idx !== -1;
+                return (
+                  <Checkbox
+                    key={routine.id}
+                    checked={selected}
+                    onToggle={() => onToggleEditRoutine(routine.id)}
+                    label={routine.name}
+                    badgeText={selected ? String(idx + 1) : undefined}
+                  />
+                );
+              });
+            })()
+          )}
+          <ActionRow
+            onPrimaryPress={onSaveEdit}
+            primaryLoading={editSaving}
+            onSecondaryPress={onCancelEdit}
+          />
+        </Card>
+      ) : null}
+    </View>
+  );
+}
+
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export function ScheduleScreen(): React.JSX.Element {
@@ -261,85 +365,12 @@ export function ScheduleScreen(): React.JSX.Element {
   };
 
   return (
-    <Container className="px-0 pb-0" edges={['top']}>
-      <View className="border-surface-border px-0 pb-3">
-        <View accessibilityRole="header" className="gap-2">
-          <Heading className="text-4xl leading-[36px]">Schedule</Heading>
-          <Muted className="text-sm leading-[19px]">
-            Arrange routines into a steady rotation and keep the next session
-            predictable.
-          </Muted>
-        </View>
-      </View>
-
-      <View className="py-3">
-        <Surface variant="card" className="mx-0 rounded-[24px] px-5 py-5">
-          <View className="mb-3 flex-row items-center justify-between gap-3">
-            <Meta>{activeSchedule ? 'Active Schedule' : 'Schedule Setup'}</Meta>
-            <Meta className="text-foreground">
-              {activeSchedule
-                ? `${activeEntries.length} routines`
-                : `${routines.length} routines`}
-            </Meta>
-          </View>
-          <DisplayHeading className="text-[28px] leading-[30px]">
-            {activeSchedule?.name ?? 'No active schedule'}
-          </DisplayHeading>
-          <Muted className="mt-3 text-sm leading-[18px]">
-            {activeSchedule
-              ? activeSchedule.current_position >= 0
-                ? `Rotation position ${activeSchedule.current_position + 1}`
-                : 'Ready to start from the first routine.'
-              : 'Create a schedule to queue your next workout from the routines you already trust.'}
-          </Muted>
-        </Surface>
-      </View>
-
-      {editingSchedule ? (
-        <Card label="Edit Schedule" className="mx-0 mb-3 rounded-[24px] p-5">
-          <Input
-            className="mb-4"
-            placeholder="Schedule name"
-            value={editName}
-            onChangeText={setEditName}
-            autoCapitalize="words"
-          />
-          <Label className="mb-2">Select Routines (in rotation order)</Label>
-          {routines.length === 0 ? (
-            <Muted className="mb-4">No routines available.</Muted>
-          ) : (
-            (() => {
-              // Pre-compute position map for O(1) lookups while preserving order.
-              const idxMap = new Map(
-                editRoutineIds.map((id, i) => [id, i] as const),
-              );
-              return routines.map((routine) => {
-                const idx = idxMap.get(routine.id) ?? -1;
-                const selected = idx !== -1;
-                return (
-                  <Checkbox
-                    key={routine.id}
-                    checked={selected}
-                    onToggle={() => toggleEditRoutine(routine.id)}
-                    label={routine.name}
-                    badgeText={selected ? String(idx + 1) : undefined}
-                  />
-                );
-              });
-            })()
-          )}
-          <ActionRow
-            onPrimaryPress={handleSaveEdit}
-            primaryLoading={editSaving}
-            onSecondaryPress={() => setEditingSchedule(null)}
-          />
-        </Card>
-      ) : null}
-
+    <Container className="px-0 pb-0" edges={['left', 'right']}>
       <FlatList
         data={schedules}
         keyExtractor={(item: Schedule) => item.id}
         contentContainerStyle={{ paddingHorizontal: 0, paddingBottom: 12 }}
+        showsVerticalScrollIndicator={false}
         renderItem={({ item }: { item: Schedule }) => (
           <ScheduleRow
             item={item}
@@ -351,6 +382,21 @@ export function ScheduleScreen(): React.JSX.Element {
             onDelete={(id) => deleteSchedule(id)}
           />
         )}
+        ListHeaderComponent={
+          <ScheduleListHeader
+            activeSchedule={activeSchedule}
+            activeEntries={activeEntries}
+            routines={routines}
+            editingSchedule={editingSchedule}
+            editName={editName}
+            editRoutineIds={editRoutineIds}
+            editSaving={editSaving}
+            onEditNameChange={setEditName}
+            onToggleEditRoutine={toggleEditRoutine}
+            onSaveEdit={handleSaveEdit}
+            onCancelEdit={() => setEditingSchedule(null)}
+          />
+        }
         ListEmptyComponent={
           <Muted className="mt-3 px-0 text-center text-sm leading-[18px]">
             No schedules yet. Create one below.

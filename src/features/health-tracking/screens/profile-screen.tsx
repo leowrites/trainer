@@ -190,7 +190,7 @@ export function ProfileScreen(): React.JSX.Element {
   );
 
   return (
-    <Container>
+    <Container className="px-0 pb-0" edges={['left', 'right']}>
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 28 }}
@@ -239,7 +239,7 @@ export function ProfileScreen(): React.JSX.Element {
             </Muted>
 
             {profileFormError ? (
-              <Body className="mt-3 text-red-400">{profileFormError}</Body>
+              <Body className="mt-3 text-error">{profileFormError}</Body>
             ) : null}
 
             <ActionRow
@@ -275,7 +275,7 @@ export function ProfileScreen(): React.JSX.Element {
           <View className="pb-4">
             <Card label="Status" className="rounded-[24px] px-5 py-5">
               {statusMessages.map((message: string) => (
-                <Body key={message} className="text-red-400">
+                <Body key={message} className="text-error">
                   {message}
                 </Body>
               ))}
