@@ -322,7 +322,7 @@ describe('WorkoutScreen', () => {
       isWorkoutActive: true,
       isWorkoutCollapsed: false,
       activeSession: null,
-      startTime: new Date('2026-03-18T12:00:00.000Z').getTime(),
+      startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
       restTimerEndsAt: null,
       collapseWorkout: jest.fn(),
       expandWorkout: jest.fn(),
@@ -339,7 +339,7 @@ describe('WorkoutScreen', () => {
       activeSession: {
         id: 'session-1',
         title: 'Push A',
-        startTime: new Date('2026-03-18T12:00:00.000Z').getTime(),
+        startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
         isFreeWorkout: false,
         exercises: [
           {
