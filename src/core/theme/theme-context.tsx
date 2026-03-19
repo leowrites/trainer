@@ -24,6 +24,7 @@ import {
   type ColorMode,
   type ThemeTokens,
 } from './index';
+import { createNativeWindThemeVars } from './nativewind-theme';
 
 // ─── Context ───────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,10 @@ export function ThemeProvider({
   }, [forcedMode, systemScheme]);
 
   const tokens: ThemeTokens = colorMode === 'light' ? lightTokens : darkTokens;
+  const nativeWindTheme = useMemo(
+    () => createNativeWindThemeVars(tokens),
+    [tokens],
+  );
 
   const value = useMemo(() => ({ tokens, colorMode }), [tokens, colorMode]);
 
@@ -93,7 +98,10 @@ export function ThemeProvider({
        * so components can define both light and dark variants:
        *   <View className="bg-white dark:bg-surface" />
        */}
-      <View className={`flex-1 ${colorMode === 'dark' ? 'dark' : ''}`}>
+      <View
+        className={`flex-1 ${colorMode === 'dark' ? 'dark' : ''}`}
+        style={[nativeWindTheme, { backgroundColor: tokens.bgBase }]}
+      >
         {children}
       </View>
     </ThemeContext.Provider>

@@ -460,7 +460,7 @@ function ExerciseEditorSheet({
         autoCapitalize="sentences"
       />
 
-      {error ? <Muted className="mt-4 text-red-400">{error}</Muted> : null}
+      {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
 
       <Button className="mt-5 w-full" onPress={handleSave}>
         {exercise ? 'Save Exercise' : 'Create Exercise'}
@@ -817,7 +817,7 @@ function RoutineEditorSheet({
         )}
       </View>
 
-      {error ? <Muted className="mt-4 text-red-400">{error}</Muted> : null}
+      {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
 
       <Button className="mt-5 w-full" onPress={handleSave}>
         {routine ? 'Save Routine' : 'Create Routine'}

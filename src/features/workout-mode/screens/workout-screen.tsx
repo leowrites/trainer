@@ -324,13 +324,15 @@ function WorkoutSetRow({
           isDeleteActionVisible ? 'yes' : 'no-hide-descendants'
         }
         testID={`delete-set-${setItem.id}`}
-        className="absolute bottom-0 right-0 top-0 w-[72px] items-center justify-center rounded-[16px] bg-destructive"
+        className="absolute bottom-0 right-0 top-0 w-[72px] items-center justify-center rounded-[16px] bg-error"
         onPress={() => {
           closeSwipe();
           onDelete();
         }}
       >
-        <Body className="text-sm font-semibold text-background">Delete</Body>
+        <Body className="text-sm font-semibold text-error-foreground">
+          Delete
+        </Body>
       </Pressable>
 
       <Animated.View
@@ -377,7 +379,9 @@ function WorkoutSetRow({
         >
           <Text
             className={`font-body text-sm font-semibold ${
-              setItem.isCompleted ? 'text-black' : 'text-foreground'
+              setItem.isCompleted
+                ? 'text-accent-foreground'
+                : 'text-foreground'
             }`}
           >
             Log
@@ -423,7 +427,7 @@ function ExercisePickerBottomSheet({
   onClose: () => void;
   onAddExercise: (exerciseId: string, exerciseName: string) => void;
 }): React.JSX.Element {
-  const { tokens } = useTheme();
+  const { colorMode, tokens } = useTheme();
   const { exercises, hasLoaded } = useExercises();
   const sheetRef = React.useRef<TrueSheet>(null);
   const isPresentedRef = React.useRef(false);
@@ -495,7 +499,8 @@ function ExercisePickerBottomSheet({
       cornerRadius={28}
       grabber
       scrollable
-      backgroundBlur="light"
+      backgroundColor={tokens.bgBase}
+      backgroundBlur={colorMode === 'dark' ? 'dark' : 'light'}
       onDidPresent={() => {
         isPresentedRef.current = true;
         isTransitioningRef.current = false;
@@ -580,6 +585,8 @@ function ExerciseCard({
   onToggleExerciseTimer: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
+  const { colorMode } = useTheme();
+
   const handleOpenOptions = useCallback((): void => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -588,7 +595,7 @@ function ExerciseCard({
           options: ['View Details', 'Delete Exercise', 'Cancel'],
           destructiveButtonIndex: 1,
           cancelButtonIndex: 2,
-          userInterfaceStyle: 'light',
+          userInterfaceStyle: colorMode,
         },
         (buttonIndex) => {
           if (buttonIndex === 0) {
@@ -615,7 +622,7 @@ function ExerciseCard({
         onPress: onDelete,
       },
     ]);
-  }, [exerciseId, onDelete, onOpenDetails, title]);
+  }, [colorMode, exerciseId, onDelete, onOpenDetails, title]);
 
   return (
     <View className="mt-3 overflow-hidden rounded-[22px] border border-surface-border bg-surface-card p-4">
@@ -1114,6 +1121,7 @@ export function WorkoutScreen({
 export function WorkoutActiveScreen({
   navigation,
 }: WorkoutActiveScreenProps): React.JSX.Element | null {
+  const { colorMode } = useTheme();
   const insets = useSafeAreaInsets();
   const {
     isWorkoutActive,
@@ -1299,7 +1307,7 @@ export function WorkoutActiveScreen({
           options,
           cancelButtonIndex,
           destructiveButtonIndex: clearButtonIndex,
-          userInterfaceStyle: 'light',
+          userInterfaceStyle: colorMode,
         },
         (buttonIndex) => {
           if (buttonIndex === cancelButtonIndex) {

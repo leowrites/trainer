@@ -150,25 +150,25 @@ const buttonTextStyle = tva({
       variant: 'solid',
       action: 'primary',
       class:
-        'text-black data-[hover=true]:text-black data-[active=true]:text-black',
+        'text-accent-foreground data-[hover=true]:text-accent-foreground data-[active=true]:text-accent-foreground',
     },
     {
       variant: 'solid',
       action: 'secondary',
       class:
-        'text-typography-800 data-[hover=true]:text-typography-800 data-[active=true]:text-typography-800',
+        'text-secondary-foreground data-[hover=true]:text-secondary-foreground data-[active=true]:text-secondary-foreground',
     },
     {
       variant: 'solid',
       action: 'positive',
       class:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0',
+        'text-success-foreground data-[hover=true]:text-success-foreground data-[active=true]:text-success-foreground',
     },
     {
       variant: 'solid',
       action: 'negative',
       class:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0',
+        'text-error-foreground data-[hover=true]:text-error-foreground data-[active=true]:text-error-foreground',
     },
     {
       variant: 'outline',

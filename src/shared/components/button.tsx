@@ -80,9 +80,9 @@ function resolveTextClass(variant: ButtonVariant): string {
     case 'ghost':
       return 'text-foreground';
     case 'danger':
-      return 'text-white';
+      return 'text-error-foreground';
     default:
-      return 'text-black';
+      return 'text-accent-foreground';
   }
 }
 
