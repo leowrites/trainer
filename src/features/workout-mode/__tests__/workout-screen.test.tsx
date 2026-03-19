@@ -309,6 +309,7 @@ describe('WorkoutScreen', () => {
 
   it('renders the active workout session and forwards set editing actions', () => {
     const props = createWorkoutActiveScreenProps();
+    const navigate = props.navigation.navigate as jest.Mock;
     const addExercise = jest.fn();
     const removeExercise = jest.fn();
     const addSet = jest.fn();
@@ -384,12 +385,19 @@ describe('WorkoutScreen', () => {
     fireEvent(repsInput, 'endEditing');
     fireEvent.changeText(weightInput, '140.5');
     fireEvent(weightInput, 'endEditing');
+    fireEvent.press(screen.getByLabelText('View details for Bench Press'));
     fireEvent.press(screen.getByLabelText('Log Bench Press set 1'));
     fireEvent.press(screen.getByText('Add set'));
     fireEvent.press(screen.getByLabelText('Delete Bench Press set 1'));
+    mockShowActionSheetWithOptions.mockImplementationOnce((_, callback) => {
+      callback(1);
+    });
     fireEvent.press(screen.getByLabelText('Options for Bench Press'));
     fireEvent.press(screen.getByText('Complete Workout'));
 
+    expect(navigate).toHaveBeenCalledWith('ExerciseDetail', {
+      exerciseId: 'exercise-1',
+    });
     expect(updateReps).toHaveBeenCalledWith('set-1', 10);
     expect(updateWeight).toHaveBeenCalledWith('set-1', 140.5);
     expect(toggleSetLogged).toHaveBeenCalledWith('set-1', true);
@@ -593,6 +601,9 @@ describe('WorkoutScreen', () => {
 
     rerender(<WorkoutActiveScreen {...props} />);
 
+    mockShowActionSheetWithOptions.mockImplementationOnce((_, callback) => {
+      callback(1);
+    });
     fireEvent.press(screen.getByLabelText('Options for Goblet Squat'));
 
     expect(removeExercise).toHaveBeenCalledWith('exercise-2');

@@ -42,6 +42,14 @@ type RoutinesStackParamList = {
   RoutineDetail: { routineId: string };
 };
 
+export interface ExerciseDetailScreenProps {
+  exerciseId: string;
+  navigation: {
+    goBack: () => void;
+    setOptions: (options: { title?: string }) => void;
+  };
+}
+
 interface RoutineExerciseDraft {
   exerciseId: string;
   targetSets: string;
@@ -1255,25 +1263,15 @@ function RoutinesLibraryScreen({
   );
 }
 
-function RoutinesExerciseDetailScreen({
-  route,
+export function ExerciseDetailScreen({
+  exerciseId,
   navigation,
-  exercises,
-  updateExercise,
-  deleteExercise,
-  getExerciseInsight,
-}: NativeStackScreenProps<RoutinesStackParamList, 'ExerciseDetail'> & {
-  exercises: Exercise[];
-  updateExercise: (exerciseId: string, input: NewExerciseInput) => void;
-  deleteExercise: (exerciseId: string) => void;
-  getExerciseInsight: ReturnType<
-    typeof useRoutineInsights
-  >['getExerciseInsight'];
-}): React.JSX.Element {
+}: ExerciseDetailScreenProps): React.JSX.Element {
+  const { exercises, updateExercise, deleteExercise } = useExercises();
+  const { getExerciseInsight } = useRoutineInsights();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const selectedExercise =
-    exercises.find((exercise) => exercise.id === route.params.exerciseId) ??
-    null;
+    exercises.find((exercise) => exercise.id === exerciseId) ?? null;
 
   useEffect(() => {
     if (selectedExercise === null) {
@@ -1410,8 +1408,6 @@ export function RoutinesScreen(): React.JSX.Element {
     exercises,
     refresh: refreshExercises,
     createExercise,
-    updateExercise,
-    deleteExercise,
   } = useExercises();
   const {
     routines,
@@ -1422,7 +1418,7 @@ export function RoutinesScreen(): React.JSX.Element {
     getRoutineExercises,
     getRoutineExerciseCounts,
   } = useRoutines();
-  const { getExerciseInsight, getRoutineInsight } = useRoutineInsights();
+  const { getRoutineInsight } = useRoutineInsights();
 
   useFocusEffect(
     useCallback(() => {
@@ -1433,7 +1429,7 @@ export function RoutinesScreen(): React.JSX.Element {
 
   const routineExerciseCounts = useMemo(
     () => getRoutineExerciseCounts(),
-    [getRoutineExerciseCounts, routines],
+    [getRoutineExerciseCounts],
   );
 
   return (
@@ -1468,12 +1464,9 @@ export function RoutinesScreen(): React.JSX.Element {
       </Stack.Screen>
       <Stack.Screen name="ExerciseDetail">
         {(props) => (
-          <RoutinesExerciseDetailScreen
-            {...props}
-            exercises={exercises}
-            updateExercise={updateExercise}
-            deleteExercise={deleteExercise}
-            getExerciseInsight={getExerciseInsight}
+          <ExerciseDetailScreen
+            exerciseId={props.route.params.exerciseId}
+            navigation={props.navigation}
           />
         )}
       </Stack.Screen>
