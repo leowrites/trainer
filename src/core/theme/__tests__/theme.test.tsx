@@ -2,25 +2,21 @@
  * Tests for the theme module — tokens and ThemeProvider / useTheme.
  */
 
-jest.mock('react-native', () => {
-  const actual = jest.requireActual('react-native');
-  return {
-    ...actual,
-    useColorScheme: jest.fn(() => 'dark'),
-  };
-});
-
 import { renderHook } from '@testing-library/react-native';
 import React from 'react';
-import { useColorScheme } from 'react-native';
+import * as ReactNative from 'react-native';
 
 import { darkTokens, lightTokens, palette, typography } from '../index';
 import { ThemeProvider, useTheme } from '../theme-context';
 
-const mockUseColorScheme = jest.mocked(useColorScheme);
+const mockUseColorScheme = jest.spyOn(ReactNative, 'useColorScheme');
 
 beforeEach(() => {
   mockUseColorScheme.mockReturnValue('dark');
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
 });
 
 // ─── Token smoke tests ────────────────────────────────────────────────────────
