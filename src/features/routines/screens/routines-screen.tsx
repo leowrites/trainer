@@ -212,14 +212,14 @@ function LibraryExerciseCard({
       accessibilityLabel={`Open ${exercise.name}`}
     >
       <View className="flex-row items-start justify-between gap-3">
-        <View className="flex-row items-end justify-between">
+        <View className="flex-row">
           <Body className="font-heading text-2xl leading-[28px]">
             {exercise.name}
           </Body>
-          <Muted className="mt-2 text-xs uppercase tracking-[1.3px]">
-            {exercise.muscle_group}
-          </Muted>
         </View>
+        <Muted className="mt-2 text-xs uppercase tracking-[1.3px]">
+          {exercise.muscle_group}
+        </Muted>
       </View>
 
       <Muted className="mt-4 text-sm leading-[18px]">
