@@ -12,6 +12,30 @@ jest.mock('@core/database/utils', () => ({
   generateId: jest.fn().mockReturnValue('new-set-1'),
 }));
 
+jest.mock('@lodev09/react-native-true-sheet', () => {
+  const React = require('react');
+  const ReactNative = require('react-native');
+
+  return {
+    TrueSheet: React.forwardRef(
+      (
+        { children }: React.PropsWithChildren,
+        ref: React.ForwardedRef<{
+          present: () => Promise<void>;
+          dismiss: () => Promise<void>;
+        }>,
+      ) => {
+        React.useImperativeHandle(ref, () => ({
+          present: async () => undefined,
+          dismiss: async () => undefined,
+        }));
+
+        return <ReactNative.View>{children}</ReactNative.View>;
+      },
+    ),
+  };
+});
+
 const activeSession: ActiveWorkoutSession = {
   id: 'session-1',
   title: 'Push A',
