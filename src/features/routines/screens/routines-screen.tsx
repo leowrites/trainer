@@ -12,7 +12,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, FlatList, Pressable, ScrollView, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
 import type { Exercise, Routine, RoutineExercise } from '@core/database/types';
@@ -31,7 +31,6 @@ import type { NewExerciseInput } from '../hooks/use-exercises';
 import { useRoutineInsights } from '../hooks/use-routine-insights';
 import { useRoutines } from '../hooks/use-routines';
 import type { NewRoutineInput } from '../hooks/use-routines';
-import { lightTokens } from '@/core/theme';
 
 const DEFAULT_TARGET_SETS = '3';
 const DEFAULT_TARGET_REPS = '10';
@@ -268,6 +267,7 @@ function EditorSheet({
   visible: boolean;
   onClose: () => void;
 }>): React.JSX.Element | null {
+  const { colorMode, tokens } = useTheme();
   const sheetRef = useRef<TrueSheet>(null);
   const latestVisibleRef = useRef(visible);
   const isPresentedRef = useRef(false);
@@ -324,8 +324,8 @@ function EditorSheet({
       cornerRadius={28}
       grabber
       scrollable
-      backgroundColor={lightTokens.bgBase}
-      backgroundBlur="light"
+      backgroundColor={tokens.bgBase}
+      backgroundBlur={colorMode === 'dark' ? 'dark' : 'light'}
       onDidPresent={() => {
         isPresentedRef.current = true;
         isTransitioningRef.current = false;
@@ -784,7 +784,7 @@ function RoutineEditorSheet({
 
             return (
               <RoutineExerciseEditor
-                key={`${entry.exerciseId}-${index}`}
+                key={entry.exerciseId}
                 draft={entry}
                 exerciseName={exerciseName}
                 isFirst={index === 0}
@@ -861,7 +861,7 @@ function ExerciseDetailPage({
     sessionId: string;
     sessionName: string;
     startTime: number;
-    bestCompletedWeight: number;
+    bestCompletedWeight: number | null;
     completedSets: number;
     totalSets: number;
     setSummary: string;
@@ -1153,59 +1153,64 @@ function RoutinesLibraryScreen({
     setIsRoutineSheetOpen(true);
   }, [section, setSearchQuery]);
 
+  const libraryHeader = (
+    <LibraryHeader
+      section={section}
+      exercisesCount={exercises.length}
+      routinesCount={routines.length}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      onChangeSection={handleChangeSection}
+      onCreate={handleCreatePress}
+    />
+  );
+
   return (
     <Container>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 28 }}
-      >
-        <LibraryHeader
-          section={section}
-          exercisesCount={exercises.length}
-          routinesCount={routines.length}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onChangeSection={handleChangeSection}
-          onCreate={handleCreatePress}
+      {section === 'exercises' ? (
+        <FlatList
+          data={filteredExercises}
+          keyExtractor={(exercise) => exercise.id}
+          renderItem={({ item }) => (
+            <LibraryExerciseCard
+              exercise={item}
+              onPress={() =>
+                navigation.navigate('ExerciseDetail', {
+                  exerciseId: item.id,
+                })
+              }
+            />
+          )}
+          ListHeaderComponent={libraryHeader}
+          ListEmptyComponent={
+            <Card className="rounded-[24px] px-5 py-5">
+              <Body className="font-medium">No matching exercises</Body>
+              <Muted className="mt-2 text-sm leading-[18px]">
+                Try another search or create a new exercise from the button
+                above.
+              </Muted>
+            </Card>
+          }
+          contentContainerStyle={{ paddingBottom: 28 }}
+          showsVerticalScrollIndicator={false}
         />
-
-        <View className="pt-1">
-          {section === 'exercises' ? (
-            filteredExercises.length > 0 ? (
-              filteredExercises.map((exercise) => (
-                <LibraryExerciseCard
-                  key={exercise.id}
-                  exercise={exercise}
-                  onPress={() =>
-                    navigation.navigate('ExerciseDetail', {
-                      exerciseId: exercise.id,
-                    })
-                  }
-                />
-              ))
-            ) : (
-              <Card className="rounded-[24px] px-5 py-5">
-                <Body className="font-medium">No matching exercises</Body>
-                <Muted className="mt-2 text-sm leading-[18px]">
-                  Try another search or create a new exercise from the button
-                  above.
-                </Muted>
-              </Card>
-            )
-          ) : filteredRoutines.length > 0 ? (
-            filteredRoutines.map((routine) => (
-              <LibraryRoutineCard
-                key={routine.id}
-                routine={routine}
-                exerciseCount={routineExerciseCounts[routine.id] ?? 0}
-                onPress={() =>
-                  navigation.navigate('RoutineDetail', {
-                    routineId: routine.id,
-                  })
-                }
-              />
-            ))
-          ) : (
+      ) : (
+        <FlatList
+          data={filteredRoutines}
+          keyExtractor={(routine) => routine.id}
+          renderItem={({ item }) => (
+            <LibraryRoutineCard
+              routine={item}
+              exerciseCount={routineExerciseCounts[item.id] ?? 0}
+              onPress={() =>
+                navigation.navigate('RoutineDetail', {
+                  routineId: item.id,
+                })
+              }
+            />
+          )}
+          ListHeaderComponent={libraryHeader}
+          ListEmptyComponent={
             <Card className="rounded-[24px] px-5 py-5">
               <Body className="font-medium">No matching routines</Body>
               <Muted className="mt-2 text-sm leading-[18px]">
@@ -1213,9 +1218,11 @@ function RoutinesLibraryScreen({
                 above.
               </Muted>
             </Card>
-          )}
-        </View>
-      </ScrollView>
+          }
+          contentContainerStyle={{ paddingBottom: 28 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       <ExerciseEditorSheet
         visible={isExerciseSheetOpen}
@@ -1426,7 +1433,7 @@ export function RoutinesScreen(): React.JSX.Element {
 
   const routineExerciseCounts = useMemo(
     () => getRoutineExerciseCounts(),
-    [getRoutineExerciseCounts],
+    [getRoutineExerciseCounts, routines],
   );
 
   return (

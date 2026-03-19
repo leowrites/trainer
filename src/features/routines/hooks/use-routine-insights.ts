@@ -25,7 +25,7 @@ export interface ExerciseHistorySession {
   sessionId: string;
   sessionName: string;
   startTime: number;
-  bestCompletedWeight: number;
+  bestCompletedWeight: number | null;
   completedSets: number;
   totalSets: number;
   setSummary: string;
@@ -112,7 +112,7 @@ export function useRoutineInsights(): {
 
           if (row.is_completed === 1) {
             existingSession.bestCompletedWeight = Math.max(
-              existingSession.bestCompletedWeight,
+              existingSession.bestCompletedWeight ?? row.weight,
               row.weight,
             );
           }
@@ -124,7 +124,7 @@ export function useRoutineInsights(): {
           sessionId: row.session_id,
           sessionName: formatSessionName(row.session_name),
           startTime: row.start_time,
-          bestCompletedWeight: row.is_completed === 1 ? row.weight : 0,
+          bestCompletedWeight: row.is_completed === 1 ? row.weight : null,
           completedSets: row.is_completed === 1 ? 1 : 0,
           totalSets: 1,
           setSummary: nextSetSummary,
@@ -152,7 +152,7 @@ export function useRoutineInsights(): {
             COALESCE(r.name, ws.snapshot_name, 'Workout') AS routine_name,
             ws.start_time,
             ws.end_time,
-            COALESCE(SUM(wset.weight * wset.reps), 0) AS total_volume,
+            COALESCE(SUM(CASE WHEN wset.is_completed = 1 THEN wset.weight * wset.reps ELSE 0 END), 0) AS total_volume,
             COALESCE(SUM(CASE WHEN wset.is_completed = 1 THEN 1 ELSE 0 END), 0) AS completed_sets,
             COUNT(wset.id) AS total_sets
           FROM workout_sessions ws
