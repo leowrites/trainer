@@ -1,5 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
+import { useNotifier } from '@core/notifications';
+jest.mock('@core/notifications', () => ({
+  useNotifier: jest.fn(),
+}));
+
 import { ActionSheetIOS } from 'react-native';
 
 import { useHistoryAnalytics } from '@features/analytics';
@@ -85,6 +90,7 @@ const mockUseWorkoutStarter = jest.mocked(useWorkoutStarter);
 const mockUseActiveWorkout = jest.mocked(useActiveWorkout);
 const mockUseExercises = jest.mocked(useExercises);
 const mockUseHistoryAnalytics = jest.mocked(useHistoryAnalytics);
+const mockUseNotifier = jest.mocked(useNotifier);
 const mockUseUserProfile = jest.mocked(useUserProfile);
 const mockShowActionSheetWithOptions = jest.spyOn(
   ActionSheetIOS,
@@ -148,6 +154,7 @@ describe('WorkoutScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers().setSystemTime(new Date(2026, 2, 18, 8, 1, 30));
+    mockUseNotifier.mockReturnValue(jest.fn());
     mockShowActionSheetWithOptions.mockImplementation((_, callback) => {
       callback(0);
     });
@@ -406,6 +413,52 @@ describe('WorkoutScreen', () => {
     expect(deleteSet).toHaveBeenCalledWith('set-1');
     expect(removeExercise).toHaveBeenCalledWith('exercise-1');
     expect(completeWorkout).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires a workout notification when the rest timer expires', () => {
+    const props = createWorkoutActiveScreenProps();
+    const clearRestTimer = jest.fn();
+    const notify = jest.fn();
+
+    mockUseNotifier.mockReturnValue(notify);
+    mockWorkoutStoreState({
+      isWorkoutActive: true,
+      isWorkoutCollapsed: false,
+      activeSession: null,
+      startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+      restTimerEndsAt: new Date(2026, 2, 18, 8, 1, 0).getTime(),
+      collapseWorkout: jest.fn(),
+      expandWorkout: jest.fn(),
+      startRestTimer: jest.fn(),
+      clearRestTimer,
+    } as ReturnType<typeof useWorkoutStore>);
+    mockUseActiveWorkout.mockReturnValue({
+      activeSession: {
+        id: 'session-1',
+        title: 'Push A',
+        startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+        isFreeWorkout: false,
+        exercises: [],
+      },
+      addExercise: jest.fn(),
+      removeExercise: jest.fn(),
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      toggleSetLogged: jest.fn(),
+      completeWorkout: jest.fn().mockReturnValue(true),
+      deleteWorkout: jest.fn().mockReturnValue(true),
+    });
+
+    render(<WorkoutActiveScreen {...props} />);
+
+    expect(notify).toHaveBeenCalledWith({
+      title: 'Rest timer complete',
+      message: 'Push A is ready for the next set.',
+      variant: 'success',
+    });
+    expect(clearRestTimer).toHaveBeenCalledTimes(1);
   });
 
   it('does not collapse the workout when drilling into exercise detail', () => {

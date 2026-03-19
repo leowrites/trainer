@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { RootStackParamList, RootTabParamList } from '@core/navigation';
+import { useNotifier } from '@core/notifications';
 import {
   buildDashboardMetrics,
   useHistoryAnalytics,
@@ -1040,3 +1041,16 @@ export function WorkoutActiveScreen({
     />
   );
 }
+  const notify = useNotifier();
+    if (restTimerEndsAt === null || restTimerEndsAt > now) {
+      return;
+
+    notify({
+      title: 'Rest timer complete',
+      message: activeSession?.title
+        ? `${activeSession.title} is ready for the next set.`
+        : 'Time to get back to your workout.',
+      variant: 'success',
+    });
+    clearRestTimer();
+  }, [activeSession?.title, clearRestTimer, notify, now, restTimerEndsAt]);

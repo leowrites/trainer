@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DatabaseProvider } from '@core/database';
 import { RootNavigator } from '@core/navigation';
+import { NotificationViewport } from '@core/notifications';
 import { ThemeProvider, useTheme } from '@core/theme/theme-context';
 import { GluestackUIProvider } from '@shared/components';
 
@@ -25,6 +26,7 @@ export default function App(): React.JSX.Element {
           <DatabaseProvider>
             <ThemedStatusBar />
             <RootNavigator />
+            <NotificationViewport />
           </DatabaseProvider>
         </GluestackUIProvider>
       </ThemeProvider>
