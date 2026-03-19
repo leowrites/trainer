@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
+  Animated,
   Alert,
   FlatList,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -41,8 +43,12 @@ import { DEFAULT_REST_SECONDS } from '@shared/constants';
 import { useTheme } from '@core/theme/theme-context';
 import { useActiveWorkout } from '../hooks/use-active-workout';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
+import { usePreviousExercisePerformance } from '../hooks/use-previous-exercise-performance';
 import { useWorkoutStore } from '../store';
-import { type ActiveWorkoutSet } from '../types';
+import {
+  type ActiveWorkoutSet,
+  type PreviousExercisePerformance,
+} from '../types';
 
 type WorkoutHomeScreenProps = CompositeScreenProps<
   BottomTabScreenProps<RootTabParamList, 'Workout'>,
@@ -91,6 +97,9 @@ function formatRestCountdown(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+const EXERCISE_TIMER_SECONDS = 60;
+const SWIPE_ACTION_WIDTH = 72;
+
 function formatVolume(value: number): string {
   return `${new Intl.NumberFormat('en-US').format(Math.round(value))} vol`;
 }
@@ -104,6 +113,16 @@ function formatShortDate(timestamp: number | null): string {
     month: 'short',
     day: 'numeric',
   }).format(timestamp);
+}
+
+function formatPreviousPerformance(
+  performance: PreviousExercisePerformance | null,
+): string {
+  if (!performance) {
+    return 'No previous logged set';
+  }
+
+  return `Previous ${performance.reps} x ${performance.weight}`;
 }
 
 function isExerciseDetailNavigationAction(action: unknown): boolean {
@@ -201,6 +220,7 @@ function WorkoutSetRow({
   const { tokens } = useTheme();
   const [repsText, setRepsText] = useState(String(setItem.reps));
   const [weightText, setWeightText] = useState(String(setItem.weight));
+  const translateX = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     setRepsText(String(setItem.reps));
@@ -218,61 +238,111 @@ function WorkoutSetRow({
     onUpdateWeight(parseDecimalNumber(weightText));
   }, [onUpdateWeight, weightText]);
 
+  const closeSwipe = useCallback((): void => {
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+      bounciness: 0,
+    }).start();
+  }, [translateX]);
+
+  const openSwipe = useCallback((): void => {
+    Animated.spring(translateX, {
+      toValue: -SWIPE_ACTION_WIDTH,
+      useNativeDriver: true,
+      bounciness: 0,
+    }).start();
+  }, [translateX]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) &&
+          gestureState.dx < -6,
+        onPanResponderMove: (_, gestureState) => {
+          translateX.setValue(
+            Math.max(-SWIPE_ACTION_WIDTH, Math.min(0, gestureState.dx)),
+          );
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dx <= -SWIPE_ACTION_WIDTH / 2) {
+            openSwipe();
+            return;
+          }
+
+          closeSwipe();
+        },
+        onPanResponderTerminate: closeSwipe,
+      }),
+    [closeSwipe, openSwipe, translateX],
+  );
+
   return (
-    <View className="mb-2.5 flex-row items-center gap-2 rounded-[16px] border border-surface-border bg-surface-elevated px-3 py-3">
-      <View className="h-8 w-8 items-center justify-center rounded-full bg-surface-card">
-        <Body className="text-sm font-semibold text-foreground">
-          {index + 1}
-        </Body>
-      </View>
-      <TextInput
-        className="h-11 flex-1 rounded-[12px] border border-surface-border bg-surface-card px-3 py-0 font-body text-sm text-foreground"
-        value={repsText}
-        onChangeText={setRepsText}
-        onEndEditing={handlePersistReps}
-        onSubmitEditing={handlePersistReps}
-        keyboardType="number-pad"
-        returnKeyType="done"
-        accessibilityLabel={`${exerciseName} set ${index + 1} reps`}
-        placeholderTextColor={tokens.textMuted}
-      />
-      <TextInput
-        className="h-11 flex-1 rounded-[12px] border border-surface-border bg-surface-card px-3 py-0 font-body text-sm text-foreground"
-        value={weightText}
-        onChangeText={setWeightText}
-        onEndEditing={handlePersistWeight}
-        onSubmitEditing={handlePersistWeight}
-        keyboardType="decimal-pad"
-        returnKeyType="done"
-        accessibilityLabel={`${exerciseName} set ${index + 1} weight`}
-        placeholderTextColor={tokens.textMuted}
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${setItem.isCompleted ? 'Unlog' : 'Log'} ${exerciseName} set ${index + 1}`}
-        className={`h-11 min-w-[58px] items-center justify-center rounded-[12px] border px-3 ${
-          setItem.isCompleted
-            ? 'border-accent bg-accent'
-            : 'border-surface-border bg-surface-card'
-        }`}
-        onPress={() => onToggleLogged(!setItem.isCompleted)}
-      >
-        <Text
-          className={`font-body text-sm font-semibold ${
-            setItem.isCompleted ? 'text-black' : 'text-foreground'
-          }`}
-        >
-          Log
-        </Text>
-      </Pressable>
+    <View className="mb-2.5 overflow-hidden rounded-[16px]">
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Delete ${exerciseName} set ${index + 1}`}
-        className="h-11 w-11 items-center justify-center rounded-[12px] border border-surface-border bg-surface-card"
-        onPress={onDelete}
+        className="absolute bottom-0 right-0 top-0 w-[72px] items-center justify-center rounded-[16px] bg-destructive"
+        onPress={() => {
+          closeSwipe();
+          onDelete();
+        }}
       >
-        <Text className="font-mono text-sm text-muted">×</Text>
+        <Body className="text-sm font-semibold text-background">Delete</Body>
       </Pressable>
+
+      <Animated.View
+        className="flex-row items-center gap-2 rounded-[16px] border border-surface-border bg-surface-elevated px-3 py-3"
+        style={{ transform: [{ translateX }] }}
+        {...panResponder.panHandlers}
+      >
+        <View className="h-8 w-8 items-center justify-center rounded-full bg-surface-card">
+          <Body className="text-sm font-semibold text-foreground">
+            {index + 1}
+          </Body>
+        </View>
+        <TextInput
+          className="h-11 flex-1 rounded-[12px] border border-surface-border bg-surface-card px-3 py-0 font-body text-sm text-foreground"
+          value={repsText}
+          onChangeText={setRepsText}
+          onEndEditing={handlePersistReps}
+          onSubmitEditing={handlePersistReps}
+          keyboardType="number-pad"
+          returnKeyType="done"
+          accessibilityLabel={`${exerciseName} set ${index + 1} reps`}
+          placeholderTextColor={tokens.textMuted}
+        />
+        <TextInput
+          className="h-11 flex-1 rounded-[12px] border border-surface-border bg-surface-card px-3 py-0 font-body text-sm text-foreground"
+          value={weightText}
+          onChangeText={setWeightText}
+          onEndEditing={handlePersistWeight}
+          onSubmitEditing={handlePersistWeight}
+          keyboardType="decimal-pad"
+          returnKeyType="done"
+          accessibilityLabel={`${exerciseName} set ${index + 1} weight`}
+          placeholderTextColor={tokens.textMuted}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${setItem.isCompleted ? 'Unlog' : 'Log'} ${exerciseName} set ${index + 1}`}
+          className={`h-11 min-w-[58px] items-center justify-center rounded-[12px] border px-3 ${
+            setItem.isCompleted
+              ? 'border-accent bg-accent'
+              : 'border-surface-border bg-surface-card'
+          }`}
+          onPress={() => onToggleLogged(!setItem.isCompleted)}
+        >
+          <Text
+            className={`font-body text-sm font-semibold ${
+              setItem.isCompleted ? 'text-black' : 'text-foreground'
+            }`}
+          >
+            Log
+          </Text>
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -312,18 +382,45 @@ function ExercisePickerBottomSheet({
   onClose: () => void;
   onAddExercise: (exerciseId: string, exerciseName: string) => void;
 }): React.JSX.Element {
-  const { exercises } = useExercises();
+  const { tokens } = useTheme();
+  const { exercises, hasLoaded } = useExercises();
   const sheetRef = React.useRef<TrueSheet>(null);
   const isPresentedRef = React.useRef(false);
   const isTransitioningRef = React.useRef(false);
   const latestVisibleRef = React.useRef(visible);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const availableExercises = exercises.filter(
-    (exercise) => !exerciseIdsInSession.includes(exercise.id),
+  const availableExercises = useMemo(
+    () =>
+      exercises.filter(
+        (exercise) => !exerciseIdsInSession.includes(exercise.id),
+      ),
+    [exerciseIdsInSession, exercises],
+  );
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredExercises = useMemo(
+    () =>
+      availableExercises.filter((exercise) => {
+        if (normalizedSearchQuery === '') {
+          return true;
+        }
+
+        return (
+          exercise.name.toLowerCase().includes(normalizedSearchQuery) ||
+          exercise.muscle_group.toLowerCase().includes(normalizedSearchQuery)
+        );
+      }),
+    [availableExercises, normalizedSearchQuery],
   );
 
   useEffect(() => {
     latestVisibleRef.current = visible;
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) {
+      setSearchQuery('');
+    }
   }, [visible]);
 
   useEffect(() => {
@@ -377,15 +474,32 @@ function ExercisePickerBottomSheet({
           <Muted className="mt-1 text-xs leading-[15px]">
             Pick an exercise to bring into the current session.
           </Muted>
+          <TextInput
+            accessibilityLabel="Search exercises"
+            className="mt-4 h-12 rounded-[14px] border border-surface-border bg-surface-card px-4 py-0 font-body text-base text-foreground"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search exercises"
+            placeholderTextColor={tokens.textMuted}
+            returnKeyType="search"
+          />
         </View>
 
-        {availableExercises.length === 0 ? (
+        {!hasLoaded ? (
           <View className="bg-surface-card px-4 py-4">
-            <Muted className="text-xs">All exercises are already added.</Muted>
+            <Muted className="text-sm">Loading exercises...</Muted>
+          </View>
+        ) : availableExercises.length === 0 ? (
+          <View className="bg-surface-card px-4 py-4">
+            <Muted className="text-sm">All exercises are already added.</Muted>
+          </View>
+        ) : filteredExercises.length === 0 ? (
+          <View className="bg-surface-card px-4 py-4">
+            <Muted className="text-sm">No exercises match your search.</Muted>
           </View>
         ) : (
           <FlatList
-            data={availableExercises}
+            data={filteredExercises}
             keyExtractor={(exercise) => exercise.id}
             renderItem={({ item }) => (
               <ExercisePickerRow
@@ -407,14 +521,20 @@ function ExercisePickerBottomSheet({
 function ExerciseCard({
   title,
   exerciseId,
+  previousPerformanceLabel,
+  exerciseTimerLabel,
   onOpenDetails,
   onDelete,
+  onToggleExerciseTimer,
   children,
 }: {
   title: string;
   exerciseId: string;
+  previousPerformanceLabel: string;
+  exerciseTimerLabel: string | null;
   onOpenDetails: (exerciseId: string) => void;
   onDelete: () => void;
+  onToggleExerciseTimer: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
   const handleOpenOptions = useCallback((): void => {
@@ -477,6 +597,33 @@ function ExerciseCard({
             </Text>
           </Pressable>
         </View>
+        <View className="mt-3 flex-row items-center justify-between gap-3">
+          <Muted className="flex-1 text-sm">{previousPerformanceLabel}</Muted>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              exerciseTimerLabel
+                ? `Clear ${title} timer`
+                : `Start ${title} timer`
+            }
+            className={`rounded-[12px] border px-3 py-2 ${
+              exerciseTimerLabel
+                ? 'border-secondary bg-secondary/10'
+                : 'border-surface-border bg-surface-elevated'
+            }`}
+            onPress={onToggleExerciseTimer}
+          >
+            <Body
+              className={`text-sm font-semibold ${
+                exerciseTimerLabel ? 'text-secondary' : 'text-foreground'
+              }`}
+            >
+              {exerciseTimerLabel
+                ? `Timer ${exerciseTimerLabel}`
+                : 'Timer 1:00'}
+            </Body>
+          </Pressable>
+        </View>
       </View>
       {children}
     </View>
@@ -489,14 +636,17 @@ interface ActiveWorkoutContentProps {
   >;
   sessionTitle: string;
   durationLabel: string;
+  now: number;
   exerciseCount: number;
   setCount: number;
   volume: number;
   restLabel: string | null;
   onComplete: () => void;
+  onDeleteWorkout: () => void;
   startRestTimer: (durationSeconds?: number) => void;
   clearRestTimer: () => void;
   onOpenExerciseDetails: (exerciseId: string) => void;
+  onToggleExerciseTimer: (exerciseId: string) => void;
   addSet: (exerciseId: string) => void;
   addExercise: (exerciseId: string, exerciseName: string) => void;
   removeExercise: (exerciseId: string) => void;
@@ -504,6 +654,11 @@ interface ActiveWorkoutContentProps {
   updateReps: (setId: string, reps: number) => void;
   updateWeight: (setId: string, weight: number) => void;
   toggleSetLogged: (setId: string, isCompleted: boolean) => void;
+  exerciseTimerEndsAtByExerciseId: Record<string, number | null>;
+  previousPerformanceByExerciseId: Record<
+    string,
+    PreviousExercisePerformance | null
+  >;
   showExerciseSheet: boolean;
   setShowExerciseSheet: React.Dispatch<React.SetStateAction<boolean>>;
   insets: ReturnType<typeof useSafeAreaInsets>;
@@ -513,14 +668,17 @@ function ActiveWorkoutContent({
   activeSession,
   sessionTitle,
   durationLabel,
+  now,
   exerciseCount,
   setCount,
   volume,
   restLabel,
   onComplete,
+  onDeleteWorkout,
   startRestTimer,
   clearRestTimer,
   onOpenExerciseDetails,
+  onToggleExerciseTimer,
   addSet,
   addExercise,
   removeExercise,
@@ -528,12 +686,14 @@ function ActiveWorkoutContent({
   updateReps,
   updateWeight,
   toggleSetLogged,
+  exerciseTimerEndsAtByExerciseId,
+  previousPerformanceByExerciseId,
   showExerciseSheet,
   setShowExerciseSheet,
   insets,
 }: ActiveWorkoutContentProps): React.JSX.Element {
   const dockOffset = Math.max(insets.bottom, 2);
-  const dockHeight = 62 + dockOffset;
+  const dockHeight = 70 + dockOffset;
 
   return (
     <Container
@@ -551,50 +711,96 @@ function ActiveWorkoutContent({
           contentContainerStyle={{ paddingBottom: dockHeight + 8 }}
         >
           <View className="border-surface-border bg-surface">
-            <View className="px-2 py-2">
-              <Heading className="text-2xl leading-[24px]">
-                {sessionTitle}
-              </Heading>
-            </View>
-            <View className="flex-row flex-wrap gap-x-2 gap-y-0.5 border-t border-surface-border px-2 py-1.5">
-              <Meta className="text-2xs">{durationLabel}</Meta>
-              <Meta className="text-2xs">{exerciseCount} exercises</Meta>
-              <Meta className="text-2xs">{setCount} sets</Meta>
-              <Meta className="text-2xs">{formatVolume(volume)}</Meta>
-              {restLabel ? (
-                <Meta className="text-2xs text-secondary">{restLabel}</Meta>
-              ) : null}
-            </View>
+            <Surface
+              variant="card"
+              className="rounded-none border-x-0 border-t-0 border-surface-border px-4 pb-4 pt-3"
+            >
+              <View className="flex-row items-start justify-between gap-3">
+                <View className="flex-1">
+                  <Meta className="text-xs uppercase tracking-[1.2px]">
+                    In Progress
+                  </Meta>
+                  <Heading className="mt-2 text-3xl leading-[30px]">
+                    {sessionTitle}
+                  </Heading>
+                </View>
+                {restLabel ? (
+                  <View className="rounded-[14px] border border-secondary bg-secondary/10 px-3 py-2">
+                    <Label className="text-secondary">Rest</Label>
+                    <Body className="mt-1 text-base font-semibold text-secondary">
+                      {restLabel}
+                    </Body>
+                  </View>
+                ) : null}
+              </View>
 
-            <View className="flex-row gap-1.5 border-t border-surface-border px-2 py-1.5">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  restLabel
-                    ? `Restart rest timer ${restLabel}`
-                    : 'Start rest timer'
-                }
-                className="rounded-[10px] border border-surface-border px-2 py-1.5"
-                onPress={() => startRestTimer(DEFAULT_REST_SECONDS)}
-              >
-                <Meta
-                  className={`text-2xs ${restLabel ? 'text-secondary' : ''}`}
-                >
-                  {restLabel ? `Rest ${restLabel}` : 'Rest 1:30'}
-                </Meta>
-              </Pressable>
+              <View className="mt-4 flex-row flex-wrap gap-2">
+                <View className="min-w-[120px] flex-1 rounded-[16px] border border-surface-border bg-surface px-3 py-3">
+                  <Label>Duration</Label>
+                  <Heading className="mt-2 text-xl leading-[22px]">
+                    {durationLabel}
+                  </Heading>
+                </View>
+                <View className="min-w-[120px] flex-1 rounded-[16px] border border-surface-border bg-surface px-3 py-3">
+                  <Label>Exercises</Label>
+                  <Heading className="mt-2 text-xl leading-[22px]">
+                    {exerciseCount}
+                  </Heading>
+                </View>
+                <View className="min-w-[120px] flex-1 rounded-[16px] border border-surface-border bg-surface px-3 py-3">
+                  <Label>Sets</Label>
+                  <Heading className="mt-2 text-xl leading-[22px]">
+                    {setCount}
+                  </Heading>
+                </View>
+                <View className="min-w-[120px] flex-1 rounded-[16px] border border-surface-border bg-surface px-3 py-3">
+                  <Label>Volume</Label>
+                  <Heading className="mt-2 text-xl leading-[22px]">
+                    {formatVolume(volume)}
+                  </Heading>
+                </View>
+              </View>
 
-              {restLabel ? (
+              <View className="mt-4 flex-row gap-2">
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Clear rest timer"
-                  className="rounded-[10px] border border-surface-border px-2 py-1.5"
-                  onPress={clearRestTimer}
+                  accessibilityLabel={
+                    restLabel
+                      ? `Restart rest timer ${restLabel}`
+                      : 'Start rest timer'
+                  }
+                  className={`rounded-[14px] border px-4 py-3 ${
+                    restLabel
+                      ? 'border-secondary bg-secondary/10'
+                      : 'border-surface-border bg-surface'
+                  }`}
+                  onPress={() => startRestTimer(DEFAULT_REST_SECONDS)}
                 >
-                  <Meta className="text-2xs">Clear</Meta>
+                  <Body
+                    className={`text-sm font-semibold ${
+                      restLabel ? 'text-secondary' : 'text-foreground'
+                    }`}
+                  >
+                    {restLabel
+                      ? `Restart Rest ${restLabel}`
+                      : 'Start Rest 1:30'}
+                  </Body>
                 </Pressable>
-              ) : null}
-            </View>
+
+                {restLabel ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear rest timer"
+                    className="rounded-[14px] border border-surface-border bg-surface px-4 py-3"
+                    onPress={clearRestTimer}
+                  >
+                    <Body className="text-sm font-semibold text-foreground">
+                      Clear
+                    </Body>
+                  </Pressable>
+                ) : null}
+              </View>
+            </Surface>
           </View>
 
           {activeSession.exercises.length > 0 ? (
@@ -603,15 +809,30 @@ function ActiveWorkoutContent({
                 key={exercise.exerciseId}
                 title={exercise.exerciseName}
                 exerciseId={exercise.exerciseId}
+                previousPerformanceLabel={formatPreviousPerformance(
+                  previousPerformanceByExerciseId[exercise.exerciseId] ?? null,
+                )}
+                exerciseTimerLabel={
+                  exerciseTimerEndsAtByExerciseId[exercise.exerciseId] &&
+                  (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ?? 0) >
+                    now
+                    ? formatRestCountdown(
+                        (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ??
+                          0) - now,
+                      )
+                    : null
+                }
                 onOpenDetails={onOpenExerciseDetails}
                 onDelete={() => removeExercise(exercise.exerciseId)}
+                onToggleExerciseTimer={() =>
+                  onToggleExerciseTimer(exercise.exerciseId)
+                }
               >
                 <View className="flex-row items-center gap-2 px-1 pb-3 pt-1">
                   <Label className="w-8 text-center text-xs">Set</Label>
                   <Label className="flex-1 text-xs">Reps</Label>
                   <Label className="flex-1 text-xs">Weight</Label>
                   <Label className="w-[58px] text-center text-xs">Log</Label>
-                  <Label className="w-11 text-center text-xs">Del</Label>
                 </View>
                 {exercise.sets.map((setItem, index) => (
                   <WorkoutSetRow
@@ -662,10 +883,20 @@ function ActiveWorkoutContent({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add exercise"
-              className="h-10 w-10 items-center justify-center rounded-[12px] border border-surface-border bg-surface-card"
+              className="h-11 w-11 items-center justify-center rounded-[14px] border border-surface-border bg-surface-card"
               onPress={() => setShowExerciseSheet(true)}
             >
               <Text className="font-mono text-xl text-foreground">+</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Delete workout"
+              className="h-11 min-w-[76px] items-center justify-center rounded-[14px] border border-destructive bg-surface-card px-3"
+              onPress={onDeleteWorkout}
+            >
+              <Body className="text-sm font-semibold text-destructive">
+                Delete
+              </Body>
             </Pressable>
 
             <Button
@@ -932,10 +1163,17 @@ export function WorkoutActiveScreen({
     updateWeight,
     toggleSetLogged,
     completeWorkout,
+    deleteWorkout,
   } = useActiveWorkout();
   const [showExerciseSheet, setShowExerciseSheet] = useState(false);
   const [now, setNow] = useState<number>(Date.now());
   const [allowExit, setAllowExit] = useState(false);
+  const [exerciseTimerEndsAtByExerciseId, setExerciseTimerEndsAtByExerciseId] =
+    useState<Record<string, number | null>>({});
+  const previousPerformanceByExerciseId = usePreviousExercisePerformance(
+    activeSession?.id ?? null,
+    activeSession?.exercises.map((exercise) => exercise.exerciseId) ?? [],
+  );
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
@@ -981,6 +1219,24 @@ export function WorkoutActiveScreen({
     }
   }, [clearRestTimer, now, restTimerEndsAt]);
 
+  useEffect(() => {
+    if (!activeSession) {
+      setExerciseTimerEndsAtByExerciseId({});
+      return;
+    }
+
+    setExerciseTimerEndsAtByExerciseId((currentTimers) =>
+      Object.fromEntries(
+        activeSession.exercises
+          .map((exercise) => [
+            exercise.exerciseId,
+            currentTimers[exercise.exerciseId] ?? null,
+          ])
+          .filter((entry) => entry[0] !== undefined),
+      ),
+    );
+  }, [activeSession]);
+
   if (!isWorkoutActive || isWorkoutCollapsed || !activeSession) {
     return null;
   }
@@ -1006,12 +1262,32 @@ export function WorkoutActiveScreen({
     restTimerEndsAt !== null
       ? formatRestCountdown(restTimerEndsAt - now)
       : null;
+  const handleDeleteWorkout = (): void => {
+    Alert.alert(
+      'Delete workout?',
+      'This removes the in-progress session and all logged sets.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Workout',
+          style: 'destructive',
+          onPress: () => {
+            if (deleteWorkout()) {
+              setAllowExit(true);
+              navigation.navigate('Tabs', { screen: 'Workout' });
+            }
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <ActiveWorkoutContent
       activeSession={activeSession}
       sessionTitle={sessionTitle}
       durationLabel={durationLabel}
+      now={now}
       exerciseCount={exerciseCount}
       setCount={setCount}
       volume={volume}
@@ -1022,11 +1298,25 @@ export function WorkoutActiveScreen({
           navigation.navigate('Tabs', { screen: 'Workout' });
         }
       }}
+      onDeleteWorkout={handleDeleteWorkout}
       startRestTimer={startRestTimer}
       clearRestTimer={clearRestTimer}
       onOpenExerciseDetails={(exerciseId) =>
         navigation.navigate('ExerciseDetail', { exerciseId })
       }
+      onToggleExerciseTimer={(exerciseId) => {
+        setExerciseTimerEndsAtByExerciseId((currentTimers) => {
+          const existingEnd = currentTimers[exerciseId] ?? null;
+          const isActive = existingEnd !== null && existingEnd > Date.now();
+
+          return {
+            ...currentTimers,
+            [exerciseId]: isActive
+              ? null
+              : Date.now() + EXERCISE_TIMER_SECONDS * 1000,
+          };
+        });
+      }}
       addSet={addSet}
       addExercise={addExercise}
       removeExercise={removeExercise}
@@ -1034,6 +1324,8 @@ export function WorkoutActiveScreen({
       updateReps={updateReps}
       updateWeight={updateWeight}
       toggleSetLogged={toggleSetLogged}
+      exerciseTimerEndsAtByExerciseId={exerciseTimerEndsAtByExerciseId}
+      previousPerformanceByExerciseId={previousPerformanceByExerciseId}
       showExerciseSheet={showExerciseSheet}
       setShowExerciseSheet={setShowExerciseSheet}
       insets={insets}

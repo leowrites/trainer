@@ -278,4 +278,25 @@ describe('useActiveWorkout', () => {
 
     jest.useRealTimers();
   });
+
+  it('deletes the active workout session before clearing ephemeral state', () => {
+    const db = createMockDb();
+    const wrapper = createDatabaseWrapper(db);
+    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
+
+    act(() => {
+      expect(result.current.deleteWorkout()).toBe(true);
+    });
+
+    expect(db.runSync).toHaveBeenCalledWith(
+      'DELETE FROM workout_sets WHERE session_id = ?',
+      ['session-1'],
+    );
+    expect(db.runSync).toHaveBeenCalledWith(
+      'DELETE FROM workout_sessions WHERE id = ?',
+      ['session-1'],
+    );
+    expect(useWorkoutStore.getState().isWorkoutActive).toBe(false);
+    expect(useWorkoutStore.getState().activeSession).toBeNull();
+  });
 });

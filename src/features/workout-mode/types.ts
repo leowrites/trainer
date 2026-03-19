@@ -30,6 +30,12 @@ export interface ActiveWorkoutSession {
   exercises: ActiveWorkoutExercise[];
 }
 
+export interface PreviousExercisePerformance {
+  reps: number;
+  weight: number;
+  completedAt: number;
+}
+
 export type WorkoutSessionRow = Pick<
   WorkoutSession,
   'id' | 'snapshot_name' | 'start_time'
@@ -48,3 +54,10 @@ export type WorkoutSetRow = Pick<
 >;
 
 export type ExerciseNameRow = Pick<Exercise, 'id' | 'name'>;
+
+export interface PreviousExercisePerformanceRow {
+  exercise_id: string;
+  reps: number;
+  weight: number;
+  end_time: number;
+}

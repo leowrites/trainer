@@ -5,6 +5,7 @@ import type { ActiveWorkoutSession } from '../types';
 import {
   completeWorkoutSessionRecord,
   createWorkoutSetRecord,
+  deleteWorkoutSessionRecord,
   deleteWorkoutSetsForExercise,
   deleteWorkoutSetRecord,
   loadActiveWorkoutSession,
@@ -40,6 +41,7 @@ export function useActiveWorkout(): {
   updateWeight: (setId: string, weight: number) => void;
   toggleSetLogged: (setId: string, isCompleted: boolean) => void;
   completeWorkout: () => boolean;
+  deleteWorkout: () => boolean;
 } {
   const db = useDatabase();
   const {
@@ -187,6 +189,16 @@ export function useActiveWorkout(): {
     return true;
   }, [activeSessionId, db, endWorkout]);
 
+  const deleteWorkout = useCallback((): boolean => {
+    if (!activeSessionId) {
+      return false;
+    }
+
+    deleteWorkoutSessionRecord(db, activeSessionId);
+    endWorkout();
+    return true;
+  }, [activeSessionId, db, endWorkout]);
+
   return {
     activeSession,
     addExercise,
@@ -197,5 +209,6 @@ export function useActiveWorkout(): {
     updateWeight,
     toggleSetLogged,
     completeWorkout,
+    deleteWorkout,
   };
 }

@@ -12,6 +12,8 @@ import type {
   ActiveWorkoutSession,
   ActiveWorkoutSet,
   ExerciseNameRow,
+  PreviousExercisePerformance,
+  PreviousExercisePerformanceRow,
   WorkoutSessionRow,
   WorkoutSetRow,
 } from './types';
@@ -220,4 +222,54 @@ export function completeWorkoutSessionRecord(
       sessionRow.schedule_id,
     ]);
   });
+}
+
+export function deleteWorkoutSessionRecord(
+  db: SQLiteDatabase,
+  sessionId: string,
+): void {
+  db.withTransactionSync(() => {
+    db.runSync('DELETE FROM workout_sets WHERE session_id = ?', [sessionId]);
+    db.runSync('DELETE FROM workout_sessions WHERE id = ?', [sessionId]);
+  });
+}
+
+export function loadPreviousExercisePerformanceMap(
+  db: SQLiteDatabase,
+  currentSessionId: string,
+  exerciseIds: string[],
+): Record<string, PreviousExercisePerformance | null> {
+  if (exerciseIds.length === 0) {
+    return {};
+  }
+
+  const rows = db.getAllSync<PreviousExercisePerformanceRow>(
+    `SELECT workout_sets.exercise_id, workout_sets.reps, workout_sets.weight, workout_sessions.end_time
+      FROM workout_sets
+      INNER JOIN workout_sessions ON workout_sessions.id = workout_sets.session_id
+      WHERE workout_sets.exercise_id IN (${exerciseIds.map(() => '?').join(', ')})
+        AND workout_sets.session_id != ?
+        AND workout_sets.is_completed = 1
+        AND workout_sessions.end_time IS NOT NULL
+      ORDER BY workout_sessions.end_time DESC, workout_sets.rowid DESC`,
+    [...exerciseIds, currentSessionId],
+  );
+
+  const performanceByExerciseId = Object.fromEntries(
+    exerciseIds.map((exerciseId) => [exerciseId, null]),
+  ) as Record<string, PreviousExercisePerformance | null>;
+
+  for (const row of rows) {
+    if (performanceByExerciseId[row.exercise_id] !== null) {
+      continue;
+    }
+
+    performanceByExerciseId[row.exercise_id] = {
+      reps: row.reps,
+      weight: row.weight,
+      completedAt: row.end_time,
+    };
+  }
+
+  return performanceByExerciseId;
 }

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
-import { ActionSheetIOS } from 'react-native';
+import { ActionSheetIOS, Alert } from 'react-native';
 
 import { useHistoryAnalytics } from '@features/analytics';
 import { useUserProfile } from '@features/health-tracking';
@@ -8,6 +8,7 @@ import { WorkoutActiveScreen, WorkoutScreen } from '../screens/workout-screen';
 import { useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
 import { useActiveWorkout } from '../hooks/use-active-workout';
+import { usePreviousExercisePerformance } from '../hooks/use-previous-exercise-performance';
 import { useExercises } from '@features/routines';
 
 jest.mock('@react-navigation/native', () => ({
@@ -40,6 +41,10 @@ jest.mock('../hooks/use-workout-starter', () => ({
 
 jest.mock('../hooks/use-active-workout', () => ({
   useActiveWorkout: jest.fn(),
+}));
+
+jest.mock('../hooks/use-previous-exercise-performance', () => ({
+  usePreviousExercisePerformance: jest.fn(),
 }));
 
 jest.mock('@features/routines', () => ({
@@ -83,6 +88,9 @@ jest.mock('@lodev09/react-native-true-sheet', () => {
 const mockUseWorkoutStore = jest.mocked(useWorkoutStore);
 const mockUseWorkoutStarter = jest.mocked(useWorkoutStarter);
 const mockUseActiveWorkout = jest.mocked(useActiveWorkout);
+const mockUsePreviousExercisePerformance = jest.mocked(
+  usePreviousExercisePerformance,
+);
 const mockUseExercises = jest.mocked(useExercises);
 const mockUseHistoryAnalytics = jest.mocked(useHistoryAnalytics);
 const mockUseUserProfile = jest.mocked(useUserProfile);
@@ -201,7 +209,9 @@ describe('WorkoutScreen', () => {
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
       completeWorkout: jest.fn().mockReturnValue(true),
+      deleteWorkout: jest.fn().mockReturnValue(true),
     });
+    mockUsePreviousExercisePerformance.mockReturnValue({});
   });
 
   afterEach(() => {
@@ -319,6 +329,7 @@ describe('WorkoutScreen', () => {
     const updateWeight = jest.fn();
     const toggleSetLogged = jest.fn();
     const completeWorkout = jest.fn().mockReturnValue(true);
+    const deleteWorkout = jest.fn().mockReturnValue(true);
 
     mockWorkoutStoreState({
       isWorkoutActive: true,
@@ -371,6 +382,14 @@ describe('WorkoutScreen', () => {
       updateWeight,
       toggleSetLogged,
       completeWorkout,
+      deleteWorkout,
+    });
+    mockUsePreviousExercisePerformance.mockReturnValue({
+      'exercise-1': {
+        reps: 8,
+        weight: 130,
+        completedAt: new Date(2026, 2, 16, 9, 0, 0).getTime(),
+      },
     });
 
     render(<WorkoutActiveScreen {...props} />);
@@ -378,6 +397,7 @@ describe('WorkoutScreen', () => {
     expect(screen.getByText('Push A')).toBeTruthy();
     expect(screen.getByText('1m')).toBeTruthy();
     expect(screen.getAllByText('Bench Press').length).toBeGreaterThan(0);
+    expect(screen.getByText('Previous 8 x 130')).toBeTruthy();
 
     const repsInput = screen.getByLabelText('Bench Press set 1 reps');
     const weightInput = screen.getByLabelText('Bench Press set 1 weight');
@@ -387,6 +407,7 @@ describe('WorkoutScreen', () => {
     fireEvent.changeText(weightInput, '140.5');
     fireEvent(weightInput, 'endEditing');
     fireEvent.press(screen.getByLabelText('View details for Bench Press'));
+    fireEvent.press(screen.getByLabelText('Start Bench Press timer'));
     fireEvent.press(screen.getByLabelText('Log Bench Press set 1'));
     fireEvent.press(screen.getByText('Add set'));
     fireEvent.press(screen.getByLabelText('Delete Bench Press set 1'));
@@ -406,6 +427,7 @@ describe('WorkoutScreen', () => {
     expect(deleteSet).toHaveBeenCalledWith('set-1');
     expect(removeExercise).toHaveBeenCalledWith('exercise-1');
     expect(completeWorkout).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Timer 1:00')).toBeTruthy();
   });
 
   it('does not collapse the workout when drilling into exercise detail', () => {
@@ -442,6 +464,7 @@ describe('WorkoutScreen', () => {
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
       completeWorkout: jest.fn().mockReturnValue(true),
+      deleteWorkout: jest.fn().mockReturnValue(true),
     });
 
     render(<WorkoutActiveScreen {...props} />);
@@ -546,11 +569,13 @@ describe('WorkoutScreen', () => {
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
       completeWorkout: jest.fn().mockReturnValue(true),
+      deleteWorkout: jest.fn().mockReturnValue(true),
     });
 
     render(<WorkoutActiveScreen {...props} />);
 
     fireEvent.press(screen.getByLabelText('Add exercise'));
+    fireEvent.changeText(screen.getByLabelText('Search exercises'), 'goblet');
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
 
     expect(addExercise).toHaveBeenCalledWith('exercise-2', 'Goblet Squat');
@@ -617,6 +642,7 @@ describe('WorkoutScreen', () => {
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
       completeWorkout: jest.fn().mockReturnValue(true),
+      deleteWorkout: jest.fn().mockReturnValue(true),
     });
 
     const { rerender } = render(<WorkoutActiveScreen {...props} />);
@@ -660,6 +686,7 @@ describe('WorkoutScreen', () => {
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
       completeWorkout: jest.fn().mockReturnValue(true),
+      deleteWorkout: jest.fn().mockReturnValue(true),
     });
 
     rerender(<WorkoutActiveScreen {...props} />);
@@ -670,5 +697,61 @@ describe('WorkoutScreen', () => {
     fireEvent.press(screen.getByLabelText('Options for Goblet Squat'));
 
     expect(removeExercise).toHaveBeenCalledWith('exercise-2');
+  });
+
+  it('deletes the current workout after confirmation', () => {
+    const props = createWorkoutActiveScreenProps();
+    const deleteWorkout = jest.fn().mockReturnValue(true);
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(
+      (
+        _title?: string,
+        _message?: string,
+        buttons?: Array<{
+          text?: string;
+          onPress?: () => void;
+          style?: string;
+        }>,
+      ) => {
+        buttons?.find((button) => button.style === 'destructive')?.onPress?.();
+      },
+    );
+
+    mockWorkoutStoreState({
+      isWorkoutActive: true,
+      isWorkoutCollapsed: false,
+      activeSession: null,
+      startTime: 1_700_000_000_000,
+      restTimerEndsAt: null,
+      collapseWorkout: jest.fn(),
+      expandWorkout: jest.fn(),
+      startRestTimer: jest.fn(),
+      clearRestTimer: jest.fn(),
+    } as ReturnType<typeof useWorkoutStore>);
+    mockUseActiveWorkout.mockReturnValue({
+      activeSession: {
+        id: 'session-1',
+        title: 'Push A',
+        startTime: 1_700_000_000_000,
+        isFreeWorkout: false,
+        exercises: [],
+      },
+      addExercise: jest.fn(),
+      removeExercise: jest.fn(),
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      toggleSetLogged: jest.fn(),
+      completeWorkout: jest.fn().mockReturnValue(true),
+      deleteWorkout,
+    });
+
+    render(<WorkoutActiveScreen {...props} />);
+
+    fireEvent.press(screen.getByLabelText('Delete workout'));
+
+    expect(alertSpy).toHaveBeenCalled();
+    expect(deleteWorkout).toHaveBeenCalledTimes(1);
+    alertSpy.mockRestore();
   });
 });
