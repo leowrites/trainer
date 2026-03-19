@@ -1,4 +1,5 @@
-import { createNativeBottomTabNavigator } from '@react-navigation/bottom-tabs/unstable';
+import { Feather } from '@expo/vector-icons';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   DefaultTheme,
   type NavigatorScreenParams,
@@ -37,8 +38,27 @@ export type RootStackParamList = {
 
 // ─── Navigator ─────────────────────────────────────────────────────────────────
 
-const Tab = createNativeBottomTabNavigator<RootTabParamList>();
+const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function getTabIconName(
+  routeName: keyof RootTabParamList,
+): React.ComponentProps<typeof Feather>['name'] {
+  switch (routeName) {
+    case 'Workout':
+      return 'home';
+    case 'Routines':
+      return 'layers';
+    case 'Schedule':
+      return 'calendar';
+    case 'History':
+      return 'bar-chart-2';
+    case 'Profile':
+      return 'user';
+    default:
+      return 'circle';
+  }
+}
 
 function TabNavigator({
   navigation,
@@ -61,11 +81,30 @@ function TabNavigator({
   return (
     <View className="flex-1" style={{ backgroundColor: tokens.bgBase }}>
       <Tab.Navigator
-        screenOptions={{
+        screenOptions={({ route }) => ({
           headerShown: false,
-        }}
+          tabBarActiveTintColor: tokens.accent,
+          tabBarInactiveTintColor: tokens.textMuted,
+          tabBarStyle: {
+            backgroundColor: tokens.bgCard,
+            borderTopColor: tokens.bgBorder,
+          },
+          tabBarIcon: ({ color, size }) => (
+            <Feather
+              name={getTabIconName(route.name)}
+              color={color}
+              size={size}
+            />
+          ),
+        })}
       >
-        <Tab.Screen name="Workout" component={WorkoutScreen} />
+        <Tab.Screen
+          name="Workout"
+          component={WorkoutScreen}
+          options={{
+            title: 'Home',
+          }}
+        />
         <Tab.Screen name="Routines" component={RoutinesScreen} />
         <Tab.Screen name="Schedule" component={ScheduleScreen} />
         <Tab.Screen name="History" component={HistoryScreen} />

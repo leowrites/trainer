@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { ActionSheetIOS } from 'react-native';
 
+import { useHistoryAnalytics } from '@features/analytics';
+import { useUserProfile } from '@features/health-tracking';
 import { WorkoutActiveScreen, WorkoutScreen } from '../screens/workout-screen';
 import { useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
@@ -44,6 +46,16 @@ jest.mock('@features/routines', () => ({
   useExercises: jest.fn(),
 }));
 
+jest.mock('@features/analytics', () => ({
+  useHistoryAnalytics: jest.fn(),
+  buildDashboardMetrics: jest.requireActual('@features/analytics')
+    .buildDashboardMetrics,
+}));
+
+jest.mock('@features/health-tracking', () => ({
+  useUserProfile: jest.fn(),
+}));
+
 jest.mock('@lodev09/react-native-true-sheet', () => {
   const React = require('react');
   const ReactNative = require('react-native');
@@ -72,6 +84,8 @@ const mockUseWorkoutStore = jest.mocked(useWorkoutStore);
 const mockUseWorkoutStarter = jest.mocked(useWorkoutStarter);
 const mockUseActiveWorkout = jest.mocked(useActiveWorkout);
 const mockUseExercises = jest.mocked(useExercises);
+const mockUseHistoryAnalytics = jest.mocked(useHistoryAnalytics);
+const mockUseUserProfile = jest.mocked(useUserProfile);
 const mockShowActionSheetWithOptions = jest.spyOn(
   ActionSheetIOS,
   'showActionSheetWithOptions',
@@ -144,6 +158,38 @@ describe('WorkoutScreen', () => {
       updateExercise: jest.fn(),
       deleteExercise: jest.fn(),
     });
+    mockUseHistoryAnalytics.mockReturnValue({
+      sessions: [
+        {
+          id: 'completed-session-1',
+          routineId: 'routine-0',
+          routineName: 'Pull A',
+          startTime: new Date('2026-03-17T11:00:00.000Z').getTime(),
+          endTime: new Date('2026-03-17T11:48:00.000Z').getTime(),
+          durationMinutes: 48,
+          totalSets: 12,
+          totalCompletedSets: 12,
+          totalVolume: 5240,
+          exerciseCount: 5,
+          exercises: [],
+        },
+      ],
+      volumeTrend: [],
+      hoursTrend: [],
+      refresh: jest.fn(),
+    });
+    mockUseUserProfile.mockReturnValue({
+      profile: {
+        id: 'profile-1',
+        displayName: 'Alex',
+        preferredWeightUnit: 'kg',
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      error: null,
+      refresh: jest.fn(),
+      saveProfile: jest.fn(),
+    });
     mockUseActiveWorkout.mockReturnValue({
       activeSession: null,
       addExercise: jest.fn(),
@@ -194,9 +240,9 @@ describe('WorkoutScreen', () => {
     render(<WorkoutScreen {...props} />);
 
     expect(refreshPreview).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByText('Your next workout is ready, Push A.'),
-    ).toBeTruthy();
+    expect(screen.getByText('Good morning, Alex')).toBeTruthy();
+    expect(screen.getByText('Workouts This Week')).toBeTruthy();
+    expect(screen.getByText('Weekly Streak')).toBeTruthy();
     expect(screen.getByText('Push A')).toBeTruthy();
     expect(screen.getByText('6 exercises • ~40 mins')).toBeTruthy();
 
@@ -253,7 +299,7 @@ describe('WorkoutScreen', () => {
 
     expect(screen.getByText('Current Workout')).toBeTruthy();
     expect(screen.getByText('Continue')).toBeTruthy();
-    expect(screen.queryByText('Start Push A')).toBeNull();
+    expect(screen.queryByText('Start Pull A')).toBeNull();
     expect(screen.queryByText('Start Free Workout')).toBeNull();
 
     fireEvent.press(screen.getByText('Continue'));
