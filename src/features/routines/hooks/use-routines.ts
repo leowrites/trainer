@@ -114,6 +114,23 @@ export function useRoutines(): {
           (r) => r.schedule_id,
         );
 
+        // Calculate how many entries will be deleted before or at current_position for each schedule
+        const shiftsBySchedule: Record<string, number> = {};
+        for (const scheduleId of affectedSchedules) {
+          const schedule = db.getFirstSync<{ current_position: number }>(
+            'SELECT current_position FROM schedules WHERE id = ?',
+            [scheduleId],
+          );
+          if (schedule) {
+            const deletedBeforeCurrent =
+              db.getFirstSync<{ count: number }>(
+                'SELECT COUNT(*) as count FROM schedule_entries WHERE schedule_id = ? AND routine_id = ? AND position <= ?',
+                [scheduleId, id, schedule.current_position],
+              )?.count ?? 0;
+            shiftsBySchedule[scheduleId] = deletedBeforeCurrent;
+          }
+        }
+
         db.runSync('DELETE FROM schedule_entries WHERE routine_id = ?', [id]);
 
         affectedSchedules.forEach((scheduleId) => {
@@ -138,11 +155,15 @@ export function useRoutines(): {
           ]);
 
           if (schedule) {
-            let nextPos = schedule.current_position;
+            const shift = shiftsBySchedule[scheduleId] ?? 0;
+            let nextPos = schedule.current_position - shift;
+
             if (entryCount === 0) {
               nextPos = -1;
             } else if (nextPos >= entryCount) {
               nextPos = entryCount - 1;
+            } else if (nextPos < -1) {
+              nextPos = -1;
             }
 
             db.runSync(

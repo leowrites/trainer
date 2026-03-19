@@ -1,5 +1,7 @@
-import type { useActiveWorkout } from '../hooks/use-active-workout';
-import type { PreviousExercisePerformance } from '../types';
+import type {
+  ActiveWorkoutSession,
+  PreviousExercisePerformance,
+} from '../types';
 
 export function parseWholeNumber(value: string): number {
   if (value.trim() === '') {
@@ -67,9 +69,7 @@ export function formatPreviousPerformance(
 }
 
 export function countCompletedExercises(
-  exercises: NonNullable<
-    ReturnType<typeof useActiveWorkout>['activeSession']
-  >['exercises'],
+  exercises: ActiveWorkoutSession['exercises'],
 ): number {
   return exercises.filter(
     (exercise) =>

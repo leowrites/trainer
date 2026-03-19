@@ -4,9 +4,11 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Body, Button, Container, Label, Muted } from '@shared/components';
-import type { useActiveWorkout } from '../hooks/use-active-workout';
 import { DEFAULT_EXERCISE_TIMER_SECONDS } from '../store';
-import type { PreviousExercisePerformance } from '../types';
+import type {
+  ActiveWorkoutSession,
+  PreviousExercisePerformance,
+} from '../types';
 import { ExerciseCard } from './exercise-card';
 import { ExercisePickerBottomSheet } from './exercise-picker-bottom-sheet';
 import { WorkoutSetRow } from './workout-set-row';
@@ -17,9 +19,7 @@ import {
 } from '../utils/formatters';
 
 export interface ActiveWorkoutContentProps {
-  activeSession: NonNullable<
-    ReturnType<typeof useActiveWorkout>['activeSession']
-  >;
+  activeSession: ActiveWorkoutSession;
   now: number;
   setCount: number;
   volume: number;

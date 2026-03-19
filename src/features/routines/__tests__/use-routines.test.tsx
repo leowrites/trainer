@@ -169,8 +169,13 @@ describe('useRoutines', () => {
       return [];
     });
 
-    // SELECT schedule current_position
-    db.getFirstSync.mockReturnValueOnce({ id: 's1', current_position: 2 });
+    // Mock getFirstSync for COUNT(*) and original current_position
+    db.getFirstSync.mockImplementation((query: string) => {
+      if (query.includes('COUNT(*)')) return { count: 1 };
+      if (query.includes('FROM schedules'))
+        return { id: 's1', current_position: 2 };
+      return null;
+    });
 
     const { result } = renderHook(() => useRoutines(), { wrapper });
 
