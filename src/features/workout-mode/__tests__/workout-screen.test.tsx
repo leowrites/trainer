@@ -407,6 +407,66 @@ describe('WorkoutScreen', () => {
     expect(completeWorkout).toHaveBeenCalledTimes(1);
   });
 
+  it('does not collapse the workout when drilling into exercise detail', () => {
+    const props = createWorkoutActiveScreenProps();
+    const collapseWorkout = jest.fn();
+    const addListener = jest.fn();
+    props.navigation.addListener =
+      addListener as typeof props.navigation.addListener;
+
+    mockWorkoutStoreState({
+      isWorkoutActive: true,
+      isWorkoutCollapsed: false,
+      activeSession: null,
+      startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+      restTimerEndsAt: null,
+      collapseWorkout,
+      expandWorkout: jest.fn(),
+      startRestTimer: jest.fn(),
+      clearRestTimer: jest.fn(),
+    } as ReturnType<typeof useWorkoutStore>);
+    mockUseActiveWorkout.mockReturnValue({
+      activeSession: {
+        id: 'session-1',
+        title: 'Push A',
+        startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+        isFreeWorkout: false,
+        exercises: [],
+      },
+      addExercise: jest.fn(),
+      removeExercise: jest.fn(),
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      toggleSetLogged: jest.fn(),
+      completeWorkout: jest.fn().mockReturnValue(true),
+    });
+
+    render(<WorkoutActiveScreen {...props} />);
+
+    const beforeRemoveHandler = addListener.mock.calls.find(
+      ([eventName]) => eventName === 'beforeRemove',
+    )?.[1] as (event: {
+      preventDefault: jest.Mock;
+      data: { action: { type: string; payload: { name: string } } };
+    }) => void;
+
+    const preventDefault = jest.fn();
+    beforeRemoveHandler({
+      preventDefault,
+      data: {
+        action: {
+          type: 'NAVIGATE',
+          payload: { name: 'ExerciseDetail' },
+        },
+      },
+    });
+
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(collapseWorkout).not.toHaveBeenCalled();
+  });
+
   it('allows adding ad hoc exercises during a scheduled workout', () => {
     const props = createWorkoutActiveScreenProps();
     const addExercise = jest.fn();

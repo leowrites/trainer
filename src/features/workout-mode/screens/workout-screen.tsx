@@ -106,6 +106,27 @@ function formatShortDate(timestamp: number | null): string {
   }).format(timestamp);
 }
 
+function isExerciseDetailNavigationAction(action: unknown): boolean {
+  if (
+    typeof action !== 'object' ||
+    action === null ||
+    !('type' in action) ||
+    !('payload' in action)
+  ) {
+    return false;
+  }
+
+  const typedAction = action as {
+    type?: string;
+    payload?: { name?: string };
+  };
+
+  return (
+    typedAction.type === 'NAVIGATE' &&
+    typedAction.payload?.name === 'ExerciseDetail'
+  );
+}
+
 function getGreeting(
   displayName: string | null,
   now: number,
@@ -918,7 +939,12 @@ export function WorkoutActiveScreen({
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
-      if (allowExit || !isWorkoutActive || isWorkoutCollapsed) {
+      if (
+        allowExit ||
+        !isWorkoutActive ||
+        isWorkoutCollapsed ||
+        isExerciseDetailNavigationAction(event.data.action)
+      ) {
         return;
       }
 
