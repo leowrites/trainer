@@ -8,6 +8,7 @@ export interface Exercise {
   muscle_group: string;
   how_to: string | null;
   equipment: string | null;
+  is_deleted: number;
 }
 
 export interface Routine {

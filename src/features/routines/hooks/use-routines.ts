@@ -106,8 +106,52 @@ export function useRoutines(): {
   const deleteRoutine = useCallback(
     (id: string): void => {
       db.withTransactionSync(() => {
-        // Cascade-delete schedule entries referencing this routine (prevent orphaned entries).
+        const affectedSchedulesRows = db.getAllSync<{ schedule_id: string }>(
+          'SELECT DISTINCT schedule_id FROM schedule_entries WHERE routine_id = ?',
+          [id],
+        );
+        const affectedSchedules = affectedSchedulesRows.map(
+          (r) => r.schedule_id,
+        );
+
         db.runSync('DELETE FROM schedule_entries WHERE routine_id = ?', [id]);
+
+        affectedSchedules.forEach((scheduleId) => {
+          const remainingEntries = db.getAllSync<{ id: string }>(
+            'SELECT id FROM schedule_entries WHERE schedule_id = ? ORDER BY position ASC',
+            [scheduleId],
+          );
+
+          const entryCount = remainingEntries.length;
+          remainingEntries.forEach((entry, i) => {
+            db.runSync(
+              'UPDATE schedule_entries SET position = ? WHERE id = ?',
+              [i, entry.id],
+            );
+          });
+
+          const schedule = db.getFirstSync<{
+            id: string;
+            current_position: number;
+          }>('SELECT id, current_position FROM schedules WHERE id = ?', [
+            scheduleId,
+          ]);
+
+          if (schedule) {
+            let nextPos = schedule.current_position;
+            if (entryCount === 0) {
+              nextPos = -1;
+            } else if (nextPos >= entryCount) {
+              nextPos = entryCount - 1;
+            }
+
+            db.runSync(
+              'UPDATE schedules SET current_position = ? WHERE id = ?',
+              [nextPos, scheduleId],
+            );
+          }
+        });
+
         // Cascade-delete associated routine exercises.
         db.runSync('DELETE FROM routine_exercises WHERE routine_id = ?', [id]);
         db.runSync('DELETE FROM routines WHERE id = ?', [id]);

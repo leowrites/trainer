@@ -569,6 +569,7 @@ describe('WorkoutScreen', () => {
           muscle_group: 'Chest',
           how_to: null,
           equipment: null,
+          is_deleted: 0,
         },
         {
           id: 'exercise-2',
@@ -576,6 +577,7 @@ describe('WorkoutScreen', () => {
           muscle_group: 'Legs',
           how_to: null,
           equipment: null,
+          is_deleted: 0,
         },
       ],
       hasLoaded: true,
@@ -660,6 +662,7 @@ describe('WorkoutScreen', () => {
           muscle_group: 'Chest',
           how_to: null,
           equipment: null,
+          is_deleted: 0,
         },
         {
           id: 'exercise-2',
@@ -667,6 +670,7 @@ describe('WorkoutScreen', () => {
           muscle_group: 'Legs',
           how_to: null,
           equipment: null,
+          is_deleted: 0,
         },
       ],
       hasLoaded: true,

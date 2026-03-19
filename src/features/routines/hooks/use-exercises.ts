@@ -45,7 +45,7 @@ export function useExercises(): {
 
   useEffect(() => {
     const rows = db.getAllSync<Exercise>(
-      'SELECT id, name, muscle_group, how_to, equipment FROM exercises ORDER BY name ASC',
+      'SELECT id, name, muscle_group, how_to, equipment, is_deleted FROM exercises WHERE is_deleted = 0 ORDER BY name ASC',
     );
     setExercises(rows);
     setHasLoaded(true);
@@ -59,10 +59,11 @@ export function useExercises(): {
         muscle_group: input.muscleGroup,
         how_to: normalizeMetadata(input.howTo),
         equipment: normalizeMetadata(input.equipment),
+        is_deleted: 0,
       };
 
       db.runSync(
-        'INSERT INTO exercises (id, name, muscle_group, how_to, equipment) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO exercises (id, name, muscle_group, how_to, equipment, is_deleted) VALUES (?, ?, ?, ?, ?, 0)',
         [
           createdExercise.id,
           createdExercise.name,
@@ -82,7 +83,7 @@ export function useExercises(): {
       db.withTransactionSync(() => {
         // Cascade-delete any routine_exercise rows referencing this exercise.
         db.runSync('DELETE FROM routine_exercises WHERE exercise_id = ?', [id]);
-        db.runSync('DELETE FROM exercises WHERE id = ?', [id]);
+        db.runSync('UPDATE exercises SET is_deleted = 1 WHERE id = ?', [id]);
       });
       refresh();
     },

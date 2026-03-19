@@ -242,18 +242,12 @@ export function RootNavigator(): React.JSX.Element {
         />
         <Stack.Screen
           name="ExerciseDetail"
+          component={ExerciseDetailScreen}
           options={{
             headerShown: true,
             title: '',
           }}
-        >
-          {(props) => (
-            <ExerciseDetailScreen
-              exerciseId={props.route.params.exerciseId}
-              navigation={props.navigation}
-            />
-          )}
-        </Stack.Screen>
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

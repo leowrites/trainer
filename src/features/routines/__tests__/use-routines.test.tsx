@@ -139,6 +139,10 @@ describe('useRoutines', () => {
 
   it('deleteRoutine cascades to schedule_entries', () => {
     const db = createMockDb();
+
+    // Mock for affectedSchedulesRows
+    db.getAllSync.mockReturnValueOnce([]);
+
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useRoutines(), { wrapper });
 
@@ -150,6 +154,42 @@ describe('useRoutines', () => {
       'DELETE FROM schedule_entries WHERE routine_id = ?',
       ['r1'],
     );
+  });
+
+  it('deleteRoutine re-normalizes schedule_entries positions and clamps current_position', () => {
+    const db = createMockDb();
+    const wrapper = createDatabaseWrapper(db);
+
+    db.getAllSync.mockImplementation((query: string) => {
+      if (query.includes('FROM routines')) return [];
+      if (query.includes('DISTINCT schedule_id'))
+        return [{ schedule_id: 's1' }];
+      if (query.includes('WHERE schedule_id ='))
+        return [{ id: 'se2' }, { id: 'se3' }];
+      return [];
+    });
+
+    // SELECT schedule current_position
+    db.getFirstSync.mockReturnValueOnce({ id: 's1', current_position: 2 });
+
+    const { result } = renderHook(() => useRoutines(), { wrapper });
+
+    act(() => {
+      result.current.deleteRoutine('r1');
+    });
+
+    const updateEntryCalls = (db.runSync as jest.Mock).mock.calls.filter((c) =>
+      (c[0] as string).includes('UPDATE schedule_entries SET position = ?'),
+    );
+    expect(updateEntryCalls).toHaveLength(2);
+    expect(updateEntryCalls[0][1]).toEqual([0, 'se2']);
+    expect(updateEntryCalls[1][1]).toEqual([1, 'se3']);
+
+    const updateScheduleCall = (db.runSync as jest.Mock).mock.calls.find((c) =>
+      (c[0] as string).includes('UPDATE schedules SET current_position = ?'),
+    );
+    expect(updateScheduleCall).toBeDefined();
+    expect(updateScheduleCall![1]).toEqual([1, 's1']);
   });
 
   it('deleteRoutine cascades to routine_exercises', () => {

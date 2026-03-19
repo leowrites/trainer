@@ -90,6 +90,18 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 6,
+    description:
+      'Add soft deletion for exercises to preserve historical workout data.',
+    up: (db) => {
+      if (!columnExists(db, 'exercises', 'is_deleted')) {
+        db.execSync(
+          'ALTER TABLE exercises ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
+        );
+      }
+    },
+  },
 ];
 
 function setUserVersion(db: SQLiteDatabase, version: number): void {
