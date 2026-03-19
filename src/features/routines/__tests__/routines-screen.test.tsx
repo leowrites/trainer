@@ -120,6 +120,7 @@ describe('RoutinesScreen', () => {
 
     mockUseExercises.mockReturnValue({
       exercises: [],
+      hasLoaded: true,
       refresh: refreshExercises,
       createExercise,
       updateExercise: jest.fn(),
@@ -177,6 +178,7 @@ describe('RoutinesScreen', () => {
           equipment: 'Barbell',
         },
       ],
+      hasLoaded: true,
       refresh: jest.fn(),
       createExercise: jest.fn(),
       updateExercise: jest.fn(),
@@ -225,6 +227,7 @@ describe('RoutinesScreen', () => {
           equipment: null,
         },
       ],
+      hasLoaded: true,
       refresh: jest.fn(),
       createExercise: jest.fn(),
       updateExercise: jest.fn(),

@@ -16,6 +16,7 @@ describe('useExercises', () => {
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useExercises(), { wrapper });
     expect(result.current.exercises).toEqual([]);
+    expect(result.current.hasLoaded).toBe(true);
   });
 
   it('returns exercises fetched from the DB on mount', () => {
@@ -40,6 +41,7 @@ describe('useExercises', () => {
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useExercises(), { wrapper });
     expect(result.current.exercises).toEqual(mockRows);
+    expect(result.current.hasLoaded).toBe(true);
   });
 
   it('createExercise inserts a row with the correct columns', () => {

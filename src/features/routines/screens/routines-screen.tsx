@@ -1267,15 +1267,15 @@ export function ExerciseDetailScreen({
   exerciseId,
   navigation,
 }: ExerciseDetailScreenProps): React.JSX.Element {
-  const { exercises, updateExercise, deleteExercise } = useExercises();
+  const { exercises, hasLoaded, updateExercise, deleteExercise } =
+    useExercises();
   const { getExerciseInsight } = useRoutineInsights();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const selectedExercise =
     exercises.find((exercise) => exercise.id === exerciseId) ?? null;
-  const hasLoadedExercises = exercises.length > 0;
 
   useEffect(() => {
-    if (selectedExercise === null && hasLoadedExercises) {
+    if (selectedExercise === null && hasLoaded) {
       navigation.goBack();
       return;
     }
@@ -1285,7 +1285,7 @@ export function ExerciseDetailScreen({
         title: selectedExercise.name,
       });
     }
-  }, [hasLoadedExercises, navigation, selectedExercise]);
+  }, [hasLoaded, navigation, selectedExercise]);
 
   if (selectedExercise === null) {
     return (
@@ -1430,10 +1430,7 @@ export function RoutinesScreen(): React.JSX.Element {
     }, [refreshExercises, refreshRoutines]),
   );
 
-  const routineExerciseCounts = useMemo(
-    () => getRoutineExerciseCounts(),
-    [getRoutineExerciseCounts],
-  );
+  const routineExerciseCounts = getRoutineExerciseCounts();
 
   return (
     <Stack.Navigator
