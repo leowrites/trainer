@@ -12,13 +12,11 @@ import {
 } from 'react-native';
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
 
-import { type CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
-import type { RootStackParamList, RootTabParamList } from '@core/navigation';
+import type { RootTabParamList } from '@core/navigation';
 import { useExercises } from '@features/routines';
 import {
   Body,
@@ -38,15 +36,7 @@ import { useWorkoutStarter } from '../hooks/use-workout-starter';
 import { useWorkoutStore } from '../store';
 import { type ActiveWorkoutSet } from '../types';
 
-type WorkoutHomeScreenProps = CompositeScreenProps<
-  BottomTabScreenProps<RootTabParamList, 'Workout'>,
-  NativeStackScreenProps<RootStackParamList>
->;
-
-type WorkoutActiveScreenProps = NativeStackScreenProps<
-  RootStackParamList,
-  'ActiveWorkout'
->;
+type WorkoutHomeScreenProps = BottomTabScreenProps<RootTabParamList, 'Workout'>;
 
 function parseWholeNumber(value: string): number {
   if (value.trim() === '') {
@@ -625,10 +615,7 @@ export function WorkoutScreen({
     setStarting(true);
 
     try {
-      const sessionId = startWorkoutFromSchedule();
-      if (sessionId) {
-        navigation.navigate('ActiveWorkout');
-      }
+      startWorkoutFromSchedule();
     } finally {
       setStarting(false);
     }
@@ -643,7 +630,6 @@ export function WorkoutScreen({
 
     try {
       startFreeWorkout();
-      navigation.navigate('ActiveWorkout');
     } finally {
       setStarting(false);
     }
@@ -651,7 +637,6 @@ export function WorkoutScreen({
 
   const handleContinueWorkout = (): void => {
     expandWorkout();
-    navigation.navigate('ActiveWorkout');
   };
 
   return (
@@ -752,16 +737,13 @@ export function WorkoutScreen({
   );
 }
 
-export function WorkoutActiveScreen({
-  navigation,
-}: WorkoutActiveScreenProps): React.JSX.Element | null {
+export function WorkoutActiveScreen(): React.JSX.Element | null {
   const insets = useSafeAreaInsets();
   const {
     isWorkoutActive,
     isWorkoutCollapsed,
     startTime,
     restTimerEndsAt,
-    collapseWorkout,
     startRestTimer,
     clearRestTimer,
   } = useWorkoutStore(
@@ -770,7 +752,6 @@ export function WorkoutActiveScreen({
       isWorkoutCollapsed: state.isWorkoutCollapsed,
       startTime: state.startTime,
       restTimerEndsAt: state.restTimerEndsAt,
-      collapseWorkout: state.collapseWorkout,
       startRestTimer: state.startRestTimer,
       clearRestTimer: state.clearRestTimer,
     })),
@@ -788,31 +769,9 @@ export function WorkoutActiveScreen({
   } = useActiveWorkout();
   const [showExerciseSheet, setShowExerciseSheet] = useState(false);
   const [now, setNow] = useState<number>(Date.now());
-  const [allowExit, setAllowExit] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (event) => {
-      if (allowExit || !isWorkoutActive || isWorkoutCollapsed) {
-        return;
-      }
-
-      event.preventDefault();
-      collapseWorkout();
-      navigation.dispatch(event.data.action);
-    });
-
-    return unsubscribe;
-  }, [
-    allowExit,
-    collapseWorkout,
-    isWorkoutActive,
-    isWorkoutCollapsed,
-    navigation,
-  ]);
 
   useEffect(() => {
     if (!isWorkoutActive || isWorkoutCollapsed) {
-      navigation.navigate('Tabs', { screen: 'Workout' });
       return;
     }
 
@@ -821,7 +780,7 @@ export function WorkoutActiveScreen({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isWorkoutActive, isWorkoutCollapsed, navigation]);
+  }, [isWorkoutActive, isWorkoutCollapsed]);
 
   useEffect(() => {
     if (restTimerEndsAt !== null && restTimerEndsAt <= now) {
@@ -865,10 +824,7 @@ export function WorkoutActiveScreen({
       volume={volume}
       restLabel={restLabel}
       onComplete={() => {
-        if (completeWorkout()) {
-          setAllowExit(true);
-          navigation.navigate('Tabs', { screen: 'Workout' });
-        }
+        completeWorkout();
       }}
       startRestTimer={startRestTimer}
       clearRestTimer={clearRestTimer}
@@ -883,5 +839,78 @@ export function WorkoutActiveScreen({
       setShowExerciseSheet={setShowExerciseSheet}
       insets={insets}
     />
+  );
+}
+
+export function WorkoutSheetHost(): React.JSX.Element {
+  const { isWorkoutActive, isWorkoutCollapsed, collapseWorkout } =
+    useWorkoutStore(
+      useShallow((state) => ({
+        isWorkoutActive: state.isWorkoutActive,
+        isWorkoutCollapsed: state.isWorkoutCollapsed,
+        collapseWorkout: state.collapseWorkout,
+      })),
+    );
+  const sheetRef = React.useRef<TrueSheet>(null);
+  const isPresentedRef = React.useRef(false);
+  const isTransitioningRef = React.useRef(false);
+  const latestIsWorkoutActiveRef = React.useRef(isWorkoutActive);
+  const latestIsWorkoutCollapsedRef = React.useRef(isWorkoutCollapsed);
+
+  useEffect(() => {
+    latestIsWorkoutActiveRef.current = isWorkoutActive;
+    latestIsWorkoutCollapsedRef.current = isWorkoutCollapsed;
+  }, [isWorkoutActive, isWorkoutCollapsed]);
+
+  useEffect(() => {
+    const shouldPresent = isWorkoutActive && !isWorkoutCollapsed;
+
+    if (shouldPresent) {
+      if (isPresentedRef.current || isTransitioningRef.current) {
+        return;
+      }
+
+      isTransitioningRef.current = true;
+      void sheetRef.current?.present().catch(() => {
+        isTransitioningRef.current = false;
+      });
+      return;
+    }
+
+    if (!isPresentedRef.current || isTransitioningRef.current) {
+      return;
+    }
+
+    isTransitioningRef.current = true;
+    void sheetRef.current?.dismiss().catch(() => {
+      isTransitioningRef.current = false;
+    });
+  }, [isWorkoutActive, isWorkoutCollapsed]);
+
+  return (
+    <TrueSheet
+      ref={sheetRef}
+      detents={[1]}
+      cornerRadius={28}
+      grabber
+      backgroundBlur="light"
+      onDidPresent={() => {
+        isPresentedRef.current = true;
+        isTransitioningRef.current = false;
+      }}
+      onDidDismiss={() => {
+        isPresentedRef.current = false;
+        isTransitioningRef.current = false;
+
+        if (
+          latestIsWorkoutActiveRef.current &&
+          !latestIsWorkoutCollapsedRef.current
+        ) {
+          collapseWorkout();
+        }
+      }}
+    >
+      <WorkoutActiveScreen />
+    </TrueSheet>
   );
 }

@@ -2,7 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { ActionSheetIOS } from 'react-native';
 
-import { WorkoutActiveScreen, WorkoutScreen } from '../screens/workout-screen';
+import {
+  WorkoutActiveScreen,
+  WorkoutScreen,
+  WorkoutSheetHost,
+} from '../screens/workout-screen';
 import { useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
 import { useActiveWorkout } from '../hooks/use-active-workout';
@@ -51,18 +55,38 @@ jest.mock('@lodev09/react-native-true-sheet', () => {
   return {
     TrueSheet: React.forwardRef(
       (
-        { children }: React.PropsWithChildren,
+        {
+          children,
+          onDidDismiss,
+          onDidPresent,
+        }: React.PropsWithChildren<{
+          onDidDismiss?: () => void;
+          onDidPresent?: () => void;
+        }>,
         ref: React.ForwardedRef<{
           present: () => Promise<void>;
           dismiss: () => Promise<void>;
         }>,
       ) => {
         React.useImperativeHandle(ref, () => ({
-          present: async () => undefined,
-          dismiss: async () => undefined,
+          present: async () => {
+            onDidPresent?.();
+          },
+          dismiss: async () => {
+            onDidDismiss?.();
+          },
         }));
 
-        return <ReactNative.View>{children}</ReactNative.View>;
+        return (
+          <ReactNative.View>
+            {children}
+            <ReactNative.Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss workout sheet"
+              onPress={() => onDidDismiss?.()}
+            />
+          </ReactNative.View>
+        );
       },
     ),
   };
@@ -78,15 +102,11 @@ const mockShowActionSheetWithOptions = jest.spyOn(
 );
 
 type WorkoutTabScreenProps = React.ComponentProps<typeof WorkoutScreen>;
-type WorkoutActiveScreenProps = React.ComponentProps<
-  typeof WorkoutActiveScreen
->;
 type WorkoutStoreState = ReturnType<typeof useWorkoutStore>;
 
 function createWorkoutTabScreenProps(): WorkoutTabScreenProps {
   return {
     navigation: {
-      navigate: jest.fn(),
       addListener: jest.fn(() => jest.fn()),
       dispatch: jest.fn(),
       getParent: jest.fn(),
@@ -98,24 +118,6 @@ function createWorkoutTabScreenProps(): WorkoutTabScreenProps {
       name: 'Workout' as const,
     },
   } as unknown as WorkoutTabScreenProps;
-}
-
-function createWorkoutActiveScreenProps(): WorkoutActiveScreenProps {
-  return {
-    navigation: {
-      navigate: jest.fn(),
-      addListener: jest.fn(() => jest.fn()),
-      dispatch: jest.fn(),
-      goBack: jest.fn(),
-      setOptions: jest.fn(),
-      isFocused: jest.fn(() => true),
-    },
-    route: {
-      key: 'ActiveWorkout-key',
-      name: 'ActiveWorkout' as const,
-      params: undefined,
-    },
-  } as unknown as WorkoutActiveScreenProps;
 }
 
 function mockWorkoutStoreState(state: WorkoutStoreState): void {
@@ -262,7 +264,6 @@ describe('WorkoutScreen', () => {
   });
 
   it('renders the active workout session and forwards set editing actions', () => {
-    const props = createWorkoutActiveScreenProps();
     const addExercise = jest.fn();
     const removeExercise = jest.fn();
     const addSet = jest.fn();
@@ -325,7 +326,7 @@ describe('WorkoutScreen', () => {
       completeWorkout,
     });
 
-    render(<WorkoutActiveScreen {...props} />);
+    render(<WorkoutActiveScreen />);
 
     expect(screen.getByText('Push A')).toBeTruthy();
     expect(screen.getByText('1m')).toBeTruthy();
@@ -354,7 +355,6 @@ describe('WorkoutScreen', () => {
   });
 
   it('allows adding ad hoc exercises during a scheduled workout', () => {
-    const props = createWorkoutActiveScreenProps();
     const addExercise = jest.fn();
 
     mockUseExercises.mockReturnValue({
@@ -432,7 +432,7 @@ describe('WorkoutScreen', () => {
       completeWorkout: jest.fn().mockReturnValue(true),
     });
 
-    render(<WorkoutActiveScreen {...props} />);
+    render(<WorkoutActiveScreen />);
 
     fireEvent.press(screen.getByLabelText('Add exercise'));
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
@@ -441,7 +441,6 @@ describe('WorkoutScreen', () => {
   });
 
   it('allows adding and removing exercises during a free workout', () => {
-    const props = createWorkoutActiveScreenProps();
     const addExercise = jest.fn();
     const removeExercise = jest.fn();
 
@@ -502,7 +501,7 @@ describe('WorkoutScreen', () => {
       completeWorkout: jest.fn().mockReturnValue(true),
     });
 
-    const { rerender } = render(<WorkoutActiveScreen {...props} />);
+    const { rerender } = render(<WorkoutActiveScreen />);
 
     fireEvent.press(screen.getByLabelText('Add exercise'));
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
@@ -545,10 +544,44 @@ describe('WorkoutScreen', () => {
       completeWorkout: jest.fn().mockReturnValue(true),
     });
 
-    rerender(<WorkoutActiveScreen {...props} />);
+    rerender(<WorkoutActiveScreen />);
 
     fireEvent.press(screen.getByLabelText('Options for Goblet Squat'));
 
     expect(removeExercise).toHaveBeenCalledWith('exercise-2');
+  });
+
+  it('collapses an active workout when the sheet is dismissed', () => {
+    const collapseWorkout = jest.fn();
+
+    mockWorkoutStoreState({
+      isWorkoutActive: true,
+      isWorkoutCollapsed: false,
+      activeSession: {
+        id: 'session-1',
+        title: 'Push A',
+        startTime: 1_700_000_000_000,
+        isFreeWorkout: false,
+        exercises: [],
+      },
+      startTime: 1_700_000_000_000,
+      restTimerEndsAt: null,
+      collapseWorkout,
+      expandWorkout: jest.fn(),
+      startRestTimer: jest.fn(),
+      clearRestTimer: jest.fn(),
+    } as ReturnType<typeof useWorkoutStore>);
+    mockUseWorkoutStarter.mockReturnValue({
+      nextRoutine: null,
+      startWorkoutFromSchedule: jest.fn(),
+      startFreeWorkout: jest.fn(),
+      refreshPreview: jest.fn(),
+    });
+
+    render(<WorkoutSheetHost />);
+
+    fireEvent.press(screen.getByLabelText('Dismiss workout sheet'));
+
+    expect(collapseWorkout).toHaveBeenCalledTimes(1);
   });
 });
