@@ -7,6 +7,8 @@ import {
 } from '@shared/constants';
 import type { ActiveWorkoutSession, ActiveWorkoutSet } from './types';
 
+export const DEFAULT_EXERCISE_TIMER_SECONDS = 60;
+
 interface WorkoutState {
   /** Whether there is an active workout session in progress. */
   isWorkoutActive: boolean;
@@ -20,6 +22,10 @@ interface WorkoutState {
   activeSession: ActiveWorkoutSession | null;
   /** Timestamp when the current rest timer ends, or null when no timer is running. */
   restTimerEndsAt: number | null;
+  /** Per-exercise timer end timestamps for the active session. */
+  exerciseTimerEndsAtByExerciseId: Record<string, number | null>;
+  /** Per-exercise timer duration presets for the active session. */
+  exerciseTimerDurationByExerciseId: Record<string, number>;
 }
 
 interface WorkoutActions {
@@ -46,6 +52,15 @@ interface WorkoutActions {
   startRestTimer: (durationSeconds?: number) => void;
   /** Clear any running rest timer. */
   clearRestTimer: () => void;
+  /** Start or restart a per-exercise timer. */
+  startExerciseTimer: (exerciseId: string, durationSeconds?: number) => void;
+  /** Clear a per-exercise timer. */
+  clearExerciseTimer: (exerciseId: string) => void;
+  /** Set the default duration for a per-exercise timer. */
+  setExerciseTimerDuration: (
+    exerciseId: string,
+    durationSeconds: number,
+  ) => void;
   /** End the current workout session and reset all ephemeral state. */
   endWorkout: () => void;
 }
@@ -61,6 +76,8 @@ const initialState: WorkoutState = {
   startTime: null,
   activeSession: null,
   restTimerEndsAt: null,
+  exerciseTimerEndsAtByExerciseId: {},
+  exerciseTimerDurationByExerciseId: {},
 };
 
 // ─── Store ─────────────────────────────────────────────────────────────────────
@@ -82,6 +99,15 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
       startTime: session.startTime,
       activeSession: session,
       restTimerEndsAt: null,
+      exerciseTimerEndsAtByExerciseId: Object.fromEntries(
+        session.exercises.map((exercise) => [exercise.exerciseId, null]),
+      ),
+      exerciseTimerDurationByExerciseId: Object.fromEntries(
+        session.exercises.map((exercise) => [
+          exercise.exerciseId,
+          DEFAULT_EXERCISE_TIMER_SECONDS,
+        ]),
+      ),
     });
   },
 
@@ -113,6 +139,14 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
           ...state.activeSession,
           exercises: [...state.activeSession.exercises, exercise],
         },
+        exerciseTimerEndsAtByExerciseId: {
+          ...state.exerciseTimerEndsAtByExerciseId,
+          [exercise.exerciseId]: null,
+        },
+        exerciseTimerDurationByExerciseId: {
+          ...state.exerciseTimerDurationByExerciseId,
+          [exercise.exerciseId]: DEFAULT_EXERCISE_TIMER_SECONDS,
+        },
       };
     });
   },
@@ -130,6 +164,16 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
             (exercise) => exercise.exerciseId !== exerciseId,
           ),
         },
+        exerciseTimerEndsAtByExerciseId: Object.fromEntries(
+          Object.entries(state.exerciseTimerEndsAtByExerciseId).filter(
+            ([key]) => key !== exerciseId,
+          ),
+        ),
+        exerciseTimerDurationByExerciseId: Object.fromEntries(
+          Object.entries(state.exerciseTimerDurationByExerciseId).filter(
+            ([key]) => key !== exerciseId,
+          ),
+        ),
       };
     });
   },
@@ -213,6 +257,66 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
 
   clearRestTimer: (): void => {
     set({ restTimerEndsAt: null });
+  },
+
+  startExerciseTimer: (
+    exerciseId,
+    durationSeconds = DEFAULT_EXERCISE_TIMER_SECONDS,
+  ): void => {
+    set((state) => {
+      if (!state.isWorkoutActive) {
+        return state;
+      }
+
+      const normalizedDuration = Number.isFinite(durationSeconds)
+        ? Math.round(durationSeconds)
+        : DEFAULT_EXERCISE_TIMER_SECONDS;
+      const clampedDuration = Math.min(
+        MAX_REST_SECONDS,
+        Math.max(MIN_REST_SECONDS, normalizedDuration),
+      );
+
+      return {
+        exerciseTimerEndsAtByExerciseId: {
+          ...state.exerciseTimerEndsAtByExerciseId,
+          [exerciseId]: Date.now() + clampedDuration * 1000,
+        },
+        exerciseTimerDurationByExerciseId: {
+          ...state.exerciseTimerDurationByExerciseId,
+          [exerciseId]:
+            state.exerciseTimerDurationByExerciseId[exerciseId] ??
+            clampedDuration,
+        },
+      };
+    });
+  },
+
+  clearExerciseTimer: (exerciseId): void => {
+    set((state) => ({
+      exerciseTimerEndsAtByExerciseId: {
+        ...state.exerciseTimerEndsAtByExerciseId,
+        [exerciseId]: null,
+      },
+    }));
+  },
+
+  setExerciseTimerDuration: (exerciseId, durationSeconds): void => {
+    set((state) => {
+      const normalizedDuration = Number.isFinite(durationSeconds)
+        ? Math.round(durationSeconds)
+        : DEFAULT_EXERCISE_TIMER_SECONDS;
+      const clampedDuration = Math.min(
+        MAX_REST_SECONDS,
+        Math.max(MIN_REST_SECONDS, normalizedDuration),
+      );
+
+      return {
+        exerciseTimerDurationByExerciseId: {
+          ...state.exerciseTimerDurationByExerciseId,
+          [exerciseId]: clampedDuration,
+        },
+      };
+    });
   },
 
   endWorkout: (): void => {

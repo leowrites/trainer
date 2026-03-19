@@ -41,6 +41,8 @@ describe('useWorkoutStore', () => {
       startTime: null,
       activeSession: null,
       restTimerEndsAt: null,
+      exerciseTimerEndsAtByExerciseId: {},
+      exerciseTimerDurationByExerciseId: {},
     });
   });
 
@@ -52,6 +54,8 @@ describe('useWorkoutStore', () => {
     expect(state.startTime).toBeNull();
     expect(state.activeSession).toBeNull();
     expect(state.restTimerEndsAt).toBeNull();
+    expect(state.exerciseTimerEndsAtByExerciseId).toEqual({});
+    expect(state.exerciseTimerDurationByExerciseId).toEqual({});
   });
 
   it('activates a workout session with the session snapshot', () => {
@@ -63,6 +67,12 @@ describe('useWorkoutStore', () => {
     expect(state.activeSessionId).toBe(mockSession.id);
     expect(state.startTime).toBe(mockSession.startTime);
     expect(state.activeSession).toEqual(mockSession);
+    expect(state.exerciseTimerEndsAtByExerciseId).toEqual({
+      'exercise-1': null,
+    });
+    expect(state.exerciseTimerDurationByExerciseId).toEqual({
+      'exercise-1': 60,
+    });
   });
 
   it('collapses and expands an active workout session', () => {
@@ -167,6 +177,36 @@ describe('useWorkoutStore', () => {
     expect(useWorkoutStore.getState().restTimerEndsAt).toBeNull();
   });
 
+  it('persists per-exercise timers across collapse and expand until the workout ends', () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_000);
+    useWorkoutStore.getState().startWorkout(mockSession);
+
+    useWorkoutStore.getState().setExerciseTimerDuration('exercise-1', 90);
+    useWorkoutStore.getState().startExerciseTimer('exercise-1', 90);
+    useWorkoutStore.getState().collapseWorkout();
+    useWorkoutStore.getState().expandWorkout();
+
+    expect(
+      useWorkoutStore.getState().exerciseTimerDurationByExerciseId,
+    ).toEqual({
+      'exercise-1': 90,
+    });
+    expect(useWorkoutStore.getState().exerciseTimerEndsAtByExerciseId).toEqual({
+      'exercise-1': 91_000,
+    });
+
+    useWorkoutStore.getState().endWorkout();
+
+    expect(useWorkoutStore.getState().exerciseTimerEndsAtByExerciseId).toEqual(
+      {},
+    );
+    expect(
+      useWorkoutStore.getState().exerciseTimerDurationByExerciseId,
+    ).toEqual({});
+
+    jest.restoreAllMocks();
+  });
+
   it('clamps invalid rest timer durations into the supported range', () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_000);
     useWorkoutStore.getState().startWorkout(mockSession);
@@ -201,5 +241,7 @@ describe('useWorkoutStore', () => {
     expect(state.startTime).toBeNull();
     expect(state.activeSession).toBeNull();
     expect(state.restTimerEndsAt).toBeNull();
+    expect(state.exerciseTimerEndsAtByExerciseId).toEqual({});
+    expect(state.exerciseTimerDurationByExerciseId).toEqual({});
   });
 });
