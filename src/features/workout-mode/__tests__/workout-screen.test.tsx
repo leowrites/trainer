@@ -147,7 +147,7 @@ function mockWorkoutStoreState(state: WorkoutStoreState): void {
 describe('WorkoutScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers().setSystemTime(new Date('2026-03-18T12:01:30.000Z'));
+    jest.useFakeTimers().setSystemTime(new Date(2026, 2, 18, 8, 1, 30));
     mockShowActionSheetWithOptions.mockImplementation((_, callback) => {
       callback(0);
     });
@@ -239,7 +239,7 @@ describe('WorkoutScreen', () => {
 
     render(<WorkoutScreen {...props} />);
 
-    expect(refreshPreview).toHaveBeenCalledTimes(1);
+    expect(refreshPreview).not.toHaveBeenCalled();
     expect(screen.getByText('Good morning, Alex')).toBeTruthy();
     expect(screen.getByText('Workouts This Week')).toBeTruthy();
     expect(screen.getByText('Weekly Streak')).toBeTruthy();

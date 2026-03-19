@@ -28,6 +28,7 @@ import { useExercises } from '@features/routines';
 import {
   Body,
   Button,
+  Caption,
   Container,
   DisplayHeading,
   Heading,
@@ -154,7 +155,7 @@ function DashboardStatCard({
       <DisplayHeading className="mt-3 text-3xl leading-[30px]">
         {value}
       </DisplayHeading>
-      <Muted className="mt-2 text-sm leading-[18px]">{caption}</Muted>
+      <Caption className="mt-2">{caption}</Caption>
     </Surface>
   );
 }
@@ -671,11 +672,11 @@ export function WorkoutScreen({
   const { sessions, refresh: refreshHistory } = useHistoryAnalytics();
   const { profile, refresh: refreshProfile } = useUserProfile();
   const [starting, setStarting] = useState(false);
-  const now = Date.now();
-  const greeting = getGreeting(profile?.displayName ?? null, now);
+  const [dashboardNow] = useState(() => Date.now());
+  const greeting = getGreeting(profile?.displayName ?? null, dashboardNow);
   const dashboardMetrics = useMemo(
-    () => buildDashboardMetrics(sessions, { now }),
-    [now, sessions],
+    () => buildDashboardMetrics(sessions, { now: dashboardNow }),
+    [dashboardNow, sessions],
   );
 
   const hasCurrentWorkout = isWorkoutActive && currentWorkoutTitle !== null;
@@ -686,10 +687,6 @@ export function WorkoutScreen({
       : 'Your next workout will appear here once a schedule is active.';
 
   useEffect(() => {
-    refreshPreview();
-    refreshHistory();
-    refreshProfile();
-
     const unsubscribe = navigation.addListener('focus', () => {
       refreshPreview();
       refreshHistory();
@@ -748,13 +745,11 @@ export function WorkoutScreen({
         }}
       >
         <View className="gap-2 pb-1" accessibilityRole="header">
-          <Muted className="text-xs uppercase tracking-[1.5px]">Home</Muted>
+          <Label className="uppercase tracking-[1.5px]">Home</Label>
           <Heading className="text-4xl leading-[36px]">
             {greeting.title}
           </Heading>
-          <Muted className="max-w-[320px] text-sm leading-[19px]">
-            {greeting.subtitle}
-          </Muted>
+          <Muted className="max-w-[320px]">{greeting.subtitle}</Muted>
         </View>
 
         {hasCurrentWorkout && currentWorkoutTitle ? (
@@ -769,7 +764,7 @@ export function WorkoutScreen({
             <DisplayHeading className="text-3xl leading-[32px]">
               {currentWorkoutTitle}
             </DisplayHeading>
-            <Muted className="mt-3 text-sm leading-[17px]">
+            <Muted className="mt-3">
               {currentExerciseCount} exercises in this session. Collapse it
               anytime and return here when you are ready.
             </Muted>
@@ -786,13 +781,11 @@ export function WorkoutScreen({
             <DisplayHeading className="text-3xl leading-[32px]">
               {nextRoutine.routineName}
             </DisplayHeading>
-            <Muted className="mt-3 text-sm leading-[17px]">
+            <Muted className="mt-3">
               {nextRoutine.exerciseCount} exercises • ~
               {nextRoutine.estimatedMinutes} mins
             </Muted>
-            <Muted className="mt-2 text-sm leading-[17px]">
-              {inactiveSubtitle}
-            </Muted>
+            <Muted className="mt-2">{inactiveSubtitle}</Muted>
           </Surface>
         ) : (
           <Surface
@@ -802,7 +795,7 @@ export function WorkoutScreen({
             <Heading className="text-2xl leading-[24px]">
               No active schedule
             </Heading>
-            <Muted className="mt-2 text-sm leading-[17px]">
+            <Muted className="mt-2">
               Create a schedule to queue your next workout, or start a free
               session now.
             </Muted>
