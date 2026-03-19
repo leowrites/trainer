@@ -6,6 +6,8 @@ import { generateId } from './utils';
 interface ExerciseSeedEntry {
   name: string;
   muscleGroup: string;
+  howTo?: string;
+  equipment?: string;
 }
 
 const defaultExercises: ExerciseSeedEntry[] = exerciseSeedData;
@@ -42,8 +44,14 @@ export function seedDefaultExercises(db: SQLiteDatabase): void {
   db.withTransactionSync(() => {
     for (const entry of missingExercises) {
       db.runSync(
-        'INSERT INTO exercises (id, name, muscle_group) VALUES (?, ?, ?)',
-        [generateId(), entry.name, entry.muscleGroup],
+        'INSERT INTO exercises (id, name, muscle_group, how_to, equipment) VALUES (?, ?, ?, ?, ?)',
+        [
+          generateId(),
+          entry.name,
+          entry.muscleGroup,
+          entry.howTo ?? null,
+          entry.equipment ?? null,
+        ],
       );
     }
   });

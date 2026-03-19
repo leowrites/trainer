@@ -63,6 +63,13 @@ export interface TrendPoint {
   startTime: number;
 }
 
+export interface DashboardMetrics {
+  workoutsThisWeek: number;
+  workoutDaysThisWeek: number;
+  currentWeeklyStreak: number;
+  lastCompletedWorkoutAt: number | null;
+}
+
 export interface ProgressiveOverloadSet {
   reps: number;
   weight: number;

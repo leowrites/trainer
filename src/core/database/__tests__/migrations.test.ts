@@ -13,11 +13,15 @@ interface MockDatabase extends Partial<SQLiteDatabase> {
 function createMigrationDbMock({
   version = 0,
   tableNames = ['workout_sessions'],
-  hasScheduleIdColumn = true,
+  columnsByTable = {
+    workout_sessions: ['schedule_id'],
+    workout_sets: ['target_sets', 'target_reps'],
+    exercises: ['how_to', 'equipment'],
+  } as Record<string, string[]>,
 }: {
   version?: number;
   tableNames?: string[];
-  hasScheduleIdColumn?: boolean;
+  columnsByTable?: Record<string, string[]>;
 } = {}): MockDatabase {
   let userVersion = version;
 
@@ -29,8 +33,10 @@ function createMigrationDbMock({
       }
     }),
     getAllSync: jest.fn((sql: string) => {
-      if (sql === 'PRAGMA table_info(workout_sessions)') {
-        return hasScheduleIdColumn ? [{ name: 'schedule_id' }] : [];
+      const match = /^PRAGMA table_info\((.+)\)$/.exec(sql);
+      if (match) {
+        const tableName = match[1];
+        return (columnsByTable[tableName] ?? []).map((name) => ({ name }));
       }
 
       return [];
@@ -105,7 +111,11 @@ describe('prepareDatabase', () => {
     const db = createMigrationDbMock({
       version: 0,
       tableNames: ['workout_sessions'],
-      hasScheduleIdColumn: false,
+      columnsByTable: {
+        workout_sessions: [],
+        workout_sets: ['target_sets', 'target_reps'],
+        exercises: ['how_to', 'equipment'],
+      },
     });
 
     const finalVersion = prepareDatabase(db as SQLiteDatabase);
@@ -118,6 +128,31 @@ describe('prepareDatabase', () => {
       'ALTER TABLE workout_sessions ADD COLUMN snapshot_name TEXT;',
     );
     expect(db.withTransactionSync).toHaveBeenCalled();
+  });
+
+  it('adds phase-2 exercise metadata columns and user profile support for version 4 databases', () => {
+    const db = createMigrationDbMock({
+      version: 4,
+      tableNames: ['exercises', 'workout_sets'],
+      columnsByTable: {
+        workout_sessions: ['schedule_id', 'snapshot_name'],
+        workout_sets: ['target_sets', 'target_reps'],
+        exercises: [],
+      },
+    });
+
+    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+
+    expect(finalVersion).toBe(SCHEMA_VERSION);
+    expect(db.execSync).toHaveBeenCalledWith(
+      'ALTER TABLE exercises ADD COLUMN how_to TEXT;',
+    );
+    expect(db.execSync).toHaveBeenCalledWith(
+      'ALTER TABLE exercises ADD COLUMN equipment TEXT;',
+    );
+    expect(db.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('CREATE TABLE IF NOT EXISTS user_profile'),
+    );
   });
 
   it('returns early on a newer schema version without applying DDL', () => {

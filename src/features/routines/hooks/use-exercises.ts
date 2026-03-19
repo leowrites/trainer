@@ -9,6 +9,13 @@ import { generateId } from '@core/database/utils';
 export interface NewExerciseInput {
   name: string;
   muscleGroup: string;
+  howTo?: string | null;
+  equipment?: string | null;
+}
+
+function normalizeMetadata(value: string | null | undefined): string | null {
+  const trimmedValue = value?.trim() ?? '';
+  return trimmedValue === '' ? null : trimmedValue;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -36,7 +43,7 @@ export function useExercises(): {
 
   useEffect(() => {
     const rows = db.getAllSync<Exercise>(
-      'SELECT id, name, muscle_group FROM exercises ORDER BY name ASC',
+      'SELECT id, name, muscle_group, how_to, equipment FROM exercises ORDER BY name ASC',
     );
     setExercises(rows);
   }, [db, refreshKey]);
@@ -44,8 +51,14 @@ export function useExercises(): {
   const createExercise = useCallback(
     (input: NewExerciseInput): void => {
       db.runSync(
-        'INSERT INTO exercises (id, name, muscle_group) VALUES (?, ?, ?)',
-        [generateId(), input.name, input.muscleGroup],
+        'INSERT INTO exercises (id, name, muscle_group, how_to, equipment) VALUES (?, ?, ?, ?, ?)',
+        [
+          generateId(),
+          input.name,
+          input.muscleGroup,
+          normalizeMetadata(input.howTo),
+          normalizeMetadata(input.equipment),
+        ],
       );
       refresh();
     },
@@ -67,8 +80,14 @@ export function useExercises(): {
   const updateExercise = useCallback(
     (id: string, input: NewExerciseInput): void => {
       db.runSync(
-        'UPDATE exercises SET name = ?, muscle_group = ? WHERE id = ?',
-        [input.name, input.muscleGroup, id],
+        'UPDATE exercises SET name = ?, muscle_group = ?, how_to = ?, equipment = ? WHERE id = ?',
+        [
+          input.name,
+          input.muscleGroup,
+          normalizeMetadata(input.howTo),
+          normalizeMetadata(input.equipment),
+          id,
+        ],
       );
       refresh();
     },

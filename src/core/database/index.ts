@@ -13,6 +13,7 @@ export type {
   RoutineExercise,
   Schedule,
   ScheduleEntry,
+  UserProfile,
   WorkoutSession,
   WorkoutSet,
 } from './types';

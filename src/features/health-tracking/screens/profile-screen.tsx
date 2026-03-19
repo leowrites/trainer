@@ -1,17 +1,22 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
 import {
+  ActionRow,
   Body,
+  Button,
   Card,
   Container,
   Heading,
+  Input,
+  Label,
   Muted,
   StatRow,
 } from '@shared/components';
 import {
+  BODY_WEIGHT_UNITS,
   bodyWeightEntryToFormState,
   buildLoggedAtTimestamp,
   createBodyWeightFormState,
@@ -22,12 +27,24 @@ import {
   type BodyWeightUnit,
 } from '../domain/body-weight';
 import { useBodyWeightEntries } from '../hooks/use-body-weight-entries';
+import { useUserProfile } from '../hooks/use-user-profile';
 import { BodyWeightEntryCard } from '../components/body-weight-entry-card';
 import { BodyWeightForm } from '../components/body-weight-form';
 
 export function ProfileScreen(): React.JSX.Element {
+  const {
+    profile,
+    error: profileError,
+    refresh: refreshProfile,
+    saveProfile,
+  } = useUserProfile();
   const { entries, error, refresh, createEntry, updateEntry, deleteEntry } =
     useBodyWeightEntries();
+  const [profileName, setProfileName] = useState('');
+  const [preferredWeightUnit, setPreferredWeightUnit] =
+    useState<BodyWeightUnit>('kg');
+  const [profileFormError, setProfileFormError] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [form, setForm] = useState<BodyWeightFormState>(() =>
     createBodyWeightFormState(),
   );
@@ -39,15 +56,27 @@ export function ProfileScreen(): React.JSX.Element {
 
   useFocusEffect(
     useCallback(() => {
+      refreshProfile();
       refresh();
-    }, [refresh]),
+    }, [refresh, refreshProfile]),
   );
 
   const resetForm = useCallback((): void => {
     setEditingEntry(null);
-    setForm(createBodyWeightFormState());
+    setForm(createBodyWeightFormState(Date.now(), preferredWeightUnit));
     setFormError(null);
-  }, []);
+  }, [preferredWeightUnit]);
+
+  useEffect(() => {
+    const nextWeightUnit = profile?.preferredWeightUnit ?? 'kg';
+    setProfileName(profile?.displayName ?? '');
+    setPreferredWeightUnit(nextWeightUnit);
+    setProfileFormError(null);
+
+    if (!editingEntry) {
+      setForm((current) => ({ ...current, unit: nextWeightUnit }));
+    }
+  }, [editingEntry, profile?.displayName, profile?.preferredWeightUnit]);
 
   const handleWeightChange = useCallback((weight: string): void => {
     setForm((current) => ({ ...current, weight }));
@@ -129,7 +158,36 @@ export function ProfileScreen(): React.JSX.Element {
     }
   }, [createEntry, editingEntry, form, resetForm, updateEntry]);
 
+  const handleSaveProfile = useCallback((): void => {
+    setProfileSaving(true);
+
+    try {
+      saveProfile({
+        displayName: profileName,
+        preferredWeightUnit,
+      });
+      setProfileFormError(null);
+
+      if (!editingEntry) {
+        setForm((current) => ({ ...current, unit: preferredWeightUnit }));
+      }
+    } catch {
+      setProfileFormError('Unable to save local profile settings.');
+    } finally {
+      setProfileSaving(false);
+    }
+  }, [editingEntry, preferredWeightUnit, profileName, saveProfile]);
+
+  const handleResetProfile = useCallback((): void => {
+    setProfileName(profile?.displayName ?? '');
+    setPreferredWeightUnit(profile?.preferredWeightUnit ?? 'kg');
+    setProfileFormError(null);
+  }, [profile?.displayName, profile?.preferredWeightUnit]);
+
   const latestEntry = entries[0] ?? null;
+  const statusMessages = [profileError, error].filter(
+    (message): message is string => message !== null,
+  );
 
   return (
     <Container>
@@ -146,6 +204,52 @@ export function ProfileScreen(): React.JSX.Element {
               this device.
             </Muted>
           </View>
+        </View>
+
+        <View className="pb-4">
+          <Card label="Profile Details" className="rounded-[24px] px-5 py-5">
+            <Label>Display name</Label>
+            <Input
+              className="mt-3"
+              placeholder="Name shown on home screen"
+              value={profileName}
+              onChangeText={setProfileName}
+              autoCapitalize="words"
+            />
+
+            <Label className="mb-2 mt-4">Preferred weight unit</Label>
+            <View className="flex-row gap-2">
+              {BODY_WEIGHT_UNITS.map((unit) => (
+                <Button
+                  key={unit}
+                  variant={preferredWeightUnit === unit ? 'primary' : 'ghost'}
+                  size="sm"
+                  className="flex-1"
+                  onPress={() => setPreferredWeightUnit(unit)}
+                  accessibilityLabel={`Use ${unit}`}
+                >
+                  {unit.toUpperCase()}
+                </Button>
+              ))}
+            </View>
+
+            <Muted className="mt-3 text-sm leading-[17px]">
+              Home greetings and future analytics surfaces will use these local
+              profile defaults.
+            </Muted>
+
+            {profileFormError ? (
+              <Body className="mt-3 text-red-400">{profileFormError}</Body>
+            ) : null}
+
+            <ActionRow
+              primaryLabel="Save profile"
+              secondaryLabel="Reset"
+              onPrimaryPress={handleSaveProfile}
+              primaryLoading={profileSaving}
+              onSecondaryPress={handleResetProfile}
+            />
+          </Card>
         </View>
 
         <View className="pb-4">
@@ -167,10 +271,14 @@ export function ProfileScreen(): React.JSX.Element {
           </Card>
         </View>
 
-        {error ? (
+        {statusMessages.length > 0 ? (
           <View className="pb-4">
             <Card label="Status" className="rounded-[24px] px-5 py-5">
-              <Body className="text-red-400">{error}</Body>
+              {statusMessages.map((message: string) => (
+                <Body key={message} className="text-red-400">
+                  {message}
+                </Body>
+              ))}
             </Card>
           </View>
         ) : null}

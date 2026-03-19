@@ -32,6 +32,7 @@ function createDevelopmentSeedDbMock(): DevelopmentSeedDbMock {
     workout_sessions: new Map<string, TableRow>(),
     workout_sets: new Map<string, TableRow>(),
     body_weight_entries: new Map<string, TableRow>(),
+    user_profile: new Map<string, TableRow>(),
   };
 
   const requiredExercises = new Map(
@@ -129,6 +130,14 @@ function createDevelopmentSeedDbMock(): DevelopmentSeedDbMock {
           logged_at: values[3],
           notes: values[4],
         });
+      } else if (sql.startsWith('INSERT OR REPLACE INTO user_profile')) {
+        tables.user_profile.set(String(values[0]), {
+          id: String(values[0]),
+          display_name: values[1],
+          preferred_weight_unit: values[2],
+          created_at: values[3],
+          updated_at: values[4],
+        });
       }
     }),
     withTransactionSync: jest.fn((fn: () => void) => fn()),
@@ -164,6 +173,9 @@ describe('seedDevelopmentDatabase', () => {
     const bodyWeightEntries = db.runSync.mock.calls.filter(([sql]) =>
       String(sql).startsWith('INSERT OR REPLACE INTO body_weight_entries'),
     );
+    const userProfile = db.runSync.mock.calls.filter(([sql]) =>
+      String(sql).startsWith('INSERT OR REPLACE INTO user_profile'),
+    );
 
     expect(routines).toHaveLength(developmentSeedData.routines.length * 2);
     expect(schedules).toHaveLength(developmentSeedData.schedules.length * 2);
@@ -179,6 +191,7 @@ describe('seedDevelopmentDatabase', () => {
     expect(bodyWeightEntries).toHaveLength(
       developmentSeedData.bodyWeightEntries.length * 2,
     );
+    expect(userProfile).toHaveLength(2);
   });
 
   it('seeds the default exercise catalog before resolving required exercise ids', () => {

@@ -6,6 +6,8 @@ export interface Exercise {
   id: string;
   name: string;
   muscle_group: string;
+  how_to: string | null;
+  equipment: string | null;
 }
 
 export interface Routine {
@@ -68,4 +70,12 @@ export interface BodyWeightEntry {
   unit: 'kg' | 'lb';
   logged_at: number;
   notes: string | null;
+}
+
+export interface UserProfile {
+  id: string;
+  display_name: string | null;
+  preferred_weight_unit: 'kg' | 'lb';
+  created_at: number;
+  updated_at: number;
 }

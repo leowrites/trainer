@@ -37,7 +37,7 @@ function createSeedExercisesDbMock(
     runSync: jest.fn((sql: string, params?: unknown[]) => {
       if (
         sql ===
-          'INSERT INTO exercises (id, name, muscle_group) VALUES (?, ?, ?)' &&
+          'INSERT INTO exercises (id, name, muscle_group, how_to, equipment) VALUES (?, ?, ?, ?, ?)' &&
         typeof params?.[1] === 'string'
       ) {
         names.add(params[1]);

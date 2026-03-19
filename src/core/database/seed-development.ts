@@ -150,5 +150,16 @@ export function seedDevelopmentDatabase(db: SQLiteDatabase): void {
         [entry.id, entry.weight, entry.unit, entry.loggedAt, entry.notes],
       );
     }
+
+    db.runSync(
+      'INSERT OR REPLACE INTO user_profile (id, display_name, preferred_weight_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [
+        developmentSeedData.userProfile.id,
+        developmentSeedData.userProfile.displayName,
+        developmentSeedData.userProfile.preferredWeightUnit,
+        developmentSeedData.userProfile.createdAt,
+        developmentSeedData.userProfile.updatedAt,
+      ],
+    );
   });
 }

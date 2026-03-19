@@ -3,6 +3,7 @@ import React from 'react';
 
 import { buildLoggedAtTimestamp } from '../domain/body-weight';
 import { useBodyWeightEntries } from '../hooks/use-body-weight-entries';
+import { useUserProfile } from '../hooks/use-user-profile';
 import { ProfileScreen } from '../screens/profile-screen';
 
 jest.mock('@react-navigation/native', () => ({
@@ -13,11 +14,28 @@ jest.mock('../hooks/use-body-weight-entries', () => ({
   useBodyWeightEntries: jest.fn(),
 }));
 
+jest.mock('../hooks/use-user-profile', () => ({
+  useUserProfile: jest.fn(),
+}));
+
 const mockUseBodyWeightEntries = jest.mocked(useBodyWeightEntries);
+const mockUseUserProfile = jest.mocked(useUserProfile);
 
 describe('ProfileScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseUserProfile.mockReturnValue({
+      profile: {
+        id: 'profile-1',
+        displayName: 'Leo',
+        preferredWeightUnit: 'lb',
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      error: null,
+      refresh: jest.fn(),
+      saveProfile: jest.fn(),
+    });
   });
 
   it('creates a new body-weight entry from the mobile form', () => {
@@ -35,13 +53,13 @@ describe('ProfileScreen', () => {
 
     render(<ProfileScreen />);
 
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalled();
 
     fireEvent.changeText(
       screen.getByPlaceholderText('Weight (e.g. 72.4)'),
       '181.6',
     );
-    fireEvent.press(screen.getByLabelText('Use lb'));
+    fireEvent.press(screen.getAllByLabelText('Use lb')[1]);
     fireEvent.changeText(
       screen.getByPlaceholderText('YYYY-MM-DD'),
       '2026-03-17',
@@ -58,6 +76,45 @@ describe('ProfileScreen', () => {
       unit: 'lb',
       loggedAt: buildLoggedAtTimestamp('2026-03-17', '07:30'),
       notes: 'Morning check-in',
+    });
+  });
+
+  it('saves local profile settings from the profile details card', () => {
+    const saveProfile = jest.fn();
+
+    mockUseUserProfile.mockReturnValue({
+      profile: {
+        id: 'profile-1',
+        displayName: 'Leo',
+        preferredWeightUnit: 'lb',
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      error: null,
+      refresh: jest.fn(),
+      saveProfile,
+    });
+    mockUseBodyWeightEntries.mockReturnValue({
+      entries: [],
+      error: null,
+      refresh: jest.fn(),
+      createEntry: jest.fn(),
+      updateEntry: jest.fn(),
+      deleteEntry: jest.fn(),
+    });
+
+    render(<ProfileScreen />);
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Name shown on home screen'),
+      'Leo Writes',
+    );
+    fireEvent.press(screen.getAllByLabelText('Use kg')[0]);
+    fireEvent.press(screen.getByText('Save profile'));
+
+    expect(saveProfile).toHaveBeenCalledWith({
+      displayName: 'Leo Writes',
+      preferredWeightUnit: 'kg',
     });
   });
 
