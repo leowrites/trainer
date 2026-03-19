@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   ActionSheetIOS,
   Animated,
@@ -39,7 +45,6 @@ import {
   Muted,
   Surface,
 } from '@shared/components';
-import { DEFAULT_REST_SECONDS } from '@shared/constants';
 import { useTheme } from '@core/theme/theme-context';
 import { useActiveWorkout } from '../hooks/use-active-workout';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
@@ -99,10 +104,7 @@ function formatRestCountdown(ms: number): string {
 
 const EXERCISE_TIMER_SECONDS = 60;
 const SWIPE_ACTION_WIDTH = 72;
-
-function formatVolume(value: number): string {
-  return `${new Intl.NumberFormat('en-US').format(Math.round(value))} vol`;
-}
+const EXERCISE_TIMER_OPTIONS = [30, 60, 90, 120] as const;
 
 function formatShortDate(timestamp: number | null): string {
   if (timestamp === null) {
@@ -115,6 +117,10 @@ function formatShortDate(timestamp: number | null): string {
   }).format(timestamp);
 }
 
+function formatTimerDuration(seconds: number): string {
+  return formatRestCountdown(seconds * 1000);
+}
+
 function formatPreviousPerformance(
   performance: PreviousExercisePerformance | null,
 ): string {
@@ -123,6 +129,18 @@ function formatPreviousPerformance(
   }
 
   return `Previous ${performance.reps} x ${performance.weight}`;
+}
+
+function countCompletedExercises(
+  exercises: NonNullable<
+    ReturnType<typeof useActiveWorkout>['activeSession']
+  >['exercises'],
+): number {
+  return exercises.filter(
+    (exercise) =>
+      exercise.sets.length > 0 &&
+      exercise.sets.every((setItem) => setItem.isCompleted),
+  ).length;
 }
 
 function isExerciseDetailNavigationAction(action: unknown): boolean {
@@ -522,7 +540,8 @@ function ExerciseCard({
   title,
   exerciseId,
   previousPerformanceLabel,
-  exerciseTimerLabel,
+  exerciseTimerDisplayLabel,
+  isExerciseTimerActive,
   onOpenDetails,
   onDelete,
   onToggleExerciseTimer,
@@ -531,7 +550,8 @@ function ExerciseCard({
   title: string;
   exerciseId: string;
   previousPerformanceLabel: string;
-  exerciseTimerLabel: string | null;
+  exerciseTimerDisplayLabel: string;
+  isExerciseTimerActive: boolean;
   onOpenDetails: (exerciseId: string) => void;
   onDelete: () => void;
   onToggleExerciseTimer: () => void;
@@ -602,25 +622,19 @@ function ExerciseCard({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              exerciseTimerLabel
+              isExerciseTimerActive
                 ? `Clear ${title} timer`
                 : `Start ${title} timer`
             }
-            className={`rounded-[12px] border px-3 py-2 ${
-              exerciseTimerLabel
-                ? 'border-secondary bg-secondary/10'
-                : 'border-surface-border bg-surface-elevated'
-            }`}
+            className={`rounded-[12px] px-3 py-2 ${isExerciseTimerActive ? 'bg-secondary/10' : 'bg-surface-elevated'}`}
             onPress={onToggleExerciseTimer}
           >
             <Body
               className={`text-sm font-semibold ${
-                exerciseTimerLabel ? 'text-secondary' : 'text-foreground'
+                isExerciseTimerActive ? 'text-secondary' : 'text-foreground'
               }`}
             >
-              {exerciseTimerLabel
-                ? `Timer ${exerciseTimerLabel}`
-                : 'Timer 1:00'}
+              {exerciseTimerDisplayLabel}
             </Body>
           </Pressable>
         </View>
@@ -630,14 +644,44 @@ function ExerciseCard({
   );
 }
 
+function WorkoutHeaderTitle({
+  title,
+  completedExerciseCount,
+  totalExerciseCount,
+}: {
+  title: string;
+  completedExerciseCount: number;
+  totalExerciseCount: number;
+}): React.JSX.Element {
+  return (
+    <View className="max-w-[220px]">
+      <Text numberOfLines={1} className="font-heading text-lg text-foreground">
+        {title}
+      </Text>
+      <Text numberOfLines={1} className="mt-0.5 font-body text-xs text-muted">
+        {completedExerciseCount}/{totalExerciseCount} exercises
+      </Text>
+    </View>
+  );
+}
+
+function WorkoutHeaderRight({
+  durationLabel,
+}: {
+  durationLabel: string;
+}): React.JSX.Element {
+  return (
+    <Text className="p-2 font-heading text-lg text-foreground">
+      {durationLabel}
+    </Text>
+  );
+}
+
 interface ActiveWorkoutContentProps {
   activeSession: NonNullable<
     ReturnType<typeof useActiveWorkout>['activeSession']
   >;
-  sessionTitle: string;
-  durationLabel: string;
   now: number;
-  exerciseCount: number;
   setCount: number;
   volume: number;
   restLabel: string | null;
@@ -646,15 +690,20 @@ interface ActiveWorkoutContentProps {
   startRestTimer: (durationSeconds?: number) => void;
   clearRestTimer: () => void;
   onOpenExerciseDetails: (exerciseId: string) => void;
-  onToggleExerciseTimer: (exerciseId: string) => void;
+  onOpenExerciseTimerOptions: (exerciseId: string) => void;
   addSet: (exerciseId: string) => void;
   addExercise: (exerciseId: string, exerciseName: string) => void;
   removeExercise: (exerciseId: string) => void;
   deleteSet: (setId: string) => void;
   updateReps: (setId: string, reps: number) => void;
   updateWeight: (setId: string, weight: number) => void;
-  toggleSetLogged: (setId: string, isCompleted: boolean) => void;
+  toggleSetLogged: (
+    exerciseId: string,
+    setId: string,
+    isCompleted: boolean,
+  ) => void;
   exerciseTimerEndsAtByExerciseId: Record<string, number | null>;
+  exerciseTimerDurationByExerciseId: Record<string, number>;
   previousPerformanceByExerciseId: Record<
     string,
     PreviousExercisePerformance | null
@@ -666,19 +715,11 @@ interface ActiveWorkoutContentProps {
 
 function ActiveWorkoutContent({
   activeSession,
-  sessionTitle,
-  durationLabel,
   now,
-  exerciseCount,
-  setCount,
-  volume,
-  restLabel,
   onComplete,
   onDeleteWorkout,
-  startRestTimer,
-  clearRestTimer,
   onOpenExerciseDetails,
-  onToggleExerciseTimer,
+  onOpenExerciseTimerOptions,
   addSet,
   addExercise,
   removeExercise,
@@ -687,6 +728,7 @@ function ActiveWorkoutContent({
   updateWeight,
   toggleSetLogged,
   exerciseTimerEndsAtByExerciseId,
+  exerciseTimerDurationByExerciseId,
   previousPerformanceByExerciseId,
   showExerciseSheet,
   setShowExerciseSheet,
@@ -704,105 +746,11 @@ function ActiveWorkoutContent({
       <View className="flex-1">
         <ScrollView
           className="flex-1"
-          stickyHeaderIndices={[0]}
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false}
           contentContainerStyle={{ paddingBottom: dockHeight + 8 }}
         >
-          <View className="border-surface-border bg-surface">
-            <Surface
-              variant="card"
-              className="rounded-none border-x-0 border-t-0 border-surface-border px-4 pb-4 pt-3"
-            >
-              <View className="flex-row items-start justify-between gap-3">
-                <View className="flex-1">
-                  <Meta className="text-xs uppercase tracking-[1.2px]">
-                    In Progress
-                  </Meta>
-                  <Heading className="mt-2 text-3xl leading-[30px]">
-                    {sessionTitle}
-                  </Heading>
-                </View>
-                {restLabel ? (
-                  <View className="rounded-[14px] border border-secondary bg-secondary/10 px-3 py-2">
-                    <Label className="text-secondary">Rest</Label>
-                    <Body className="mt-1 text-base font-semibold text-secondary">
-                      {restLabel}
-                    </Body>
-                  </View>
-                ) : null}
-              </View>
-
-              <View className="mt-4 flex-row flex-wrap gap-2">
-                <View className="min-w-[120px] flex-1 rounded-[16px] border border-surface-border bg-surface px-3 py-3">
-                  <Label>Duration</Label>
-                  <Heading className="mt-2 text-xl leading-[22px]">
-                    {durationLabel}
-                  </Heading>
-                </View>
-                <View className="min-w-[120px] flex-1 rounded-[16px] border border-surface-border bg-surface px-3 py-3">
-                  <Label>Exercises</Label>
-                  <Heading className="mt-2 text-xl leading-[22px]">
-                    {exerciseCount}
-                  </Heading>
-                </View>
-                <View className="min-w-[120px] flex-1 rounded-[16px] border border-surface-border bg-surface px-3 py-3">
-                  <Label>Sets</Label>
-                  <Heading className="mt-2 text-xl leading-[22px]">
-                    {setCount}
-                  </Heading>
-                </View>
-                <View className="min-w-[120px] flex-1 rounded-[16px] border border-surface-border bg-surface px-3 py-3">
-                  <Label>Volume</Label>
-                  <Heading className="mt-2 text-xl leading-[22px]">
-                    {formatVolume(volume)}
-                  </Heading>
-                </View>
-              </View>
-
-              <View className="mt-4 flex-row gap-2">
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    restLabel
-                      ? `Restart rest timer ${restLabel}`
-                      : 'Start rest timer'
-                  }
-                  className={`rounded-[14px] border px-4 py-3 ${
-                    restLabel
-                      ? 'border-secondary bg-secondary/10'
-                      : 'border-surface-border bg-surface'
-                  }`}
-                  onPress={() => startRestTimer(DEFAULT_REST_SECONDS)}
-                >
-                  <Body
-                    className={`text-sm font-semibold ${
-                      restLabel ? 'text-secondary' : 'text-foreground'
-                    }`}
-                  >
-                    {restLabel
-                      ? `Restart Rest ${restLabel}`
-                      : 'Start Rest 1:30'}
-                  </Body>
-                </Pressable>
-
-                {restLabel ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear rest timer"
-                    className="rounded-[14px] border border-surface-border bg-surface px-4 py-3"
-                    onPress={clearRestTimer}
-                  >
-                    <Body className="text-sm font-semibold text-foreground">
-                      Clear
-                    </Body>
-                  </Pressable>
-                ) : null}
-              </View>
-            </Surface>
-          </View>
-
           {activeSession.exercises.length > 0 ? (
             activeSession.exercises.map((exercise) => (
               <ExerciseCard
@@ -812,20 +760,27 @@ function ActiveWorkoutContent({
                 previousPerformanceLabel={formatPreviousPerformance(
                   previousPerformanceByExerciseId[exercise.exerciseId] ?? null,
                 )}
-                exerciseTimerLabel={
-                  exerciseTimerEndsAtByExerciseId[exercise.exerciseId] &&
+                isExerciseTimerActive={
                   (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ?? 0) >
-                    now
-                    ? formatRestCountdown(
+                  now
+                }
+                exerciseTimerDisplayLabel={
+                  (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ?? 0) >
+                  now
+                    ? `Timer ${formatRestCountdown(
                         (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ??
                           0) - now,
-                      )
-                    : null
+                      )}`
+                    : `Timer ${formatTimerDuration(
+                        exerciseTimerDurationByExerciseId[
+                          exercise.exerciseId
+                        ] ?? EXERCISE_TIMER_SECONDS,
+                      )}`
                 }
                 onOpenDetails={onOpenExerciseDetails}
                 onDelete={() => removeExercise(exercise.exerciseId)}
                 onToggleExerciseTimer={() =>
-                  onToggleExerciseTimer(exercise.exerciseId)
+                  onOpenExerciseTimerOptions(exercise.exerciseId)
                 }
               >
                 <View className="flex-row items-center gap-2 px-1 pb-3 pt-1">
@@ -846,7 +801,11 @@ function ActiveWorkoutContent({
                       updateWeight(setItem.id, weight)
                     }
                     onToggleLogged={(isCompleted) =>
-                      toggleSetLogged(setItem.id, isCompleted)
+                      toggleSetLogged(
+                        exercise.exerciseId,
+                        setItem.id,
+                        isCompleted,
+                      )
                     }
                   />
                 ))}
@@ -891,12 +850,10 @@ function ActiveWorkoutContent({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Delete workout"
-              className="h-11 min-w-[76px] items-center justify-center rounded-[14px] border border-destructive bg-surface-card px-3"
+              className="h-11 w-11 items-center justify-center rounded-[14px] border border-surface-border bg-surface-card px-3"
               onPress={onDeleteWorkout}
             >
-              <Body className="text-sm font-semibold text-destructive">
-                Delete
-              </Body>
+              <Body className="text-sm font-semibold text-destructive">x</Body>
             </Pressable>
 
             <Button
@@ -1142,6 +1099,11 @@ export function WorkoutActiveScreen({
     collapseWorkout,
     startRestTimer,
     clearRestTimer,
+    exerciseTimerEndsAtByExerciseId,
+    exerciseTimerDurationByExerciseId,
+    startExerciseTimer,
+    clearExerciseTimer,
+    setExerciseTimerDuration,
   } = useWorkoutStore(
     useShallow((state) => ({
       isWorkoutActive: state.isWorkoutActive,
@@ -1151,6 +1113,12 @@ export function WorkoutActiveScreen({
       collapseWorkout: state.collapseWorkout,
       startRestTimer: state.startRestTimer,
       clearRestTimer: state.clearRestTimer,
+      exerciseTimerEndsAtByExerciseId: state.exerciseTimerEndsAtByExerciseId,
+      exerciseTimerDurationByExerciseId:
+        state.exerciseTimerDurationByExerciseId,
+      startExerciseTimer: state.startExerciseTimer,
+      clearExerciseTimer: state.clearExerciseTimer,
+      setExerciseTimerDuration: state.setExerciseTimerDuration,
     })),
   );
   const {
@@ -1168,8 +1136,6 @@ export function WorkoutActiveScreen({
   const [showExerciseSheet, setShowExerciseSheet] = useState(false);
   const [now, setNow] = useState<number>(Date.now());
   const [allowExit, setAllowExit] = useState(false);
-  const [exerciseTimerEndsAtByExerciseId, setExerciseTimerEndsAtByExerciseId] =
-    useState<Record<string, number | null>>({});
   const previousPerformanceByExerciseId = usePreviousExercisePerformance(
     activeSession?.id ?? null,
     activeSession?.exercises.map((exercise) => exercise.exerciseId) ?? [],
@@ -1220,31 +1186,49 @@ export function WorkoutActiveScreen({
   }, [clearRestTimer, now, restTimerEndsAt]);
 
   useEffect(() => {
-    if (!activeSession) {
-      setExerciseTimerEndsAtByExerciseId({});
-      return;
+    for (const [exerciseId, endsAt] of Object.entries(
+      exerciseTimerEndsAtByExerciseId,
+    )) {
+      if (endsAt !== null && endsAt <= now) {
+        clearExerciseTimer(exerciseId);
+      }
     }
+  }, [clearExerciseTimer, exerciseTimerEndsAtByExerciseId, now]);
 
-    setExerciseTimerEndsAtByExerciseId((currentTimers) =>
-      Object.fromEntries(
-        activeSession.exercises
-          .map((exercise) => [
-            exercise.exerciseId,
-            currentTimers[exercise.exerciseId] ?? null,
-          ])
-          .filter((entry) => entry[0] !== undefined),
+  const sessionTitle = activeSession?.title ?? 'Workout';
+  const durationLabel =
+    startTime !== null ? formatElapsedDuration(now - startTime) : '0m';
+  const totalExerciseCount = activeSession?.exercises.length ?? 0;
+  const completedExerciseCount = activeSession
+    ? countCompletedExercises(activeSession.exercises)
+    : 0;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: '',
+      headerTitleAlign: 'left',
+      headerShadowVisible: false,
+      headerTitle: () => (
+        <WorkoutHeaderTitle
+          title={sessionTitle}
+          completedExerciseCount={completedExerciseCount}
+          totalExerciseCount={totalExerciseCount}
+        />
       ),
-    );
-  }, [activeSession]);
+      headerRight: () => <WorkoutHeaderRight durationLabel={durationLabel} />,
+    });
+  }, [
+    completedExerciseCount,
+    durationLabel,
+    navigation,
+    sessionTitle,
+    totalExerciseCount,
+  ]);
 
   if (!isWorkoutActive || isWorkoutCollapsed || !activeSession) {
     return null;
   }
 
-  const sessionTitle = activeSession.title ?? 'Workout';
-  const durationLabel =
-    startTime !== null ? formatElapsedDuration(now - startTime) : '0m';
-  const exerciseCount = activeSession.exercises.length;
   const setCount = activeSession.exercises.reduce(
     (sum, exercise) => sum + exercise.sets.length,
     0,
@@ -1262,6 +1246,79 @@ export function WorkoutActiveScreen({
     restTimerEndsAt !== null
       ? formatRestCountdown(restTimerEndsAt - now)
       : null;
+  const showExerciseTimerOptions = (exerciseId: string): void => {
+    const durationSeconds =
+      exerciseTimerDurationByExerciseId[exerciseId] ?? EXERCISE_TIMER_SECONDS;
+    const exerciseName =
+      activeSession.exercises.find(
+        (exercise) => exercise.exerciseId === exerciseId,
+      )?.exerciseName ?? 'Exercise';
+
+    if (Platform.OS === 'ios') {
+      const options = [
+        ...EXERCISE_TIMER_OPTIONS.map(
+          (seconds) =>
+            `${seconds} sec${seconds === durationSeconds ? ' ✓' : ''}`,
+        ),
+        'Clear Timer',
+        'Cancel',
+      ];
+      const cancelButtonIndex = options.length - 1;
+      const clearButtonIndex = options.length - 2;
+
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: `${exerciseName} timer`,
+          message: 'Choose the timer duration for this exercise.',
+          options,
+          cancelButtonIndex,
+          destructiveButtonIndex: clearButtonIndex,
+          userInterfaceStyle: 'light',
+        },
+        (buttonIndex) => {
+          if (buttonIndex === cancelButtonIndex) {
+            return;
+          }
+
+          if (buttonIndex === clearButtonIndex) {
+            clearExerciseTimer(exerciseId);
+            return;
+          }
+
+          const nextDuration = EXERCISE_TIMER_OPTIONS[buttonIndex];
+          if (!nextDuration) {
+            return;
+          }
+
+          setExerciseTimerDuration(exerciseId, nextDuration);
+          startExerciseTimer(exerciseId, nextDuration);
+        },
+      );
+      return;
+    }
+
+    Alert.alert(
+      `${exerciseName} timer`,
+      'Choose the timer duration for this exercise.',
+      [
+        ...EXERCISE_TIMER_OPTIONS.map((seconds) => ({
+          text: `${seconds} sec`,
+          onPress: () => {
+            setExerciseTimerDuration(exerciseId, seconds);
+            startExerciseTimer(exerciseId, seconds);
+          },
+        })),
+        {
+          text: 'Clear Timer',
+          style: 'destructive' as const,
+          onPress: () => {
+            clearExerciseTimer(exerciseId);
+          },
+        },
+        { text: 'Cancel', style: 'cancel' as const },
+      ],
+    );
+  };
   const handleDeleteWorkout = (): void => {
     Alert.alert(
       'Delete workout?',
@@ -1285,10 +1342,7 @@ export function WorkoutActiveScreen({
   return (
     <ActiveWorkoutContent
       activeSession={activeSession}
-      sessionTitle={sessionTitle}
-      durationLabel={durationLabel}
       now={now}
-      exerciseCount={exerciseCount}
       setCount={setCount}
       volume={volume}
       restLabel={restLabel}
@@ -1304,27 +1358,27 @@ export function WorkoutActiveScreen({
       onOpenExerciseDetails={(exerciseId) =>
         navigation.navigate('ExerciseDetail', { exerciseId })
       }
-      onToggleExerciseTimer={(exerciseId) => {
-        setExerciseTimerEndsAtByExerciseId((currentTimers) => {
-          const existingEnd = currentTimers[exerciseId] ?? null;
-          const isActive = existingEnd !== null && existingEnd > Date.now();
-
-          return {
-            ...currentTimers,
-            [exerciseId]: isActive
-              ? null
-              : Date.now() + EXERCISE_TIMER_SECONDS * 1000,
-          };
-        });
-      }}
+      onOpenExerciseTimerOptions={showExerciseTimerOptions}
       addSet={addSet}
       addExercise={addExercise}
       removeExercise={removeExercise}
       deleteSet={deleteSet}
       updateReps={updateReps}
       updateWeight={updateWeight}
-      toggleSetLogged={toggleSetLogged}
+      toggleSetLogged={(exerciseId, setId, isCompleted) => {
+        toggleSetLogged(setId, isCompleted);
+
+        if (!isCompleted) {
+          return;
+        }
+
+        const durationSeconds =
+          exerciseTimerDurationByExerciseId[exerciseId] ??
+          EXERCISE_TIMER_SECONDS;
+        startExerciseTimer(exerciseId, durationSeconds);
+      }}
       exerciseTimerEndsAtByExerciseId={exerciseTimerEndsAtByExerciseId}
+      exerciseTimerDurationByExerciseId={exerciseTimerDurationByExerciseId}
       previousPerformanceByExerciseId={previousPerformanceByExerciseId}
       showExerciseSheet={showExerciseSheet}
       setShowExerciseSheet={setShowExerciseSheet}
