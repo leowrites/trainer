@@ -47,6 +47,7 @@ describe('ScheduleScreen', () => {
       updateRoutine: jest.fn(),
       deleteRoutine: jest.fn(),
       getRoutineExercises: jest.fn(),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
     });
 
     render(<ScheduleScreen />);
@@ -100,6 +101,7 @@ describe('ScheduleScreen', () => {
       updateRoutine: jest.fn(),
       deleteRoutine: jest.fn(),
       getRoutineExercises: jest.fn(),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
     });
 
     render(<ScheduleScreen />);
