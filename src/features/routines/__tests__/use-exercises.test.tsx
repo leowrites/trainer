@@ -28,6 +28,7 @@ describe('useExercises', () => {
         muscle_group: 'Chest',
         how_to: null,
         equipment: 'Barbell and bench',
+        is_deleted: 0,
       },
       {
         id: 'e2',
@@ -35,6 +36,7 @@ describe('useExercises', () => {
         muscle_group: 'Legs',
         how_to: null,
         equipment: 'Barbell',
+        is_deleted: 0,
       },
     ];
     db.getAllSync.mockReturnValue(mockRows);
@@ -57,7 +59,7 @@ describe('useExercises', () => {
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'INSERT INTO exercises (id, name, muscle_group, how_to, equipment) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO exercises (id, name, muscle_group, how_to, equipment, is_deleted) VALUES (?, ?, ?, ?, ?, 0)',
       expect.arrayContaining(['Deadlift', 'Back', null, null]),
     );
   });
@@ -112,7 +114,7 @@ describe('useExercises', () => {
     );
     // Then the exercise itself
     expect(db.runSync).toHaveBeenCalledWith(
-      'DELETE FROM exercises WHERE id = ?',
+      'UPDATE exercises SET is_deleted = 1 WHERE id = ?',
       ['e1'],
     );
   });
@@ -158,6 +160,7 @@ describe('useExercises', () => {
       muscle_group: 'Chest',
       how_to: null,
       equipment: null,
+      is_deleted: 0,
     };
     db.getAllSync.mockReturnValue([original]);
     const wrapper = createDatabaseWrapper(db);
@@ -184,6 +187,7 @@ describe('useExercises', () => {
       muscle_group: 'Chest',
       how_to: null,
       equipment: null,
+      is_deleted: 0,
     };
     db.getAllSync.mockReturnValue([e1]);
     const wrapper = createDatabaseWrapper(db);
@@ -210,6 +214,7 @@ describe('useExercises', () => {
       muscle_group: 'Back',
       how_to: null,
       equipment: null,
+      is_deleted: 0,
     };
     db.getAllSync.mockReturnValue([created]);
 

@@ -19,7 +19,11 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { HistoryScreen } from '@features/analytics';
 import { ProfileScreen } from '@features/health-tracking';
-import { ExerciseDetailScreen, RoutinesScreen } from '@features/routines';
+import {
+  ExerciseDetailScreen,
+  RoutinesScreen,
+  type RoutinesStackParamList,
+} from '@features/routines';
 import { ScheduleScreen } from '@features/schedule';
 import { WorkoutActiveScreen, WorkoutScreen } from '@features/workout-mode';
 import { useWorkoutStore } from '@features/workout-mode/store';
@@ -29,7 +33,7 @@ import { useTheme } from '@core/theme/theme-context';
 
 export type RootTabParamList = {
   Workout: undefined;
-  Routines: undefined;
+  Routines: NavigatorScreenParams<RoutinesStackParamList>;
   Schedule: undefined;
   History: undefined;
   Profile: undefined;
@@ -242,18 +246,12 @@ export function RootNavigator(): React.JSX.Element {
         />
         <Stack.Screen
           name="ExerciseDetail"
+          component={ExerciseDetailScreen}
           options={{
             headerShown: true,
             title: '',
           }}
-        >
-          {(props) => (
-            <ExerciseDetailScreen
-              exerciseId={props.route.params.exerciseId}
-              navigation={props.navigation}
-            />
-          )}
-        </Stack.Screen>
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

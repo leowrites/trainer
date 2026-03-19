@@ -116,6 +116,7 @@ describe('RoutinesScreen', () => {
       muscle_group: 'Chest',
       how_to: 'Set your shoulders before every rep.',
       equipment: 'Barbell',
+      is_deleted: 0,
     });
 
     mockUseExercises.mockReturnValue({
@@ -176,6 +177,7 @@ describe('RoutinesScreen', () => {
           muscle_group: 'Chest',
           how_to: 'Drive your feet and keep the bar path stacked.',
           equipment: 'Barbell',
+          is_deleted: 0,
         },
       ],
       hasLoaded: true,
@@ -218,6 +220,7 @@ describe('RoutinesScreen', () => {
           muscle_group: 'Chest',
           how_to: null,
           equipment: null,
+          is_deleted: 0,
         },
         {
           id: 'exercise-2',
@@ -225,6 +228,7 @@ describe('RoutinesScreen', () => {
           muscle_group: 'Shoulders',
           how_to: null,
           equipment: null,
+          is_deleted: 0,
         },
       ],
       hasLoaded: true,
