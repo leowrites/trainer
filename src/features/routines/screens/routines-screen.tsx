@@ -1272,17 +1272,20 @@ export function ExerciseDetailScreen({
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const selectedExercise =
     exercises.find((exercise) => exercise.id === exerciseId) ?? null;
+  const hasLoadedExercises = exercises.length > 0;
 
   useEffect(() => {
-    if (selectedExercise === null) {
+    if (selectedExercise === null && hasLoadedExercises) {
       navigation.goBack();
       return;
     }
 
-    navigation.setOptions({
-      title: selectedExercise.name,
-    });
-  }, [navigation, selectedExercise]);
+    if (selectedExercise) {
+      navigation.setOptions({
+        title: selectedExercise.name,
+      });
+    }
+  }, [hasLoadedExercises, navigation, selectedExercise]);
 
   if (selectedExercise === null) {
     return (
