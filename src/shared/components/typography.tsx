@@ -12,7 +12,7 @@
  * | `Label`          | Card / field label  | xs    | regular   |
  * | `Caption`        | Timestamp / sub-info | xs   | regular   |
  * | `Meta`           | Compact mono utility copy | 2xs | regular |
- * | `Muted`          | De-emphasised text  | sm    | regular   |
+ * | `Muted`          | De-emphasised text  | md    | regular   |
  * | `StatValue`      | Large metric display | 4xl  | bold      |
  *
  * Props (all variants):
@@ -190,8 +190,8 @@ export function Meta({
 // ─── Muted ────────────────────────────────────────────────────────────────────
 
 /**
- * De-emphasised body text — `13px` (same size as `Body`) but coloured with the
- * muted token.
+ * De-emphasised body text — slightly larger than `Body` for better legibility,
+ * while still coloured with the muted token.
  */
 export function Muted({
   children,
@@ -202,8 +202,8 @@ export function Muted({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`font-body leading-[20px] text-muted ${className}`}
-      size="sm"
+      className={`font-body leading-[22px] text-muted ${className}`}
+      size="md"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}

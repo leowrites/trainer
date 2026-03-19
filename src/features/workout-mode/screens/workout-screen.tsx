@@ -148,7 +148,7 @@ function DashboardStatCard({
   return (
     <Surface
       variant="card"
-      className="min-w-[140px] flex-1 rounded-[22px] border border-surface-border px-4 py-4"
+      className="w-full rounded-[22px] border border-surface-border px-4 py-4"
     >
       <Label>{label}</Label>
       <DisplayHeading className="mt-3 text-3xl leading-[30px]">
@@ -757,28 +757,6 @@ export function WorkoutScreen({
           </Muted>
         </View>
 
-        <View className="flex-row flex-wrap gap-3">
-          <DashboardStatCard
-            label="Workouts This Week"
-            value={dashboardMetrics.workoutsThisWeek}
-            caption={`${dashboardMetrics.workoutDaysThisWeek} active days`}
-          />
-          <DashboardStatCard
-            label="Weekly Streak"
-            value={dashboardMetrics.currentWeeklyStreak}
-            caption={
-              dashboardMetrics.currentWeeklyStreak === 1
-                ? '1 week in a row'
-                : `${dashboardMetrics.currentWeeklyStreak} weeks in a row`
-            }
-          />
-          <DashboardStatCard
-            label="Last Workout"
-            value={formatShortDate(dashboardMetrics.lastCompletedWorkoutAt)}
-            caption="Most recent completed session"
-          />
-        </View>
-
         {hasCurrentWorkout && currentWorkoutTitle ? (
           <Surface
             variant="card"
@@ -857,6 +835,28 @@ export function WorkoutScreen({
             Start Free Workout
           </Button>
         ) : null}
+
+        <View className="gap-3">
+          <DashboardStatCard
+            label="Workouts This Week"
+            value={dashboardMetrics.workoutsThisWeek}
+            caption={`${dashboardMetrics.workoutDaysThisWeek} active days`}
+          />
+          <DashboardStatCard
+            label="Weekly Streak"
+            value={dashboardMetrics.currentWeeklyStreak}
+            caption={
+              dashboardMetrics.currentWeeklyStreak === 1
+                ? '1 week in a row'
+                : `${dashboardMetrics.currentWeeklyStreak} weeks in a row`
+            }
+          />
+          <DashboardStatCard
+            label="Last Workout"
+            value={formatShortDate(dashboardMetrics.lastCompletedWorkoutAt)}
+            caption="Most recent completed session"
+          />
+        </View>
       </ScrollView>
     </Container>
   );
