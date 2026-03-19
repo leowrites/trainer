@@ -29,7 +29,7 @@ function normalizeMetadata(value: string | null | undefined): string | null {
 export function useExercises(): {
   exercises: Exercise[];
   refresh: () => void;
-  createExercise: (input: NewExerciseInput) => void;
+  createExercise: (input: NewExerciseInput) => Exercise;
   updateExercise: (id: string, input: NewExerciseInput) => void;
   deleteExercise: (id: string) => void;
 } {
@@ -49,18 +49,27 @@ export function useExercises(): {
   }, [db, refreshKey]);
 
   const createExercise = useCallback(
-    (input: NewExerciseInput): void => {
+    (input: NewExerciseInput): Exercise => {
+      const createdExercise: Exercise = {
+        id: generateId(),
+        name: input.name,
+        muscle_group: input.muscleGroup,
+        how_to: normalizeMetadata(input.howTo),
+        equipment: normalizeMetadata(input.equipment),
+      };
+
       db.runSync(
         'INSERT INTO exercises (id, name, muscle_group, how_to, equipment) VALUES (?, ?, ?, ?, ?)',
         [
-          generateId(),
-          input.name,
-          input.muscleGroup,
-          normalizeMetadata(input.howTo),
-          normalizeMetadata(input.equipment),
+          createdExercise.id,
+          createdExercise.name,
+          createdExercise.muscle_group,
+          createdExercise.how_to,
+          createdExercise.equipment,
         ],
       );
       refresh();
+      return createdExercise;
     },
     [db, refresh],
   );

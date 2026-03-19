@@ -1,22 +1,20 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
 import {
   Body,
   Button,
-  Caption,
   Card,
-  Checkbox,
   Container,
-  DisclosureCard,
   Heading,
   Input,
   Label,
   Muted,
 } from '@shared/components';
 import { useExercises } from '../hooks/use-exercises';
+import { useRoutineInsights } from '../hooks/use-routine-insights';
 import { useRoutines } from '../hooks/use-routines';
 import type { NewExerciseInput } from '../hooks/use-exercises';
 import type {
@@ -25,576 +23,925 @@ import type {
 } from '../hooks/use-routines';
 import type { Exercise, Routine, RoutineExercise } from '@core/database/types';
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
-
-const DEFAULT_TARGET_SETS = 3;
-const DEFAULT_TARGET_REPS = 10;
+const DEFAULT_TARGET_SETS = '3';
+const DEFAULT_TARGET_REPS = '10';
 
 type Section = 'exercises' | 'routines';
 
+type ScreenState =
+  | { kind: 'library' }
+  | { kind: 'exercise'; exerciseId: string | null }
+  | { kind: 'routine'; routineId: string | null };
+
+interface RoutineExerciseDraft {
+  exerciseId: string;
+  targetSets: string;
+  targetReps: string;
+}
+
+const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+function formatDateLabel(timestamp: number | null): string {
+  if (timestamp === null) {
+    return 'Not yet';
+  }
+
+  return shortDateFormatter.format(timestamp);
+}
+
+function formatDurationLabel(durationMinutes: number | null): string {
+  if (durationMinutes === null) {
+    return 'No completed sessions yet';
+  }
+
+  return `${Math.round(durationMinutes)} min avg`;
+}
+
+function formatVolumeLabel(value: number | null): string {
+  if (value === null) {
+    return 'No volume yet';
+  }
+
+  return `${Math.round(value)} avg volume`;
+}
+
+function normalizeQuery(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function parsePositiveWholeNumber(value: string, fallback: number): number {
+  const parsed = Number.parseInt(value.trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function buildRoutineExerciseDrafts(
+  routineExercises: RoutineExercise[],
+): RoutineExerciseDraft[] {
+  return routineExercises.map((entry) => ({
+    exerciseId: entry.exercise_id,
+    targetSets: String(entry.target_sets),
+    targetReps: String(entry.target_reps),
+  }));
+}
+
 function SectionSwitcher({
   section,
+  exercisesCount,
+  routinesCount,
   onChange,
 }: {
   section: Section;
+  exercisesCount: number;
+  routinesCount: number;
   onChange: (section: Section) => void;
 }): React.JSX.Element {
   return (
-    <View className="mx-0 flex-row border-y border-surface-border">
-      {(['exercises', 'routines'] as const).map((item, index) => {
-        const active = section === item;
-        return (
-          <Pressable
-            key={item}
-            accessibilityRole="button"
-            accessibilityLabel={item}
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(item)}
-            className={`flex-1 px-3 py-3 ${
-              index === 0 ? 'border-r border-surface-border' : ''
-            }`}
-          >
-            <View className="flex-row items-center justify-center">
+    <View className="mt-4 rounded-[24px] border border-surface-border/80 bg-surface-card p-1">
+      <View className="flex-row">
+        {(
+          [
+            ['exercises', exercisesCount],
+            ['routines', routinesCount],
+          ] as const
+        ).map(([item, count]) => {
+          const active = section === item;
+          return (
+            <Pressable
+              key={item}
+              accessibilityRole="button"
+              accessibilityLabel={item}
+              accessibilityState={{ selected: active }}
+              className={`flex-1 rounded-[18px] px-4 py-3 ${
+                active ? 'bg-surface-elevated' : ''
+              }`}
+              onPress={() => onChange(item)}
+            >
               <Label className={active ? 'text-foreground' : 'text-muted'}>
                 {item}
               </Label>
-            </View>
-          </Pressable>
-        );
-      })}
+              <Muted className="mt-1 text-xs">{count} total</Muted>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
-function FormSection({
-  label,
-  children,
+function LibraryHeader({
+  section,
+  exercisesCount,
+  routinesCount,
+  searchQuery,
+  onSearchChange,
+  onChangeSection,
+  onCreate,
 }: {
-  label: string;
-  children: React.ReactNode;
+  section: Section;
+  exercisesCount: number;
+  routinesCount: number;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  onChangeSection: (section: Section) => void;
+  onCreate: () => void;
+}): React.JSX.Element {
+  const actionLabel = section === 'exercises' ? 'New Exercise' : 'New Routine';
+
+  return (
+    <View className="pb-5">
+      <View accessibilityRole="header" className="gap-2">
+        <Heading className="text-4xl leading-[36px]">Routines</Heading>
+        <Muted className="max-w-[300px] text-sm leading-[19px]">
+          Search your library, jump into dedicated detail pages, and keep your
+          templates organized before the next workout starts.
+        </Muted>
+      </View>
+
+      <SectionSwitcher
+        section={section}
+        exercisesCount={exercisesCount}
+        routinesCount={routinesCount}
+        onChange={onChangeSection}
+      />
+
+      <Input
+        className="mt-4"
+        placeholder={
+          section === 'exercises' ? 'Search exercises' : 'Search routines'
+        }
+        value={searchQuery}
+        onChangeText={onSearchChange}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+
+      <Button className="mt-4 w-full" onPress={onCreate}>
+        {actionLabel}
+      </Button>
+    </View>
+  );
+}
+
+function PageHeader({
+  title,
+  subtitle,
+  onBack,
+}: {
+  title: string;
+  subtitle: string;
+  onBack: () => void;
 }): React.JSX.Element {
   return (
-    <Card className="mx-0 rounded-[24px] px-5 py-5">
-      <View className="mb-4 flex-row items-center gap-3">
-        <Label className="text-muted-foreground">{label}</Label>
-        <View className="h-px flex-1 bg-surface-border/70" />
+    <View className="pb-4">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Back to routines"
+        className="mb-4 self-start rounded-[16px] border border-surface-border px-3 py-2"
+        onPress={onBack}
+      >
+        <Label>Back</Label>
+      </Pressable>
+
+      <View accessibilityRole="header" className="gap-2">
+        <Heading className="text-4xl leading-[36px]">{title}</Heading>
+        <Muted className="text-sm leading-[19px]">{subtitle}</Muted>
       </View>
-      {children}
+    </View>
+  );
+}
+
+function LibraryExerciseCard({
+  exercise,
+  onPress,
+}: {
+  exercise: Exercise;
+  onPress: () => void;
+}): React.JSX.Element {
+  return (
+    <Card
+      className="mb-3 rounded-[24px] px-5 py-5"
+      onPress={onPress}
+      accessibilityLabel={`Open ${exercise.name}`}
+    >
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="flex-1">
+          <Body className="font-heading text-2xl leading-[28px]">
+            {exercise.name}
+          </Body>
+          <Muted className="mt-2 text-xs uppercase tracking-[1.3px]">
+            {exercise.muscle_group}
+          </Muted>
+        </View>
+
+        <Label>Open</Label>
+      </View>
+
+      <Muted className="mt-4 text-sm leading-[18px]">
+        {exercise.how_to?.trim()
+          ? exercise.how_to
+          : 'Add how-to notes and review past logged sets from the detail page.'}
+      </Muted>
     </Card>
   );
 }
 
-function NewItemButton({
-  label,
+function LibraryRoutineCard({
+  routine,
+  exerciseCount,
   onPress,
 }: {
-  label: string;
+  routine: Routine;
+  exerciseCount: number;
   onPress: () => void;
 }): React.JSX.Element {
   return (
-    <Pressable
-      accessibilityRole="button"
-      className="mx-0 rounded-[20px] border border-surface-border/80 bg-surface-card px-5 py-4"
+    <Card
+      className="mb-3 rounded-[24px] px-5 py-5"
       onPress={onPress}
+      accessibilityLabel={`Open ${routine.name}`}
     >
-      <Label className="text-muted-foreground">{label}</Label>
-    </Pressable>
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="flex-1">
+          <Body className="font-heading text-2xl leading-[28px]">
+            {routine.name}
+          </Body>
+          <Muted className="mt-2 text-sm leading-[18px]">
+            {exerciseCount} exercises in this routine
+          </Muted>
+        </View>
+
+        <Label>Open</Label>
+      </View>
+    </Card>
   );
 }
 
-function FormActions({
-  primaryLabel = 'Save',
-  secondaryLabel = 'Cancel',
-  onPrimaryPress,
-  onSecondaryPress,
-  primaryLoading = false,
+function ExerciseDetailPage({
+  exercise,
+  onBack,
+  onSave,
+  onDelete,
+  totalSessions,
+  lastPerformedAt,
+  bestCompletedWeight,
+  history,
 }: {
-  primaryLabel?: string;
-  secondaryLabel?: string;
-  onPrimaryPress: () => void;
-  onSecondaryPress: () => void;
-  primaryLoading?: boolean;
+  exercise: Exercise | null;
+  onBack: () => void;
+  onSave: (input: NewExerciseInput) => void;
+  onDelete: () => void;
+  totalSessions: number;
+  lastPerformedAt: number | null;
+  bestCompletedWeight: number | null;
+  history: {
+    sessionId: string;
+    sessionName: string;
+    startTime: number;
+    bestCompletedWeight: number;
+    completedSets: number;
+    totalSets: number;
+    setSummary: string;
+  }[];
 }): React.JSX.Element {
-  return (
-    <View className="mt-4 gap-3">
-      <Button
-        onPress={onPrimaryPress}
-        loading={primaryLoading}
-        className="w-full"
-      >
-        {primaryLabel}
-      </Button>
-      <Pressable
-        accessibilityRole="button"
-        className="items-center py-1"
-        onPress={onSecondaryPress}
-      >
-        <Caption className="text-muted-foreground">{secondaryLabel}</Caption>
-      </Pressable>
-    </View>
-  );
-}
-
-// ─── Exercises section ─────────────────────────────────────────────────────────
-
-interface ExercisesSectionProps {
-  exercises: Exercise[];
-  createExercise: (input: NewExerciseInput) => void;
-  updateExercise: (id: string, input: NewExerciseInput) => void;
-  deleteExercise: (id: string) => void;
-}
-
-function ExercisesSection({
-  exercises,
-  createExercise,
-  updateExercise,
-  deleteExercise,
-}: ExercisesSectionProps): React.JSX.Element {
-  const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [muscleGroup, setMuscleGroup] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editMuscleGroup, setEditMuscleGroup] = useState('');
-  const [editSaving, setEditSaving] = useState(false);
+  const [equipment, setEquipment] = useState('');
+  const [howTo, setHowTo] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCreate = (): void => {
+  useEffect(() => {
+    setName(exercise?.name ?? '');
+    setMuscleGroup(exercise?.muscle_group ?? '');
+    setEquipment(exercise?.equipment ?? '');
+    setHowTo(exercise?.how_to ?? '');
+    setError(null);
+  }, [exercise]);
+
+  const handleSave = (): void => {
     const trimmedName = name.trim();
-    const trimmedGroup = muscleGroup.trim();
-    if (!trimmedName || !trimmedGroup) return;
-    setSaving(true);
-    try {
-      createExercise({ name: trimmedName, muscleGroup: trimmedGroup });
-      setName('');
-      setMuscleGroup('');
-      setShowForm(false);
-    } finally {
-      setSaving(false);
-    }
-  };
+    const trimmedMuscleGroup = muscleGroup.trim();
 
-  const handleStartEdit = (item: Exercise): void => {
-    setEditingId(item.id);
-    setEditName(item.name);
-    setEditMuscleGroup(item.muscle_group);
-  };
-
-  const handleSaveEdit = (id: string): void => {
-    const trimmedName = editName.trim();
-    const trimmedGroup = editMuscleGroup.trim();
-    if (!trimmedName || !trimmedGroup) return;
-    setEditSaving(true);
-    try {
-      updateExercise(id, { name: trimmedName, muscleGroup: trimmedGroup });
-      setEditingId(null);
-    } finally {
-      setEditSaving(false);
-    }
-  };
-
-  const renderExercise = ({ item }: { item: Exercise }): React.JSX.Element => {
-    if (editingId === item.id) {
-      return (
-        <Card className="mx-0 mb-3 rounded-[24px] px-5 py-5">
-          <Input
-            className="mb-2"
-            placeholder="Exercise name"
-            value={editName}
-            onChangeText={setEditName}
-            autoCapitalize="words"
-          />
-          <Input
-            className="mb-3"
-            placeholder="Muscle group"
-            value={editMuscleGroup}
-            onChangeText={setEditMuscleGroup}
-            autoCapitalize="words"
-          />
-          <FormActions
-            primaryLabel="Save changes"
-            secondaryLabel="Cancel"
-            onPrimaryPress={() => handleSaveEdit(item.id)}
-            primaryLoading={editSaving}
-            onSecondaryPress={() => setEditingId(null)}
-          />
-        </Card>
-      );
+    if (!trimmedName || !trimmedMuscleGroup) {
+      setError('Exercise name and muscle group are required.');
+      return;
     }
 
-    return (
-      <Card className="mx-0 mb-3 rounded-[24px] px-5 py-5">
-        <View className="flex-row items-start justify-between gap-3">
-          <View className="flex-1">
-            <Body className="font-heading text-2xl leading-[24px]">
-              {item.name}
-            </Body>
-            <Caption className="mt-1 uppercase tracking-[1.5px]">
-              {item.muscle_group}
-            </Caption>
-          </View>
-          <Button
-            variant="ghost"
-            size="sm"
-            accessibilityLabel={`Edit ${item.name}`}
-            onPress={() => handleStartEdit(item)}
-          >
-            Edit
-          </Button>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Delete ${item.name}`}
-          className="mt-3 self-start px-1 py-1"
-          onPress={() => deleteExercise(item.id)}
-        >
-          <Caption className="text-muted">Delete</Caption>
-        </Pressable>
-      </Card>
-    );
+    setError(null);
+    onSave({
+      name: trimmedName,
+      muscleGroup: trimmedMuscleGroup,
+      howTo,
+      equipment,
+    });
   };
+
+  const title = exercise?.name ?? 'New Exercise';
+  const subtitle =
+    exercise === null
+      ? 'Create a reusable exercise with how-to notes you can keep revisiting.'
+      : 'How-to guidance comes first, followed by your recent logged sessions.';
 
   return (
-    <View className="flex-1">
-      <FlatList
-        data={exercises}
-        keyExtractor={(item: Exercise) => item.id}
-        renderItem={renderExercise}
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: 0,
-          paddingBottom: 12,
-        }}
-        ListEmptyComponent={
-          <Muted className="px-0 py-4 text-center">
-            No exercises yet. Add one below.
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 28 }}
+    >
+      <PageHeader title={title} subtitle={subtitle} onBack={onBack} />
+
+      {exercise ? (
+        <>
+          <Card label="How To" className="mb-4 rounded-[24px] px-5 py-5">
+            <Muted className="text-sm leading-[19px]">
+              {exercise.how_to?.trim()
+                ? exercise.how_to
+                : 'No how-to note yet. Add cues, setup reminders, or a short execution checklist below.'}
+            </Muted>
+          </Card>
+
+          <Card label="History" className="mb-4 rounded-[24px] px-5 py-5">
+            <View className="flex-row flex-wrap gap-3">
+              <View className="min-w-[110px] flex-1 rounded-[18px] bg-surface-elevated px-4 py-4">
+                <Label>Sessions</Label>
+                <Body className="mt-2 font-heading text-2xl leading-[28px]">
+                  {totalSessions}
+                </Body>
+              </View>
+              <View className="min-w-[110px] flex-1 rounded-[18px] bg-surface-elevated px-4 py-4">
+                <Label>Last Logged</Label>
+                <Body className="mt-2">{formatDateLabel(lastPerformedAt)}</Body>
+              </View>
+              <View className="min-w-[110px] flex-1 rounded-[18px] bg-surface-elevated px-4 py-4">
+                <Label>Best Weight</Label>
+                <Body className="mt-2">
+                  {bestCompletedWeight === null
+                    ? 'None yet'
+                    : bestCompletedWeight}
+                </Body>
+              </View>
+            </View>
+
+            <View className="mt-5 gap-3">
+              {history.length > 0 ? (
+                history.slice(0, 6).map((session) => (
+                  <View
+                    key={session.sessionId}
+                    className="rounded-[18px] border border-surface-border/80 bg-surface-elevated px-4 py-4"
+                  >
+                    <View className="flex-row items-start justify-between gap-3">
+                      <View className="flex-1">
+                        <Body className="font-medium">
+                          {session.sessionName}
+                        </Body>
+                        <Muted className="mt-1 text-sm leading-[18px]">
+                          {formatDateLabel(session.startTime)}
+                        </Muted>
+                      </View>
+                      <Muted className="text-sm">
+                        {session.completedSets}/{session.totalSets} completed
+                      </Muted>
+                    </View>
+
+                    <Muted className="mt-3 text-sm leading-[18px]">
+                      {session.setSummary}
+                    </Muted>
+                  </View>
+                ))
+              ) : (
+                <Muted className="text-sm leading-[18px]">
+                  No logged history for this exercise yet.
+                </Muted>
+              )}
+            </View>
+          </Card>
+        </>
+      ) : null}
+
+      <Card
+        label={exercise ? 'Exercise Details' : 'Create Exercise'}
+        className="rounded-[24px] px-5 py-5"
+      >
+        <Label>Exercise name</Label>
+        <Input
+          className="mt-3"
+          placeholder="Bench Press"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
+        />
+
+        <Label className="mt-4">Muscle group</Label>
+        <Input
+          className="mt-3"
+          placeholder="Chest"
+          value={muscleGroup}
+          onChangeText={setMuscleGroup}
+          autoCapitalize="words"
+        />
+
+        <Label className="mt-4">Equipment</Label>
+        <Input
+          className="mt-3"
+          placeholder="Barbell, bench"
+          value={equipment}
+          onChangeText={setEquipment}
+          autoCapitalize="words"
+        />
+
+        <Label className="mt-4">How-to</Label>
+        <Input
+          className="mt-3 min-h-[120px] pt-4"
+          placeholder="Short setup cues, execution notes, and safety reminders"
+          value={howTo}
+          onChangeText={setHowTo}
+          multiline
+          numberOfLines={5}
+          autoCapitalize="sentences"
+        />
+
+        {error ? <Muted className="mt-4 text-red-400">{error}</Muted> : null}
+
+        <Button className="mt-5 w-full" onPress={handleSave}>
+          {exercise ? 'Save Exercise' : 'Create Exercise'}
+        </Button>
+
+        {exercise ? (
+          <Button
+            variant="ghost"
+            className="mt-3 w-full"
+            onPress={() =>
+              Alert.alert(
+                'Delete Exercise',
+                `Delete ${exercise.name} and remove it from any routines?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: onDelete,
+                  },
+                ],
+              )
+            }
+          >
+            Delete Exercise
+          </Button>
+        ) : (
+          <Button variant="ghost" className="mt-3 w-full" onPress={onBack}>
+            Cancel
+          </Button>
+        )}
+      </Card>
+    </ScrollView>
+  );
+}
+
+function RoutineExerciseEditor({
+  draft,
+  exerciseName,
+  isFirst,
+  isLast,
+  onMoveUp,
+  onMoveDown,
+  onRemove,
+  onChangeTargetSets,
+  onChangeTargetReps,
+}: {
+  draft: RoutineExerciseDraft;
+  exerciseName: string;
+  isFirst: boolean;
+  isLast: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onRemove: () => void;
+  onChangeTargetSets: (value: string) => void;
+  onChangeTargetReps: (value: string) => void;
+}): React.JSX.Element {
+  return (
+    <View className="rounded-[20px] border border-surface-border/80 bg-surface-elevated px-4 py-4">
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="flex-1">
+          <Body className="font-medium">{exerciseName}</Body>
+          <Muted className="mt-1 text-sm">
+            Reorder here before this routine lands in schedules and workouts.
           </Muted>
-        }
-        ListFooterComponent={
-          showForm ? (
-            <FormSection label="New Exercise">
-              <Input
-                className="mb-2"
-                placeholder="Exercise name"
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-              />
-              <Input
-                className="mb-4"
-                placeholder="Muscle group (e.g. Chest)"
-                value={muscleGroup}
-                onChangeText={setMuscleGroup}
-                autoCapitalize="words"
-              />
-              <FormActions
-                primaryLabel="Save exercise"
-                secondaryLabel="Cancel"
-                onPrimaryPress={handleCreate}
-                primaryLoading={saving}
-                onSecondaryPress={() => {
-                  setShowForm(false);
-                  setName('');
-                  setMuscleGroup('');
-                }}
-              />
-            </FormSection>
-          ) : (
-            <NewItemButton
-              label="+ New Exercise"
-              onPress={() => setShowForm(true)}
-            />
-          )
-        }
-      />
+        </View>
+
+        <View className="flex-row gap-2">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Move ${exerciseName} up`}
+            className={`rounded-[14px] border px-3 py-2 ${
+              isFirst
+                ? 'border-surface-border/40 opacity-40'
+                : 'border-surface-border'
+            }`}
+            disabled={isFirst}
+            onPress={onMoveUp}
+          >
+            <Label>Up</Label>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Move ${exerciseName} down`}
+            className={`rounded-[14px] border px-3 py-2 ${
+              isLast
+                ? 'border-surface-border/40 opacity-40'
+                : 'border-surface-border'
+            }`}
+            disabled={isLast}
+            onPress={onMoveDown}
+          >
+            <Label>Down</Label>
+          </Pressable>
+        </View>
+      </View>
+
+      <View className="mt-4 flex-row gap-3">
+        <View className="flex-1">
+          <Label>Sets</Label>
+          <Input
+            className="mt-2"
+            value={draft.targetSets}
+            onChangeText={onChangeTargetSets}
+            keyboardType="number-pad"
+          />
+        </View>
+        <View className="flex-1">
+          <Label>Reps</Label>
+          <Input
+            className="mt-2"
+            value={draft.targetReps}
+            onChangeText={onChangeTargetReps}
+            keyboardType="number-pad"
+          />
+        </View>
+      </View>
+
+      <Button variant="ghost" className="mt-4 w-full" onPress={onRemove}>
+        Remove Exercise
+      </Button>
     </View>
   );
 }
 
-// ─── Routines section ──────────────────────────────────────────────────────────
-
-interface RoutinesSectionProps {
-  routines: Routine[];
-  exercises: Exercise[];
-  createRoutine: (input: NewRoutineInput) => Routine;
-  updateRoutine: (id: string, input: NewRoutineInput) => void;
-  deleteRoutine: (id: string) => void;
-  getRoutineExercises: (routineId: string) => RoutineExercise[];
-}
-
-function RoutinesSection({
-  routines,
+function RoutineDetailPage({
+  routine,
   exercises,
-  createRoutine,
-  updateRoutine,
-  deleteRoutine,
-  getRoutineExercises,
-}: RoutinesSectionProps): React.JSX.Element {
-  const [showForm, setShowForm] = useState(false);
-  const [routineName, setRoutineName] = useState('');
-  const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
+  routineExercises,
+  onBack,
+  onSave,
+  onDelete,
+  completionCount,
+  lastPerformedAt,
+  averageVolume,
+  averageDurationMinutes,
+  recentSessions,
+}: {
+  routine: Routine | null;
+  exercises: Exercise[];
+  routineExercises: RoutineExercise[];
+  onBack: () => void;
+  onSave: (input: NewRoutineInput) => void;
+  onDelete: () => void;
+  completionCount: number;
+  lastPerformedAt: number | null;
+  averageVolume: number | null;
+  averageDurationMinutes: number | null;
+  recentSessions: {
+    sessionId: string;
+    routineName: string;
+    startTime: number;
+    endTime: number | null;
+    totalVolume: number;
+    completedSets: number;
+    totalSets: number;
+  }[];
+}): React.JSX.Element {
+  const [name, setName] = useState('');
+  const [exerciseDrafts, setExerciseDrafts] = useState<RoutineExerciseDraft[]>(
+    [],
+  );
+  const [showAddExercise, setShowAddExercise] = useState(false);
+  const [addExerciseQuery, setAddExerciseQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedExercises, setExpandedExercises] = useState<RoutineExercise[]>(
+  useEffect(() => {
+    setName(routine?.name ?? '');
+    setExerciseDrafts(buildRoutineExerciseDrafts(routineExercises));
+    setShowAddExercise(false);
+    setAddExerciseQuery('');
+    setError(null);
+  }, [routine, routineExercises]);
+
+  const selectedExerciseIds = useMemo(
+    () => exerciseDrafts.map((entry) => entry.exerciseId),
+    [exerciseDrafts],
+  );
+
+  const availableExercises = useMemo(() => {
+    const query = normalizeQuery(addExerciseQuery);
+
+    return exercises.filter((exercise) => {
+      if (selectedExerciseIds.includes(exercise.id)) {
+        return false;
+      }
+
+      if (query === '') {
+        return true;
+      }
+
+      return (
+        normalizeQuery(exercise.name).includes(query) ||
+        normalizeQuery(exercise.muscle_group).includes(query)
+      );
+    });
+  }, [addExerciseQuery, exercises, selectedExerciseIds]);
+
+  const handleUpdateDraft = useCallback(
+    (index: number, patch: Partial<RoutineExerciseDraft>): void => {
+      setExerciseDrafts((current) =>
+        current.map((entry, entryIndex) =>
+          entryIndex === index ? { ...entry, ...patch } : entry,
+        ),
+      );
+    },
     [],
   );
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editSelectedIds, setEditSelectedIds] = useState<string[]>([]);
-  const [editSaving, setEditSaving] = useState(false);
+  const handleMoveDraft = useCallback(
+    (index: number, direction: -1 | 1): void => {
+      setExerciseDrafts((current) => {
+        const nextIndex = index + direction;
 
-  const toggleExercise = (id: string): void => {
-    setSelectedExerciseIds((prev: string[]) =>
-      prev.includes(id) ? prev.filter((x: string) => x !== id) : [...prev, id],
-    );
-  };
-
-  const toggleEditExercise = (id: string): void => {
-    setEditSelectedIds((prev: string[]) =>
-      prev.includes(id) ? prev.filter((x: string) => x !== id) : [...prev, id],
-    );
-  };
-
-  const handleCreate = (): void => {
-    const trimmedName = routineName.trim();
-    if (!trimmedName) return;
-    setSaving(true);
-    try {
-      createRoutine({
-        name: trimmedName,
-        exercises: selectedExerciseIds.map((exerciseId: string) => ({
-          exerciseId,
-          targetSets: DEFAULT_TARGET_SETS,
-          targetReps: DEFAULT_TARGET_REPS,
-        })),
-      });
-      setRoutineName('');
-      setSelectedExerciseIds([]);
-      setShowForm(false);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleStartEdit = (item: Routine): void => {
-    const currentExercises = getRoutineExercises(item.id);
-    setEditingId(item.id);
-    setEditName(item.name);
-    setEditSelectedIds(
-      currentExercises.map((re: RoutineExercise) => re.exercise_id),
-    );
-    setExpandedId(null);
-    setExpandedExercises([]);
-  };
-
-  const handleSaveEdit = (id: string): void => {
-    const trimmedName = editName.trim();
-    if (!trimmedName) return;
-    setEditSaving(true);
-    try {
-      const exerciseInputs: RoutineExerciseInput[] = editSelectedIds.map(
-        (exerciseId: string) => ({
-          exerciseId,
-          targetSets: DEFAULT_TARGET_SETS,
-          targetReps: DEFAULT_TARGET_REPS,
-        }),
-      );
-      updateRoutine(id, { name: trimmedName, exercises: exerciseInputs });
-      setEditingId(null);
-    } finally {
-      setEditSaving(false);
-    }
-  };
-
-  const handleToggleExpand = (item: Routine): void => {
-    if (expandedId === item.id) {
-      setExpandedId(null);
-      setExpandedExercises([]);
-    } else {
-      setExpandedId(item.id);
-      setExpandedExercises(getRoutineExercises(item.id));
-      setEditingId(null);
-    }
-  };
-
-  const expandedRoutine = routines.find((r) => r.id === expandedId) ?? null;
-  useEffect(() => {
-    if (expandedId !== null) {
-      setExpandedExercises(getRoutineExercises(expandedId));
-    }
-  }, [expandedRoutine, expandedId, getRoutineExercises]);
-
-  const renderRoutine = ({ item }: { item: Routine }): React.JSX.Element => {
-    if (editingId === item.id) {
-      return (
-        <Card className="mx-0 mb-3 rounded-[20px] px-4 py-4">
-          <Input
-            className="mb-4"
-            placeholder="Routine name"
-            value={editName}
-            onChangeText={setEditName}
-            autoCapitalize="words"
-          />
-          <Label className="mb-2">Select Exercises</Label>
-          {exercises.length === 0 ? (
-            <Muted className="mb-4">No exercises available.</Muted>
-          ) : (
-            exercises.map((ex) => (
-              <Checkbox
-                key={ex.id}
-                checked={editSelectedIds.includes(ex.id)}
-                onToggle={() => toggleEditExercise(ex.id)}
-                label={ex.name}
-                sublabel={ex.muscle_group}
-              />
-            ))
-          )}
-          <FormActions
-            primaryLabel="Save changes"
-            secondaryLabel="Cancel"
-            onPrimaryPress={() => handleSaveEdit(item.id)}
-            primaryLoading={editSaving}
-            onSecondaryPress={() => setEditingId(null)}
-          />
-        </Card>
-      );
-    }
-
-    const isExpanded = expandedId === item.id;
-
-    return (
-      <DisclosureCard
-        title={item.name}
-        expanded={isExpanded}
-        onToggle={() => handleToggleExpand(item)}
-        className="mx-0 rounded-[24px] border border-surface-border/80"
-        headerClassName="px-5 py-5"
-        contentClassName="px-5 pb-5"
-        accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} ${item.name}`}
-        actions={
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              accessibilityLabel={`Edit ${item.name}`}
-              onPress={() => handleStartEdit(item)}
-            >
-              Edit
-            </Button>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Delete ${item.name}`}
-              className="px-2 py-1"
-              onPress={() => deleteRoutine(item.id)}
-            >
-              <Caption className="text-muted">Delete</Caption>
-            </Pressable>
-          </>
+        if (nextIndex < 0 || nextIndex >= current.length) {
+          return current;
         }
-      >
-        {expandedExercises.length === 0 ? (
-          <Muted className="pt-1">No exercises in this routine.</Muted>
-        ) : (
-          <View className="pt-1">
-            {expandedExercises.map((re: RoutineExercise, index: number) => {
-              const ex = exercises.find(
-                (e: Exercise) => e.id === re.exercise_id,
-              );
-              const last = index === expandedExercises.length - 1;
-              return (
-                <View
-                  key={re.id}
-                  className={`flex-row items-start justify-between py-2 ${
-                    last ? '' : 'border-b border-surface-border'
-                  }`}
-                >
-                  <Body className="flex-1 font-heading text-lg leading-[22px]">
-                    {ex ? ex.name : re.exercise_id}
-                  </Body>
-                  <Caption className="ml-3 text-right">
-                    {re.target_sets} × {re.target_reps}
-                  </Caption>
-                </View>
-              );
-            })}
-          </View>
-        )}
-      </DisclosureCard>
+
+        const nextDrafts = [...current];
+        const [moved] = nextDrafts.splice(index, 1);
+        nextDrafts.splice(nextIndex, 0, moved);
+        return nextDrafts;
+      });
+    },
+    [],
+  );
+
+  const handleRemoveDraft = useCallback((index: number): void => {
+    setExerciseDrafts((current) =>
+      current.filter((_, entryIndex) => entryIndex !== index),
     );
+  }, []);
+
+  const handleAddExercise = useCallback((exerciseId: string): void => {
+    setExerciseDrafts((current) => [
+      ...current,
+      {
+        exerciseId,
+        targetSets: DEFAULT_TARGET_SETS,
+        targetReps: DEFAULT_TARGET_REPS,
+      },
+    ]);
+    setAddExerciseQuery('');
+    setShowAddExercise(false);
+  }, []);
+
+  const handleSave = (): void => {
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      setError('Routine name is required.');
+      return;
+    }
+
+    const nextExercises: RoutineExerciseInput[] = exerciseDrafts.map(
+      (entry) => ({
+        exerciseId: entry.exerciseId,
+        targetSets: parsePositiveWholeNumber(entry.targetSets, 1),
+        targetReps: parsePositiveWholeNumber(entry.targetReps, 1),
+      }),
+    );
+
+    setError(null);
+    onSave({
+      name: trimmedName,
+      exercises: nextExercises,
+    });
   };
+
+  const title = routine?.name ?? 'New Routine';
+  const subtitle =
+    routine === null
+      ? 'Create a reusable routine template with ordered exercises and targets.'
+      : 'Manage exercise order, targets, and simple progression context from one page.';
 
   return (
-    <View className="flex-1">
-      <FlatList
-        data={routines}
-        keyExtractor={(item: Routine) => item.id}
-        renderItem={renderRoutine}
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: 0,
-          paddingBottom: 12,
-        }}
-        ListEmptyComponent={
-          <Muted className="px-0 py-4 text-center">
-            No routines yet. Create one below.
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 28 }}
+    >
+      <PageHeader title={title} subtitle={subtitle} onBack={onBack} />
+
+      {routine ? (
+        <Card label="Progression" className="mb-4 rounded-[24px] px-5 py-5">
+          <View className="flex-row flex-wrap gap-3">
+            <View className="min-w-[110px] flex-1 rounded-[18px] bg-surface-elevated px-4 py-4">
+              <Label>Completions</Label>
+              <Body className="mt-2 font-heading text-2xl leading-[28px]">
+                {completionCount}
+              </Body>
+            </View>
+            <View className="min-w-[110px] flex-1 rounded-[18px] bg-surface-elevated px-4 py-4">
+              <Label>Last Run</Label>
+              <Body className="mt-2">{formatDateLabel(lastPerformedAt)}</Body>
+            </View>
+            <View className="min-w-[110px] flex-1 rounded-[18px] bg-surface-elevated px-4 py-4">
+              <Label>Average</Label>
+              <Body className="mt-2">{formatVolumeLabel(averageVolume)}</Body>
+            </View>
+          </View>
+
+          <Muted className="mt-4 text-sm leading-[18px]">
+            {formatDurationLabel(averageDurationMinutes)}
           </Muted>
-        }
-        ListFooterComponent={
-          showForm ? (
-            <FormSection label="New Routine">
-              <Input
-                className="mb-4"
-                placeholder="Routine name (e.g. Push A)"
-                value={routineName}
-                onChangeText={setRoutineName}
-                autoCapitalize="words"
-              />
-              <Label className="mb-2">Select Exercises</Label>
-              {exercises.length === 0 ? (
-                <Muted className="mb-4">
-                  No exercises available — create some in the Exercises section.
-                </Muted>
-              ) : (
-                exercises.map((ex) => (
-                  <Checkbox
-                    key={ex.id}
-                    checked={selectedExerciseIds.includes(ex.id)}
-                    onToggle={() => toggleExercise(ex.id)}
-                    label={ex.name}
-                    sublabel={ex.muscle_group}
-                  />
-                ))
-              )}
-              <FormActions
-                primaryLabel="Save routine"
-                secondaryLabel="Cancel"
-                onPrimaryPress={handleCreate}
-                primaryLoading={saving}
-                onSecondaryPress={() => {
-                  setShowForm(false);
-                  setRoutineName('');
-                  setSelectedExerciseIds([]);
-                }}
-              />
-            </FormSection>
-          ) : (
-            <NewItemButton
-              label="+ New Routine"
-              onPress={() => setShowForm(true)}
+
+          <View className="mt-5 gap-3">
+            {recentSessions.length > 0 ? (
+              recentSessions.slice(0, 5).map((session) => (
+                <View
+                  key={session.sessionId}
+                  className="rounded-[18px] border border-surface-border/80 bg-surface-elevated px-4 py-4"
+                >
+                  <View className="flex-row items-start justify-between gap-3">
+                    <View className="flex-1">
+                      <Body className="font-medium">{session.routineName}</Body>
+                      <Muted className="mt-1 text-sm leading-[18px]">
+                        {formatDateLabel(session.startTime)}
+                      </Muted>
+                    </View>
+                    <Muted className="text-sm">
+                      {Math.round(session.totalVolume)} volume
+                    </Muted>
+                  </View>
+
+                  <Muted className="mt-3 text-sm leading-[18px]">
+                    {session.completedSets}/{session.totalSets} completed sets
+                  </Muted>
+                </View>
+              ))
+            ) : (
+              <Muted className="text-sm leading-[18px]">
+                No completed history for this routine yet.
+              </Muted>
+            )}
+          </View>
+        </Card>
+      ) : null}
+
+      <Card
+        label={routine ? 'Routine Builder' : 'Create Routine'}
+        className="rounded-[24px] px-5 py-5"
+      >
+        <Label>Routine name</Label>
+        <Input
+          className="mt-3"
+          placeholder="Push A"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
+        />
+
+        <View className="mt-5 flex-row items-center justify-between gap-3">
+          <View className="flex-1">
+            <Label>Exercises</Label>
+            <Muted className="mt-1 text-sm leading-[18px]">
+              Ordered exactly how you want them to appear later in workout mode.
+            </Muted>
+          </View>
+          <Button
+            size="sm"
+            variant="ghost"
+            onPress={() => setShowAddExercise((current) => !current)}
+          >
+            {showAddExercise ? 'Close' : 'Add Exercise'}
+          </Button>
+        </View>
+
+        {showAddExercise ? (
+          <View className="mt-4 rounded-[20px] border border-surface-border/80 bg-surface-elevated px-4 py-4">
+            <Input
+              placeholder="Search exercises to add"
+              value={addExerciseQuery}
+              onChangeText={setAddExerciseQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
-          )
-        }
-      />
-    </View>
+
+            <View className="mt-4 gap-2">
+              {availableExercises.length > 0 ? (
+                availableExercises.map((exercise) => (
+                  <Pressable
+                    key={exercise.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${exercise.name} to routine`}
+                    className="rounded-[16px] border border-surface-border bg-surface-card px-4 py-3"
+                    onPress={() => handleAddExercise(exercise.id)}
+                  >
+                    <Body className="font-medium">{exercise.name}</Body>
+                    <Muted className="mt-1 text-xs uppercase tracking-[1.2px]">
+                      {exercise.muscle_group}
+                    </Muted>
+                  </Pressable>
+                ))
+              ) : (
+                <Muted className="text-sm leading-[18px]">
+                  No matching exercises available to add.
+                </Muted>
+              )}
+            </View>
+          </View>
+        ) : null}
+
+        <View className="mt-4 gap-3">
+          {exerciseDrafts.length > 0 ? (
+            exerciseDrafts.map((entry, index) => {
+              const exerciseName =
+                exercises.find((exercise) => exercise.id === entry.exerciseId)
+                  ?.name ?? entry.exerciseId;
+
+              return (
+                <RoutineExerciseEditor
+                  key={`${entry.exerciseId}-${index}`}
+                  draft={entry}
+                  exerciseName={exerciseName}
+                  isFirst={index === 0}
+                  isLast={index === exerciseDrafts.length - 1}
+                  onMoveUp={() => handleMoveDraft(index, -1)}
+                  onMoveDown={() => handleMoveDraft(index, 1)}
+                  onRemove={() => handleRemoveDraft(index)}
+                  onChangeTargetSets={(value) =>
+                    handleUpdateDraft(index, { targetSets: value })
+                  }
+                  onChangeTargetReps={(value) =>
+                    handleUpdateDraft(index, { targetReps: value })
+                  }
+                />
+              );
+            })
+          ) : (
+            <Muted className="rounded-[18px] border border-dashed border-surface-border px-4 py-4 text-sm leading-[18px]">
+              No exercises added yet. Use the button above to build out this
+              routine.
+            </Muted>
+          )}
+        </View>
+
+        {error ? <Muted className="mt-4 text-red-400">{error}</Muted> : null}
+
+        <Button className="mt-5 w-full" onPress={handleSave}>
+          {routine ? 'Save Routine' : 'Create Routine'}
+        </Button>
+
+        {routine ? (
+          <Button
+            variant="ghost"
+            className="mt-3 w-full"
+            onPress={() =>
+              Alert.alert(
+                'Delete Routine',
+                `Delete ${routine.name} and remove it from schedules?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: onDelete,
+                  },
+                ],
+              )
+            }
+          >
+            Delete Routine
+          </Button>
+        ) : (
+          <Button variant="ghost" className="mt-3 w-full" onPress={onBack}>
+            Cancel
+          </Button>
+        )}
+      </Card>
+    </ScrollView>
   );
 }
 
-// ─── Main screen ───────────────────────────────────────────────────────────────
-
 export function RoutinesScreen(): React.JSX.Element {
   const [section, setSection] = useState<Section>('exercises');
+  const [screenState, setScreenState] = useState<ScreenState>({
+    kind: 'library',
+  });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const {
     exercises,
@@ -603,7 +950,6 @@ export function RoutinesScreen(): React.JSX.Element {
     updateExercise,
     deleteExercise,
   } = useExercises();
-
   const {
     routines,
     refresh: refreshRoutines,
@@ -612,6 +958,7 @@ export function RoutinesScreen(): React.JSX.Element {
     deleteRoutine,
     getRoutineExercises,
   } = useRoutines();
+  const { getExerciseInsight, getRoutineInsight } = useRoutineInsights();
 
   useFocusEffect(
     useCallback(() => {
@@ -620,39 +967,248 @@ export function RoutinesScreen(): React.JSX.Element {
     }, [refreshExercises, refreshRoutines]),
   );
 
+  useEffect(() => {
+    if (screenState.kind === 'exercise' && screenState.exerciseId !== null) {
+      const exists = exercises.some(
+        (exercise) => exercise.id === screenState.exerciseId,
+      );
+
+      if (!exists) {
+        setScreenState({ kind: 'library' });
+      }
+    }
+
+    if (screenState.kind === 'routine' && screenState.routineId !== null) {
+      const exists = routines.some(
+        (routine) => routine.id === screenState.routineId,
+      );
+
+      if (!exists) {
+        setScreenState({ kind: 'library' });
+      }
+    }
+  }, [exercises, routines, screenState]);
+
+  const filteredExercises = useMemo(() => {
+    const query = normalizeQuery(searchQuery);
+
+    return exercises.filter((exercise) => {
+      if (query === '') {
+        return true;
+      }
+
+      return (
+        normalizeQuery(exercise.name).includes(query) ||
+        normalizeQuery(exercise.muscle_group).includes(query)
+      );
+    });
+  }, [exercises, searchQuery]);
+
+  const filteredRoutines = useMemo(() => {
+    const query = normalizeQuery(searchQuery);
+
+    return routines.filter((routine) => {
+      if (query === '') {
+        return true;
+      }
+
+      return normalizeQuery(routine.name).includes(query);
+    });
+  }, [routines, searchQuery]);
+
+  const selectedExercise =
+    screenState.kind === 'exercise' && screenState.exerciseId !== null
+      ? (exercises.find((exercise) => exercise.id === screenState.exerciseId) ??
+        null)
+      : null;
+  const selectedRoutine =
+    screenState.kind === 'routine' && screenState.routineId !== null
+      ? (routines.find((routine) => routine.id === screenState.routineId) ??
+        null)
+      : null;
+  const selectedRoutineExercises =
+    selectedRoutine !== null ? getRoutineExercises(selectedRoutine.id) : [];
+  const exerciseInsight =
+    selectedExercise !== null
+      ? getExerciseInsight(selectedExercise.id)
+      : {
+          totalSessions: 0,
+          lastPerformedAt: null,
+          bestCompletedWeight: null,
+          history: [],
+        };
+  const routineInsight =
+    selectedRoutine !== null
+      ? getRoutineInsight(selectedRoutine.id)
+      : {
+          completionCount: 0,
+          lastPerformedAt: null,
+          averageVolume: null,
+          averageDurationMinutes: null,
+          recentSessions: [],
+        };
+
+  const handleBackToLibrary = useCallback((): void => {
+    setScreenState({ kind: 'library' });
+  }, []);
+
+  const handleCreatePress = useCallback((): void => {
+    setSearchQuery('');
+    setScreenState(
+      section === 'exercises'
+        ? { kind: 'exercise', exerciseId: null }
+        : { kind: 'routine', routineId: null },
+    );
+  }, [section]);
+
+  const handleSaveExercise = useCallback(
+    (input: NewExerciseInput): void => {
+      if (screenState.kind !== 'exercise') {
+        return;
+      }
+
+      if (screenState.exerciseId === null) {
+        const createdExercise = createExercise(input);
+        setSection('exercises');
+        setScreenState({ kind: 'exercise', exerciseId: createdExercise.id });
+        return;
+      }
+
+      updateExercise(screenState.exerciseId, input);
+    },
+    [createExercise, screenState, updateExercise],
+  );
+
+  const handleDeleteExercise = useCallback((): void => {
+    if (selectedExercise === null) {
+      return;
+    }
+
+    deleteExercise(selectedExercise.id);
+    setSection('exercises');
+    setScreenState({ kind: 'library' });
+  }, [deleteExercise, selectedExercise]);
+
+  const handleSaveRoutine = useCallback(
+    (input: NewRoutineInput): void => {
+      if (screenState.kind !== 'routine') {
+        return;
+      }
+
+      if (screenState.routineId === null) {
+        const createdRoutine = createRoutine(input);
+        setSection('routines');
+        setScreenState({ kind: 'routine', routineId: createdRoutine.id });
+        return;
+      }
+
+      updateRoutine(screenState.routineId, input);
+    },
+    [createRoutine, screenState, updateRoutine],
+  );
+
+  const handleDeleteRoutine = useCallback((): void => {
+    if (selectedRoutine === null) {
+      return;
+    }
+
+    deleteRoutine(selectedRoutine.id);
+    setSection('routines');
+    setScreenState({ kind: 'library' });
+  }, [deleteRoutine, selectedRoutine]);
+
   return (
     <Container>
-      <View className="border-b border-surface-border pb-3">
-        <View accessibilityRole="header" className="gap-2">
-          <Heading className="text-4xl leading-[36px]">Routines</Heading>
-          <Muted className="max-w-[280px] text-sm leading-[19px]">
-            Build your exercise library and shape reliable templates for the
-            sessions you repeat most.
-          </Muted>
-        </View>
-      </View>
-
-      <SectionSwitcher section={section} onChange={setSection} />
-
-      <View className="flex-1 pt-2">
-        {section === 'exercises' ? (
-          <ExercisesSection
-            exercises={exercises}
-            createExercise={createExercise}
-            updateExercise={updateExercise}
-            deleteExercise={deleteExercise}
+      {screenState.kind === 'exercise' ? (
+        <ExerciseDetailPage
+          exercise={selectedExercise}
+          onBack={handleBackToLibrary}
+          onSave={handleSaveExercise}
+          onDelete={handleDeleteExercise}
+          totalSessions={exerciseInsight.totalSessions}
+          lastPerformedAt={exerciseInsight.lastPerformedAt}
+          bestCompletedWeight={exerciseInsight.bestCompletedWeight}
+          history={exerciseInsight.history}
+        />
+      ) : screenState.kind === 'routine' ? (
+        <RoutineDetailPage
+          routine={selectedRoutine}
+          exercises={exercises}
+          routineExercises={selectedRoutineExercises}
+          onBack={handleBackToLibrary}
+          onSave={handleSaveRoutine}
+          onDelete={handleDeleteRoutine}
+          completionCount={routineInsight.completionCount}
+          lastPerformedAt={routineInsight.lastPerformedAt}
+          averageVolume={routineInsight.averageVolume}
+          averageDurationMinutes={routineInsight.averageDurationMinutes}
+          recentSessions={routineInsight.recentSessions}
+        />
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 28 }}
+        >
+          <LibraryHeader
+            section={section}
+            exercisesCount={exercises.length}
+            routinesCount={routines.length}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onChangeSection={setSection}
+            onCreate={handleCreatePress}
           />
-        ) : (
-          <RoutinesSection
-            routines={routines}
-            exercises={exercises}
-            createRoutine={createRoutine}
-            updateRoutine={updateRoutine}
-            deleteRoutine={deleteRoutine}
-            getRoutineExercises={getRoutineExercises}
-          />
-        )}
-      </View>
+
+          <View className="pt-1">
+            {section === 'exercises' ? (
+              filteredExercises.length > 0 ? (
+                filteredExercises.map((exercise) => (
+                  <LibraryExerciseCard
+                    key={exercise.id}
+                    exercise={exercise}
+                    onPress={() =>
+                      setScreenState({
+                        kind: 'exercise',
+                        exerciseId: exercise.id,
+                      })
+                    }
+                  />
+                ))
+              ) : (
+                <Card className="rounded-[24px] px-5 py-5">
+                  <Body className="font-medium">No matching exercises</Body>
+                  <Muted className="mt-2 text-sm leading-[18px]">
+                    Try another search or create a new exercise from the button
+                    above.
+                  </Muted>
+                </Card>
+              )
+            ) : filteredRoutines.length > 0 ? (
+              filteredRoutines.map((routine) => (
+                <LibraryRoutineCard
+                  key={routine.id}
+                  routine={routine}
+                  exerciseCount={getRoutineExercises(routine.id).length}
+                  onPress={() =>
+                    setScreenState({
+                      kind: 'routine',
+                      routineId: routine.id,
+                    })
+                  }
+                />
+              ))
+            ) : (
+              <Card className="rounded-[24px] px-5 py-5">
+                <Body className="font-medium">No matching routines</Body>
+                <Muted className="mt-2 text-sm leading-[18px]">
+                  Try another search or create a new routine from the button
+                  above.
+                </Muted>
+              </Card>
+            )}
+          </View>
+        </ScrollView>
+      )}
     </Container>
   );
 }
