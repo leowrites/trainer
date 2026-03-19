@@ -31,8 +31,8 @@ export const palette = {
   success: '#9BCB9B',
   successDark: '#7FA983',
 
-  secondary: '#AFC4E8',
-  secondaryDark: '#7F97B8',
+  secondary: '#171714',
+  secondaryDark: '#F7F6F2',
 
   error: '#F45B5B',
   errorDark: '#FF6B6B',

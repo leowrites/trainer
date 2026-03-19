@@ -48,7 +48,7 @@ export function Card({
 }: CardProps): React.JSX.Element {
   const renderContent = (pressed: boolean): React.JSX.Element => (
     <GluestackCard
-      className={`rounded-[28px] border px-5 py-5 ${
+      className={`rounded-[28px] px-5 py-5 ${
         pressed
           ? 'border-accent/60 bg-surface-elevated'
           : 'border-surface-border/80 bg-surface-card'

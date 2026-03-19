@@ -108,9 +108,9 @@ function IosTabs(): React.JSX.Element {
   return (
     <NativeTab.Navigator
       screenOptions={({ route }) => ({
-        headerShown: false,
+        headerShown: true,
         headerTransparent: true,
-        title: getTabLabel(route.name),
+        title: '',
         tabBarLabel: getTabLabel(route.name),
         tabBarActiveTintColor: tokens.accent,
         tabBarBlurEffect: 'systemUltraThinMaterial',
@@ -118,7 +118,11 @@ function IosTabs(): React.JSX.Element {
       })}
     >
       <NativeTab.Screen name="Workout" component={WorkoutScreen} />
-      <NativeTab.Screen name="Routines" component={RoutinesScreen} />
+      <NativeTab.Screen
+        name="Routines"
+        component={RoutinesScreen}
+        options={{ headerShown: false }}
+      />
       <NativeTab.Screen name="Schedule" component={ScheduleScreen} />
       <NativeTab.Screen name="History" component={HistoryScreen} />
       <NativeTab.Screen name="Profile" component={ProfileScreen} />

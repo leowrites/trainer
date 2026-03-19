@@ -204,10 +204,7 @@ function DashboardStatCard({
   caption: string;
 }): React.JSX.Element {
   return (
-    <Surface
-      variant="card"
-      className="w-full rounded-[22px] border border-surface-border px-4 py-4"
-    >
+    <Surface variant="card" className="w-full rounded-[22px]  px-4 py-4">
       <Label>{label}</Label>
       <DisplayHeading className="mt-3 text-3xl leading-[30px]">
         {value}
@@ -336,7 +333,7 @@ function WorkoutSetRow({
       </Pressable>
 
       <Animated.View
-        className="flex-row items-center gap-2 rounded-[16px] border border-surface-border bg-surface-elevated px-3 py-3"
+        className="flex-row items-center gap-2 rounded-[16px]  bg-surface-elevated px-3 py-3"
         style={{ transform: [{ translateX }] }}
         {...panResponder.panHandlers}
       >
@@ -346,7 +343,7 @@ function WorkoutSetRow({
           </Body>
         </View>
         <TextInput
-          className="h-11 flex-1 rounded-[12px] border border-surface-border bg-surface-card px-3 py-0 font-body text-sm text-foreground"
+          className="h-11 flex-1 rounded-[12px]  bg-surface-card px-3 py-0 font-body text-sm text-foreground"
           value={repsText}
           onChangeText={setRepsText}
           onEndEditing={handlePersistReps}
@@ -357,7 +354,7 @@ function WorkoutSetRow({
           placeholderTextColor={tokens.textMuted}
         />
         <TextInput
-          className="h-11 flex-1 rounded-[12px] border border-surface-border bg-surface-card px-3 py-0 font-body text-sm text-foreground"
+          className="h-11 flex-1 rounded-[12px]  bg-surface-card px-3 py-0 font-body text-sm text-foreground"
           value={weightText}
           onChangeText={setWeightText}
           onEndEditing={handlePersistWeight}
@@ -520,7 +517,7 @@ function ExercisePickerBottomSheet({
           </Muted>
           <TextInput
             accessibilityLabel="Search exercises"
-            className="mt-4 h-12 rounded-[14px] border border-surface-border bg-surface-card px-4 py-0 font-body text-base text-foreground"
+            className="mt-4 h-12 rounded-[14px]  bg-surface-card px-4 py-0 font-body text-base text-foreground"
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search exercises"
@@ -623,7 +620,7 @@ function ExerciseCard({
   }, [colorMode, exerciseId, onDelete, onOpenDetails, title]);
 
   return (
-    <View className="mt-3 overflow-hidden rounded-[22px] border border-surface-border bg-surface-card p-4">
+    <View className="mt-3 overflow-hidden rounded-[22px]  bg-surface-card p-4">
       <View className="relative border-b border-surface-border/80 pb-3">
         <View className="flex-row items-center justify-between gap-3">
           <Pressable
@@ -637,7 +634,7 @@ function ExerciseCard({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Options for ${title}`}
-            className="h-8 w-8 items-center justify-center rounded-[10px] border border-surface-border bg-surface-card"
+            className="h-8 w-8 items-center justify-center rounded-[10px]  bg-surface-card"
             onPress={handleOpenOptions}
           >
             <Text className="font-mono text-sm tracking-[-1px] text-muted">
@@ -842,7 +839,7 @@ function ActiveWorkoutContent({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Add set to ${exercise.exerciseName}`}
-                  className="mt-1 self-start rounded-[12px] border border-surface-border bg-surface-elevated px-3 py-2"
+                  className="mt-1 self-start rounded-[12px]  bg-surface-elevated px-3 py-2"
                   onPress={() => addSet(exercise.exerciseId)}
                 >
                   <Body className="text-sm font-semibold text-secondary">
@@ -871,7 +868,7 @@ function ActiveWorkoutContent({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add exercise"
-              className="h-11 w-11 items-center justify-center rounded-[14px] border border-surface-border bg-surface-card"
+              className="h-11 w-11 items-center justify-center rounded-[14px]  bg-surface-card"
               onPress={() => setShowExerciseSheet(true)}
             >
               <Text className="font-mono text-xl text-foreground">+</Text>
@@ -879,7 +876,7 @@ function ActiveWorkoutContent({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Delete workout"
-              className="h-11 w-11 items-center justify-center rounded-[14px] border border-surface-border bg-surface-card px-3"
+              className="h-11 w-11 items-center justify-center rounded-[14px]  bg-surface-card px-3"
               onPress={onDeleteWorkout}
             >
               <Body className="text-sm font-semibold text-destructive">x</Body>
@@ -995,7 +992,7 @@ export function WorkoutScreen({
   };
 
   return (
-    <Container className="px-0 pb-0" edges={['top']}>
+    <Container className="px-0 pb-0" edges={['left', 'right']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -1006,7 +1003,6 @@ export function WorkoutScreen({
         }}
       >
         <View className="gap-2 pb-1" accessibilityRole="header">
-          <Label className="uppercase tracking-[1.5px]">Home</Label>
           <Heading className="text-4xl leading-[36px]">
             {greeting.title}
           </Heading>
@@ -1014,10 +1010,7 @@ export function WorkoutScreen({
         </View>
 
         {hasCurrentWorkout && currentWorkoutTitle ? (
-          <Surface
-            variant="card"
-            className="w-full rounded-[22px] border border-surface-border p-5"
-          >
+          <Surface variant="card" className="w-full rounded-[22px]  p-5">
             <View className="mb-3 flex-row items-center justify-between gap-3">
               <Label className="text-secondary">Current Workout</Label>
               <Meta>In progress</Meta>
@@ -1031,10 +1024,7 @@ export function WorkoutScreen({
             </Muted>
           </Surface>
         ) : nextRoutine ? (
-          <Surface
-            variant="card"
-            className="w-full rounded-[22px] border border-surface-border p-5"
-          >
+          <Surface variant="card" className="w-full rounded-[22px] p-5">
             <View className="mb-3 flex-row items-center justify-between gap-3">
               <Label className="text-secondary">Next Workout</Label>
               <Meta>{nextRoutine.scheduleName}</Meta>
@@ -1049,10 +1039,7 @@ export function WorkoutScreen({
             <Muted className="mt-2">{inactiveSubtitle}</Muted>
           </Surface>
         ) : (
-          <Surface
-            variant="card"
-            className="w-full rounded-[22px] border border-surface-border p-5"
-          >
+          <Surface variant="card" className="w-full rounded-[22px] p-5">
             <Heading className="text-2xl leading-[24px]">
               No active schedule
             </Heading>

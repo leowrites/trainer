@@ -190,7 +190,7 @@ export function ProfileScreen(): React.JSX.Element {
   );
 
   return (
-    <Container>
+    <Container className="px-0 pb-0" edges={['left', 'right']}>
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 28 }}

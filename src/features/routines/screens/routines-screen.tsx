@@ -31,6 +31,7 @@ import type { NewExerciseInput } from '../hooks/use-exercises';
 import { useRoutineInsights } from '../hooks/use-routine-insights';
 import { useRoutines } from '../hooks/use-routines';
 import type { NewRoutineInput } from '../hooks/use-routines';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 const DEFAULT_TARGET_SETS = '3';
 const DEFAULT_TARGET_REPS = '10';
@@ -876,10 +877,16 @@ function ExerciseDetailPage({
   }[];
   onEdit: () => void;
 }): React.JSX.Element {
+  const headerHeight = useHeaderHeight();
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 28 }}
+      contentInsetAdjustmentBehavior="never"
+      automaticallyAdjustContentInsets={false}
+      contentContainerStyle={{
+        paddingTop: headerHeight + 8,
+        paddingBottom: 28,
+      }}
     >
       <Card label="Overview" className="mb-4 rounded-[24px] px-5 py-5">
         <View className="flex-row flex-wrap gap-3">
@@ -989,10 +996,16 @@ function RoutineDetailPage({
   }[];
   onEdit: () => void;
 }): React.JSX.Element {
+  const headerHeight = useHeaderHeight();
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 28 }}
+      contentInsetAdjustmentBehavior="never"
+      automaticallyAdjustContentInsets={false}
+      contentContainerStyle={{
+        paddingTop: headerHeight + 8,
+        paddingBottom: 28,
+      }}
     >
       <Card label="Exercises" className="mb-4 rounded-[24px] px-5 py-5">
         <View className="gap-3">
@@ -1298,7 +1311,7 @@ export function ExerciseDetailScreen({
   const exerciseInsight = getExerciseInsight(selectedExercise.id);
 
   return (
-    <Container>
+    <Container edges={['left', 'right']}>
       <ExerciseDetailPage
         exercise={selectedExercise}
         onEdit={() => setIsEditorOpen(true)}
@@ -1370,7 +1383,7 @@ function RoutinesRoutineDetailScreen({
   const routineInsight = getRoutineInsight(selectedRoutine.id);
 
   return (
-    <Container>
+    <Container edges={['left', 'right']}>
       <RoutineDetailPage
         exercises={exercises}
         routineExercises={selectedRoutineExercises}
@@ -1403,7 +1416,6 @@ function RoutinesRoutineDetailScreen({
 }
 
 export function RoutinesScreen(): React.JSX.Element {
-  const { tokens } = useTheme();
   const [section, setSection] = useState<Section>('exercises');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -1435,15 +1447,8 @@ export function RoutinesScreen(): React.JSX.Element {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerTintColor: tokens.textPrimary,
         headerBackButtonDisplayMode: 'minimal',
-        headerStyle: {
-          backgroundColor: tokens.bgBase,
-        },
-        headerShadowVisible: false,
-        contentStyle: {
-          backgroundColor: tokens.bgBase,
-        },
+        headerTransparent: true,
       }}
     >
       <Stack.Screen name="Library" options={{ headerShown: false }}>

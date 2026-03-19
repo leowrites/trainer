@@ -129,8 +129,8 @@ export function Label({
 }: TypographyProps): React.JSX.Element {
   return (
     <GluestackText
-      className={`font-body text-xs font-semibold tracking-[0.3px] text-muted ${className}`}
-      size="xs"
+      className={`font-body font-semibold tracking-[0.3px] text-muted ${className}`}
+      size="md"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
@@ -177,7 +177,7 @@ export function Meta({
   return (
     <GluestackText
       className={`font-body text-muted tracking-[0.4px] ${className}`}
-      size="2xs"
+      size="md"
       numberOfLines={numberOfLines}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
