@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
@@ -19,10 +19,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { RootStackParamList, RootTabParamList } from '@core/navigation';
+import {
+  buildDashboardMetrics,
+  useHistoryAnalytics,
+} from '@features/analytics';
+import { useUserProfile } from '@features/health-tracking';
 import { useExercises } from '@features/routines';
 import {
   Body,
   Button,
+  Caption,
   Container,
   DisplayHeading,
   Heading,
@@ -87,6 +93,71 @@ function formatRestCountdown(ms: number): string {
 
 function formatVolume(value: number): string {
   return `${new Intl.NumberFormat('en-US').format(Math.round(value))} vol`;
+}
+
+function formatShortDate(timestamp: number | null): string {
+  if (timestamp === null) {
+    return 'No workouts yet';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+  }).format(timestamp);
+}
+
+function getGreeting(
+  displayName: string | null,
+  now: number,
+): {
+  title: string;
+  subtitle: string;
+} {
+  const hour = new Date(now).getHours();
+  const name = displayName?.trim() ?? '';
+  const suffix = name === '' ? '' : `, ${name}`;
+
+  if (hour < 12) {
+    return {
+      title: `Good morning${suffix}`,
+      subtitle: 'Set the tone early and get the next session moving.',
+    };
+  }
+
+  if (hour < 18) {
+    return {
+      title: `Welcome back${suffix}`,
+      subtitle: 'Your training week is in motion. Pick up where you left off.',
+    };
+  }
+
+  return {
+    title: `Good evening${suffix}`,
+    subtitle: 'Close the day with a session review or one more workout.',
+  };
+}
+
+function DashboardStatCard({
+  label,
+  value,
+  caption,
+}: {
+  label: string;
+  value: string | number;
+  caption: string;
+}): React.JSX.Element {
+  return (
+    <Surface
+      variant="card"
+      className="w-full rounded-[22px] border border-surface-border px-4 py-4"
+    >
+      <Label>{label}</Label>
+      <DisplayHeading className="mt-3 text-3xl leading-[30px]">
+        {value}
+      </DisplayHeading>
+      <Caption className="mt-2">{caption}</Caption>
+    </Surface>
+  );
 }
 
 function WorkoutSetRow({
@@ -598,7 +669,15 @@ export function WorkoutScreen({
     startWorkoutFromSchedule,
     startFreeWorkout,
   } = useWorkoutStarter();
+  const { sessions, refresh: refreshHistory } = useHistoryAnalytics();
+  const { profile, refresh: refreshProfile } = useUserProfile();
   const [starting, setStarting] = useState(false);
+  const [dashboardNow] = useState(() => Date.now());
+  const greeting = getGreeting(profile?.displayName ?? null, dashboardNow);
+  const dashboardMetrics = useMemo(
+    () => buildDashboardMetrics(sessions, { now: dashboardNow }),
+    [dashboardNow, sessions],
+  );
 
   const hasCurrentWorkout = isWorkoutActive && currentWorkoutTitle !== null;
   const inactiveSubtitle = hasCurrentWorkout
@@ -608,14 +687,14 @@ export function WorkoutScreen({
       : 'Your next workout will appear here once a schedule is active.';
 
   useEffect(() => {
-    refreshPreview();
-
     const unsubscribe = navigation.addListener('focus', () => {
       refreshPreview();
+      refreshHistory();
+      refreshProfile();
     });
 
     return unsubscribe;
-  }, [navigation, refreshPreview]);
+  }, [navigation, refreshHistory, refreshPreview, refreshProfile]);
 
   const handleStartScheduled = (): void => {
     if (starting) {
@@ -665,18 +744,18 @@ export function WorkoutScreen({
           gap: 12,
         }}
       >
-        <View
-          className="mb-1 gap-2 border-surface-border pb-3"
-          accessibilityRole="header"
-        >
-          <Heading className="text-4xl leading-[36px]">Workout</Heading>
-          <Muted className="text-sm leading-[19px]">{inactiveSubtitle}</Muted>
+        <View className="gap-2 pb-1" accessibilityRole="header">
+          <Label className="uppercase tracking-[1.5px]">Home</Label>
+          <Heading className="text-4xl leading-[36px]">
+            {greeting.title}
+          </Heading>
+          <Muted className="max-w-[320px]">{greeting.subtitle}</Muted>
         </View>
 
         {hasCurrentWorkout && currentWorkoutTitle ? (
           <Surface
             variant="card"
-            className="w-full rounded-[18px] border border-surface-border p-4"
+            className="w-full rounded-[22px] border border-surface-border p-5"
           >
             <View className="mb-3 flex-row items-center justify-between gap-3">
               <Label className="text-secondary">Current Workout</Label>
@@ -685,14 +764,15 @@ export function WorkoutScreen({
             <DisplayHeading className="text-3xl leading-[32px]">
               {currentWorkoutTitle}
             </DisplayHeading>
-            <Muted className="mt-3 text-sm leading-[17px]">
-              {currentExerciseCount} exercises in this session
+            <Muted className="mt-3">
+              {currentExerciseCount} exercises in this session. Collapse it
+              anytime and return here when you are ready.
             </Muted>
           </Surface>
         ) : nextRoutine ? (
           <Surface
             variant="card"
-            className="w-full rounded-[18px] border border-surface-border p-4"
+            className="w-full rounded-[22px] border border-surface-border p-5"
           >
             <View className="mb-3 flex-row items-center justify-between gap-3">
               <Label className="text-secondary">Next Workout</Label>
@@ -701,20 +781,21 @@ export function WorkoutScreen({
             <DisplayHeading className="text-3xl leading-[32px]">
               {nextRoutine.routineName}
             </DisplayHeading>
-            <Muted className="mt-3 text-sm leading-[17px]">
+            <Muted className="mt-3">
               {nextRoutine.exerciseCount} exercises • ~
               {nextRoutine.estimatedMinutes} mins
             </Muted>
+            <Muted className="mt-2">{inactiveSubtitle}</Muted>
           </Surface>
         ) : (
           <Surface
             variant="card"
-            className="w-full rounded-[18px] border border-surface-border p-4"
+            className="w-full rounded-[22px] border border-surface-border p-5"
           >
             <Heading className="text-2xl leading-[24px]">
               No active schedule
             </Heading>
-            <Muted className="mt-2 text-sm leading-[17px]">
+            <Muted className="mt-2">
               Create a schedule to queue your next workout, or start a free
               session now.
             </Muted>
@@ -747,6 +828,28 @@ export function WorkoutScreen({
             Start Free Workout
           </Button>
         ) : null}
+
+        <View className="gap-3">
+          <DashboardStatCard
+            label="Workouts This Week"
+            value={dashboardMetrics.workoutsThisWeek}
+            caption={`${dashboardMetrics.workoutDaysThisWeek} active days`}
+          />
+          <DashboardStatCard
+            label="Weekly Streak"
+            value={dashboardMetrics.currentWeeklyStreak}
+            caption={
+              dashboardMetrics.currentWeeklyStreak === 1
+                ? '1 week in a row'
+                : `${dashboardMetrics.currentWeeklyStreak} weeks in a row`
+            }
+          />
+          <DashboardStatCard
+            label="Last Workout"
+            value={formatShortDate(dashboardMetrics.lastCompletedWorkoutAt)}
+            caption="Most recent completed session"
+          />
+        </View>
       </ScrollView>
     </Container>
   );

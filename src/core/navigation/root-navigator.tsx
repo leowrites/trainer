@@ -1,4 +1,9 @@
-import { createNativeBottomTabNavigator } from '@react-navigation/bottom-tabs/unstable';
+import { Feather } from '@expo/vector-icons';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  createNativeBottomTabNavigator,
+  type NativeBottomTabIcon,
+} from '@react-navigation/bottom-tabs/unstable';
 import {
   DefaultTheme,
   type NavigatorScreenParams,
@@ -9,7 +14,7 @@ import {
   type NativeStackScreenProps,
 } from '@react-navigation/native-stack';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import { HistoryScreen } from '@features/analytics';
@@ -37,8 +42,120 @@ export type RootStackParamList = {
 
 // ─── Navigator ─────────────────────────────────────────────────────────────────
 
-const Tab = createNativeBottomTabNavigator<RootTabParamList>();
+const BottomTab = createBottomTabNavigator<RootTabParamList>();
+const NativeTab = createNativeBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function getTabLabel(routeName: keyof RootTabParamList): string {
+  return routeName === 'Workout' ? 'Home' : routeName;
+}
+
+function getAndroidTabIconName(
+  routeName: keyof RootTabParamList,
+): React.ComponentProps<typeof Feather>['name'] {
+  switch (routeName) {
+    case 'Workout':
+      return 'home';
+    case 'Routines':
+      return 'layers';
+    case 'Schedule':
+      return 'calendar';
+    case 'History':
+      return 'bar-chart-2';
+    case 'Profile':
+      return 'user';
+    default:
+      return 'circle';
+  }
+}
+
+function getIosTabIcon(
+  routeName: keyof RootTabParamList,
+  focused: boolean,
+): NativeBottomTabIcon {
+  switch (routeName) {
+    case 'Workout':
+      return { type: 'sfSymbol', name: focused ? 'house.fill' : 'house' };
+    case 'Routines':
+      return {
+        type: 'sfSymbol',
+        name: focused ? 'square.stack.3d.up.fill' : 'square.stack.3d.up',
+      };
+    case 'Schedule':
+      return {
+        type: 'sfSymbol',
+        name: focused ? 'calendar.circle.fill' : 'calendar.circle',
+      };
+    case 'History':
+      return {
+        type: 'sfSymbol',
+        name: focused ? 'chart.bar.fill' : 'chart.bar',
+      };
+    case 'Profile':
+      return {
+        type: 'sfSymbol',
+        name: focused ? 'person.crop.circle.fill' : 'person.crop.circle',
+      };
+    default:
+      return { type: 'sfSymbol', name: 'circle' };
+  }
+}
+
+function IosTabs(): React.JSX.Element {
+  const { tokens } = useTheme();
+
+  return (
+    <NativeTab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        title: getTabLabel(route.name),
+        tabBarLabel: getTabLabel(route.name),
+        tabBarActiveTintColor: tokens.accent,
+        tabBarBlurEffect: 'systemUltraThinMaterial',
+        tabBarIcon: ({ focused }) => getIosTabIcon(route.name, focused),
+      })}
+    >
+      <NativeTab.Screen name="Workout" component={WorkoutScreen} />
+      <NativeTab.Screen name="Routines" component={RoutinesScreen} />
+      <NativeTab.Screen name="Schedule" component={ScheduleScreen} />
+      <NativeTab.Screen name="History" component={HistoryScreen} />
+      <NativeTab.Screen name="Profile" component={ProfileScreen} />
+    </NativeTab.Navigator>
+  );
+}
+
+function AndroidTabs(): React.JSX.Element {
+  const { tokens } = useTheme();
+
+  return (
+    <BottomTab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        title: getTabLabel(route.name),
+        tabBarLabel: getTabLabel(route.name),
+        tabBarActiveTintColor: tokens.accent,
+        tabBarInactiveTintColor: tokens.textMuted,
+        tabBarStyle: {
+          backgroundColor: tokens.bgCard,
+          borderTopColor: tokens.bgBorder,
+        },
+        tabBarIcon: ({ color, size }) => (
+          <Feather
+            name={getAndroidTabIconName(route.name)}
+            color={color}
+            size={size}
+          />
+        ),
+      })}
+    >
+      <BottomTab.Screen name="Workout" component={WorkoutScreen} />
+      <BottomTab.Screen name="Routines" component={RoutinesScreen} />
+      <BottomTab.Screen name="Schedule" component={ScheduleScreen} />
+      <BottomTab.Screen name="History" component={HistoryScreen} />
+      <BottomTab.Screen name="Profile" component={ProfileScreen} />
+    </BottomTab.Navigator>
+  );
+}
 
 function TabNavigator({
   navigation,
@@ -60,17 +177,7 @@ function TabNavigator({
 
   return (
     <View className="flex-1" style={{ backgroundColor: tokens.bgBase }}>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Tab.Screen name="Workout" component={WorkoutScreen} />
-        <Tab.Screen name="Routines" component={RoutinesScreen} />
-        <Tab.Screen name="Schedule" component={ScheduleScreen} />
-        <Tab.Screen name="History" component={HistoryScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
-      </Tab.Navigator>
+      {Platform.OS === 'ios' ? <IosTabs /> : <AndroidTabs />}
 
       {isWorkoutActive && isWorkoutCollapsed ? (
         <Pressable
