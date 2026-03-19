@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 
-import { DEFAULT_REST_SECONDS } from '@shared/constants';
+import {
+  DEFAULT_REST_SECONDS,
+  MAX_REST_SECONDS,
+  MIN_REST_SECONDS,
+} from '@shared/constants';
 import type { ActiveWorkoutSession, ActiveWorkoutSet } from './types';
 
 interface WorkoutState {
@@ -193,8 +197,16 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
         return state;
       }
 
+      const normalizedDuration = Number.isFinite(durationSeconds)
+        ? Math.round(durationSeconds)
+        : DEFAULT_REST_SECONDS;
+      const clampedDuration = Math.min(
+        MAX_REST_SECONDS,
+        Math.max(MIN_REST_SECONDS, normalizedDuration),
+      );
+
       return {
-        restTimerEndsAt: Date.now() + durationSeconds * 1000,
+        restTimerEndsAt: Date.now() + clampedDuration * 1000,
       };
     });
   },

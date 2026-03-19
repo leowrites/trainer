@@ -18,7 +18,7 @@ import { RoutinesScreen } from '@features/routines';
 import { ScheduleScreen } from '@features/schedule';
 import { WorkoutActiveScreen, WorkoutScreen } from '@features/workout-mode';
 import { useWorkoutStore } from '@features/workout-mode/store';
-import { colors } from '@core/theme';
+import { useTheme } from '@core/theme/theme-context';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,6 +43,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 function TabNavigator({
   navigation,
 }: NativeStackScreenProps<RootStackParamList, 'Tabs'>): React.JSX.Element {
+  const { tokens } = useTheme();
   const {
     isWorkoutActive,
     isWorkoutCollapsed,
@@ -58,10 +59,7 @@ function TabNavigator({
   );
 
   return (
-    <View
-      className="flex-1"
-      style={{ backgroundColor: colors.surface.DEFAULT }}
-    >
+    <View className="flex-1" style={{ backgroundColor: tokens.bgBase }}>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
@@ -96,16 +94,18 @@ function TabNavigator({
  * dedicated full-screen native stack screen.
  */
 export function RootNavigator(): React.JSX.Element {
+  const { tokens } = useTheme();
+
   const navigationTheme = {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      primary: colors.primary[500],
-      background: colors.surface.DEFAULT,
-      card: colors.surface.card,
-      text: colors.text.primary,
-      border: colors.surface.border,
-      notification: colors.secondary.DEFAULT,
+      primary: tokens.accent,
+      background: tokens.bgBase,
+      card: tokens.bgCard,
+      text: tokens.textPrimary,
+      border: tokens.bgBorder,
+      notification: tokens.secondary,
     },
   };
 
@@ -123,13 +123,13 @@ export function RootNavigator(): React.JSX.Element {
           options={{
             headerShown: true,
             title: '',
-            headerTintColor: colors.text.primary,
+            headerTintColor: tokens.textPrimary,
             headerBackButtonDisplayMode: 'minimal',
             headerStyle: {
-              backgroundColor: colors.surface.DEFAULT,
+              backgroundColor: tokens.bgBase,
             },
             contentStyle: {
-              backgroundColor: colors.surface.DEFAULT,
+              backgroundColor: tokens.bgBase,
             },
           }}
         />

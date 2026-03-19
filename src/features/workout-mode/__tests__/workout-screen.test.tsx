@@ -133,6 +133,7 @@ function mockWorkoutStoreState(state: WorkoutStoreState): void {
 describe('WorkoutScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers().setSystemTime(new Date('2026-03-18T12:01:30.000Z'));
     mockShowActionSheetWithOptions.mockImplementation((_, callback) => {
       callback(0);
     });
@@ -154,6 +155,10 @@ describe('WorkoutScreen', () => {
       toggleSetLogged: jest.fn(),
       completeWorkout: jest.fn().mockReturnValue(true),
     });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('renders the next scheduled workout and starts either workout flow', () => {
@@ -271,7 +276,7 @@ describe('WorkoutScreen', () => {
       isWorkoutActive: true,
       isWorkoutCollapsed: false,
       activeSession: null,
-      startTime: 1_700_000_000_000,
+      startTime: new Date('2026-03-18T12:00:00.000Z').getTime(),
       restTimerEndsAt: null,
       collapseWorkout: jest.fn(),
       expandWorkout: jest.fn(),
@@ -288,7 +293,7 @@ describe('WorkoutScreen', () => {
       activeSession: {
         id: 'session-1',
         title: 'Push A',
-        startTime: 1_700_000_000_000,
+        startTime: new Date('2026-03-18T12:00:00.000Z').getTime(),
         isFreeWorkout: false,
         exercises: [
           {
@@ -323,6 +328,7 @@ describe('WorkoutScreen', () => {
     render(<WorkoutActiveScreen {...props} />);
 
     expect(screen.getByText('Push A')).toBeTruthy();
+    expect(screen.getByText('1m')).toBeTruthy();
     expect(screen.getAllByText('Bench Press').length).toBeGreaterThan(0);
 
     const repsInput = screen.getByLabelText('Bench Press set 1 reps');

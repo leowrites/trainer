@@ -1,4 +1,9 @@
 import type { ActiveWorkoutSession } from '../types';
+import {
+  DEFAULT_REST_SECONDS,
+  MAX_REST_SECONDS,
+  MIN_REST_SECONDS,
+} from '@shared/constants';
 import { useWorkoutStore } from '../store';
 
 const mockSession: ActiveWorkoutSession = {
@@ -160,6 +165,28 @@ describe('useWorkoutStore', () => {
 
     useWorkoutStore.getState().clearRestTimer();
     expect(useWorkoutStore.getState().restTimerEndsAt).toBeNull();
+  });
+
+  it('clamps invalid rest timer durations into the supported range', () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_000);
+    useWorkoutStore.getState().startWorkout(mockSession);
+
+    useWorkoutStore.getState().startRestTimer(Number.NaN);
+    expect(useWorkoutStore.getState().restTimerEndsAt).toBe(
+      1_000 + DEFAULT_REST_SECONDS * 1_000,
+    );
+
+    useWorkoutStore.getState().startRestTimer(-25);
+    expect(useWorkoutStore.getState().restTimerEndsAt).toBe(
+      1_000 + MIN_REST_SECONDS * 1_000,
+    );
+
+    useWorkoutStore.getState().startRestTimer(MAX_REST_SECONDS + 25);
+    expect(useWorkoutStore.getState().restTimerEndsAt).toBe(
+      1_000 + MAX_REST_SECONDS * 1_000,
+    );
+
+    jest.restoreAllMocks();
   });
 
   it('resets all state on endWorkout', () => {
