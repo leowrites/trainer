@@ -6,6 +6,15 @@ import { generateId } from './utils';
 interface ExerciseSeedEntry {
   name: string;
   muscleGroup: string;
+  howTo?: string;
+  equipment?: string;
+}
+
+interface ExistingExerciseRow {
+  id: string;
+  name: string;
+  how_to: string | null;
+  equipment: string | null;
 }
 
 const defaultExercises: ExerciseSeedEntry[] = exerciseSeedData;
@@ -22,28 +31,65 @@ export function seedDefaultExercises(db: SQLiteDatabase): void {
   const defaultExerciseNames = defaultExercises.map(
     (exercise: ExerciseSeedEntry) => exercise.name,
   );
-  const existingExercises = db.getAllSync<{ name: string }>(
-    `SELECT name FROM exercises WHERE name IN (${defaultExerciseNames
+  const existingExercises = db.getAllSync<ExistingExerciseRow>(
+    `SELECT id, name, how_to, equipment FROM exercises WHERE name IN (${defaultExerciseNames
       .map(() => '?')
       .join(', ')})`,
     defaultExerciseNames,
   );
-  const existingNames = new Set(
-    existingExercises.map((exercise: { name: string }) => exercise.name),
+  const existingByName = new Map(
+    existingExercises.map((exercise: ExistingExerciseRow) => [
+      exercise.name,
+      exercise,
+    ]),
   );
   const missingExercises = defaultExercises.filter(
-    (exercise: ExerciseSeedEntry) => !existingNames.has(exercise.name),
+    (exercise: ExerciseSeedEntry) => !existingByName.has(exercise.name),
+  );
+  const metadataBackfills = defaultExercises.filter(
+    (exercise: ExerciseSeedEntry) => {
+      const existingExercise = existingByName.get(exercise.name);
+
+      if (!existingExercise) {
+        return false;
+      }
+
+      return (
+        (exercise.howTo !== undefined && existingExercise.how_to === null) ||
+        (exercise.equipment !== undefined &&
+          existingExercise.equipment === null)
+      );
+    },
   );
 
-  if (missingExercises.length === 0) {
+  if (missingExercises.length === 0 && metadataBackfills.length === 0) {
     return;
   }
 
   db.withTransactionSync(() => {
     for (const entry of missingExercises) {
       db.runSync(
-        'INSERT INTO exercises (id, name, muscle_group) VALUES (?, ?, ?)',
-        [generateId(), entry.name, entry.muscleGroup],
+        'INSERT INTO exercises (id, name, muscle_group, how_to, equipment) VALUES (?, ?, ?, ?, ?)',
+        [
+          generateId(),
+          entry.name,
+          entry.muscleGroup,
+          entry.howTo ?? null,
+          entry.equipment ?? null,
+        ],
+      );
+    }
+
+    for (const entry of metadataBackfills) {
+      const existingExercise = existingByName.get(entry.name);
+
+      if (!existingExercise) {
+        continue;
+      }
+
+      db.runSync(
+        'UPDATE exercises SET how_to = COALESCE(how_to, ?), equipment = COALESCE(equipment, ?) WHERE id = ?',
+        [entry.howTo ?? null, entry.equipment ?? null, existingExercise.id],
       );
     }
   });

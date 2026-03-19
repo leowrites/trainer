@@ -6,10 +6,12 @@
  */
 export { HistoryScreen } from './screens/history-screen';
 export { useHistoryAnalytics } from './hooks/use-history-analytics';
+export { buildDashboardMetrics } from './domain/dashboard-metrics';
 export { buildHistorySessions } from './domain/history';
 export { buildHoursTrend, buildVolumeTrend } from './domain/trends';
 export { recommendProgressions } from './domain/progressive-overload';
 export type {
+  DashboardMetrics,
   HistoryExerciseSummary,
   HistorySession,
   HistorySessionRow,

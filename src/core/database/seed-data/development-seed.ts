@@ -58,14 +58,30 @@ export interface DevelopmentBodyWeightEntrySeed {
   notes: string | null;
 }
 
+export interface DevelopmentUserProfileSeed {
+  id: string;
+  displayName: string | null;
+  preferredWeightUnit: 'kg' | 'lb';
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface DevelopmentSeedData {
   routines: DevelopmentRoutineSeed[];
   schedules: DevelopmentScheduleSeed[];
   workoutSessions: DevelopmentWorkoutSessionSeed[];
   bodyWeightEntries: DevelopmentBodyWeightEntrySeed[];
+  userProfile: DevelopmentUserProfileSeed;
 }
 
 export const developmentSeedData: DevelopmentSeedData = {
+  userProfile: {
+    id: 'dev-user-profile',
+    displayName: 'Leo',
+    preferredWeightUnit: 'lb',
+    createdAt: SEED_ANCHOR_TIME - 60 * DAY,
+    updatedAt: SEED_ANCHOR_TIME - DAY,
+  },
   routines: [
     {
       id: 'dev-routine-push-a',

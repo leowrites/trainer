@@ -4,32 +4,72 @@
   { "name": "Leg Press", "muscleGroup": "Quadriceps" },
   { "name": "Leg Extension", "muscleGroup": "Quadriceps" },
   { "name": "Bulgarian Split Squat", "muscleGroup": "Quadriceps" },
-  { "name": "Romanian Deadlift", "muscleGroup": "Hamstrings" },
+  {
+    "name": "Romanian Deadlift",
+    "muscleGroup": "Hamstrings",
+    "howTo": "Hinge at the hips with a soft knee bend, keep the bar close, and stop when your hamstrings are loaded without losing a flat back.",
+    "equipment": "Barbell"
+  },
   { "name": "Lying Leg Curl", "muscleGroup": "Hamstrings" },
   { "name": "Seated Leg Curl", "muscleGroup": "Hamstrings" },
   { "name": "Good Morning", "muscleGroup": "Hamstrings" },
-  { "name": "Standing Calf Raise", "muscleGroup": "Calves" },
+  {
+    "name": "Standing Calf Raise",
+    "muscleGroup": "Calves",
+    "howTo": "Drive through the balls of your feet, pause at the top, and lower under control into a full calf stretch.",
+    "equipment": "Calf raise machine"
+  },
   { "name": "Seated Calf Raise", "muscleGroup": "Calves" },
   { "name": "Conventional Deadlift", "muscleGroup": "Back" },
   { "name": "Sumo Deadlift", "muscleGroup": "Back" },
-  { "name": "Barbell Row", "muscleGroup": "Back" },
+  {
+    "name": "Barbell Row",
+    "muscleGroup": "Back",
+    "howTo": "Brace your torso in a strong hinge, row the bar toward your lower chest or upper abs, and avoid jerking the weight.",
+    "equipment": "Barbell"
+  },
   { "name": "Pendlay Row", "muscleGroup": "Back" },
   { "name": "Dumbbell Row", "muscleGroup": "Back" },
   { "name": "Pull-Up", "muscleGroup": "Back" },
   { "name": "Chin-Up", "muscleGroup": "Back" },
-  { "name": "Lat Pulldown", "muscleGroup": "Back" },
+  {
+    "name": "Lat Pulldown",
+    "muscleGroup": "Back",
+    "howTo": "Pull your elbows down toward your ribs, keep your chest tall, and control the return without shrugging up.",
+    "equipment": "Cable machine"
+  },
   { "name": "Seated Cable Row", "muscleGroup": "Back" },
   { "name": "T-Bar Row", "muscleGroup": "Back" },
-  { "name": "Face Pull", "muscleGroup": "Rear Deltoids" },
-  { "name": "Barbell Bench Press", "muscleGroup": "Chest" },
+  {
+    "name": "Face Pull",
+    "muscleGroup": "Rear Deltoids",
+    "howTo": "Pull the rope toward eye level with elbows high, then rotate your hands back to finish with upper-back tension.",
+    "equipment": "Cable machine with rope"
+  },
+  {
+    "name": "Barbell Bench Press",
+    "muscleGroup": "Chest",
+    "howTo": "Set your upper back, keep your feet planted, lower the bar to your mid chest, and press back up over your shoulders.",
+    "equipment": "Barbell and bench"
+  },
   { "name": "Incline Barbell Bench Press", "muscleGroup": "Chest" },
   { "name": "Dumbbell Bench Press", "muscleGroup": "Chest" },
-  { "name": "Incline Dumbbell Bench Press", "muscleGroup": "Chest" },
+  {
+    "name": "Incline Dumbbell Bench Press",
+    "muscleGroup": "Chest",
+    "howTo": "Press the dumbbells from an incline bench while keeping your shoulder blades tucked and your wrists stacked over your elbows.",
+    "equipment": "Adjustable bench and dumbbells"
+  },
   { "name": "Cable Fly", "muscleGroup": "Chest" },
   { "name": "Dumbbell Fly", "muscleGroup": "Chest" },
   { "name": "Chest Dip", "muscleGroup": "Chest" },
   { "name": "Push-Up", "muscleGroup": "Chest" },
-  { "name": "Overhead Press", "muscleGroup": "Shoulders" },
+  {
+    "name": "Overhead Press",
+    "muscleGroup": "Shoulders",
+    "howTo": "Brace your trunk, press in a straight line overhead, and move your head through once the bar clears your forehead.",
+    "equipment": "Barbell"
+  },
   { "name": "Dumbbell Shoulder Press", "muscleGroup": "Shoulders" },
   { "name": "Arnold Press", "muscleGroup": "Shoulders" },
   { "name": "Lateral Raise", "muscleGroup": "Shoulders" },
@@ -37,11 +77,21 @@
   { "name": "Front Raise", "muscleGroup": "Shoulders" },
   { "name": "Barbell Curl", "muscleGroup": "Biceps" },
   { "name": "Dumbbell Curl", "muscleGroup": "Biceps" },
-  { "name": "Hammer Curl", "muscleGroup": "Biceps" },
+  {
+    "name": "Hammer Curl",
+    "muscleGroup": "Biceps",
+    "howTo": "Keep a neutral grip, pin your elbows near your sides, and curl without swinging your shoulders forward.",
+    "equipment": "Dumbbells"
+  },
   { "name": "Incline Dumbbell Curl", "muscleGroup": "Biceps" },
   { "name": "Preacher Curl", "muscleGroup": "Biceps" },
   { "name": "Cable Curl", "muscleGroup": "Biceps" },
-  { "name": "Tricep Pushdown", "muscleGroup": "Triceps" },
+  {
+    "name": "Tricep Pushdown",
+    "muscleGroup": "Triceps",
+    "howTo": "Lock your elbows by your sides, drive the handle down until your arms are straight, and let the weight return under control.",
+    "equipment": "Cable machine"
+  },
   { "name": "Overhead Tricep Extension", "muscleGroup": "Triceps" },
   { "name": "Skull Crusher", "muscleGroup": "Triceps" },
   { "name": "Tricep Dip", "muscleGroup": "Triceps" },

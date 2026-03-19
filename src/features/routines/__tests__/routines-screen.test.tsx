@@ -71,7 +71,13 @@ describe('RoutinesScreen', () => {
   it('renders the routines section and expands routine details', () => {
     mockUseExercises.mockReturnValue({
       exercises: [
-        { id: 'exercise-1', name: 'Bench Press', muscle_group: 'Chest' },
+        {
+          id: 'exercise-1',
+          name: 'Bench Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+        },
       ],
       refresh: jest.fn(),
       createExercise: jest.fn(),

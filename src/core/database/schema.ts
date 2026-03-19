@@ -6,13 +6,15 @@
  * changes. Forward-only migration steps belong in migrations.ts.
  */
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS exercises (
-    id   TEXT PRIMARY KEY NOT NULL,
-    name TEXT NOT NULL,
-    muscle_group TEXT NOT NULL
+    id           TEXT PRIMARY KEY NOT NULL,
+    name         TEXT NOT NULL,
+    muscle_group TEXT NOT NULL,
+    how_to       TEXT,
+    equipment    TEXT
   );
 
   CREATE TABLE IF NOT EXISTS routines (
@@ -94,4 +96,12 @@ export const CREATE_TABLES_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_body_weight_entries_logged_at
     ON body_weight_entries (logged_at);
+
+  CREATE TABLE IF NOT EXISTS user_profile (
+    id                    TEXT PRIMARY KEY NOT NULL,
+    display_name          TEXT,
+    preferred_weight_unit TEXT NOT NULL DEFAULT 'kg',
+    created_at            INTEGER NOT NULL,
+    updated_at            INTEGER NOT NULL
+  );
 `;

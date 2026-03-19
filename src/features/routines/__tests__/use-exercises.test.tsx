@@ -21,8 +21,20 @@ describe('useExercises', () => {
   it('returns exercises fetched from the DB on mount', () => {
     const db = createMockDb();
     const mockRows: Exercise[] = [
-      { id: 'e1', name: 'Bench Press', muscle_group: 'Chest' },
-      { id: 'e2', name: 'Squat', muscle_group: 'Legs' },
+      {
+        id: 'e1',
+        name: 'Bench Press',
+        muscle_group: 'Chest',
+        how_to: null,
+        equipment: 'Barbell and bench',
+      },
+      {
+        id: 'e2',
+        name: 'Squat',
+        muscle_group: 'Legs',
+        how_to: null,
+        equipment: 'Barbell',
+      },
     ];
     db.getAllSync.mockReturnValue(mockRows);
     const wrapper = createDatabaseWrapper(db);
@@ -43,8 +55,8 @@ describe('useExercises', () => {
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'INSERT INTO exercises (id, name, muscle_group) VALUES (?, ?, ?)',
-      expect.arrayContaining(['Deadlift', 'Back']),
+      'INSERT INTO exercises (id, name, muscle_group, how_to, equipment) VALUES (?, ?, ?, ?, ?)',
+      expect.arrayContaining(['Deadlift', 'Back', null, null]),
     );
   });
 
@@ -77,8 +89,8 @@ describe('useExercises', () => {
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'UPDATE exercises SET name = ?, muscle_group = ? WHERE id = ?',
-      ['Incline Bench', 'Upper Chest', 'e1'],
+      'UPDATE exercises SET name = ?, muscle_group = ?, how_to = ?, equipment = ? WHERE id = ?',
+      ['Incline Bench', 'Upper Chest', null, null, 'e1'],
     );
   });
 
@@ -142,6 +154,8 @@ describe('useExercises', () => {
       id: 'e1',
       name: 'Bench Press',
       muscle_group: 'Chest',
+      how_to: null,
+      equipment: null,
     };
     db.getAllSync.mockReturnValue([original]);
     const wrapper = createDatabaseWrapper(db);
@@ -166,6 +180,8 @@ describe('useExercises', () => {
       id: 'e1',
       name: 'Bench Press',
       muscle_group: 'Chest',
+      how_to: null,
+      equipment: null,
     };
     db.getAllSync.mockReturnValue([e1]);
     const wrapper = createDatabaseWrapper(db);
@@ -190,6 +206,8 @@ describe('useExercises', () => {
       id: 'e1',
       name: 'Deadlift',
       muscle_group: 'Back',
+      how_to: null,
+      equipment: null,
     };
     db.getAllSync.mockReturnValue([created]);
 

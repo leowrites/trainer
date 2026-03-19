@@ -66,6 +66,30 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    version: 5,
+    description:
+      'Add user profile settings and richer exercise metadata for phase 2.',
+    up: (db) => {
+      if (!columnExists(db, 'exercises', 'how_to')) {
+        db.execSync('ALTER TABLE exercises ADD COLUMN how_to TEXT;');
+      }
+
+      if (!columnExists(db, 'exercises', 'equipment')) {
+        db.execSync('ALTER TABLE exercises ADD COLUMN equipment TEXT;');
+      }
+
+      db.execSync(`
+        CREATE TABLE IF NOT EXISTS user_profile (
+          id                    TEXT PRIMARY KEY NOT NULL,
+          display_name          TEXT,
+          preferred_weight_unit TEXT NOT NULL DEFAULT 'kg',
+          created_at            INTEGER NOT NULL,
+          updated_at            INTEGER NOT NULL
+        );
+      `);
+    },
+  },
 ];
 
 function setUserVersion(db: SQLiteDatabase, version: number): void {
