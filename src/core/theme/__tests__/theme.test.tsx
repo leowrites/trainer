@@ -183,7 +183,7 @@ describe('useTheme', () => {
     expect(result.current.tokens.bgBase).toBe(lightTokens.bgBase);
 
     mockUseColorScheme.mockReturnValue('dark');
-    rerender();
+    rerender({});
 
     expect(result.current.colorMode).toBe('dark');
     expect(result.current.tokens.bgBase).toBe(darkTokens.bgBase);

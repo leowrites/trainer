@@ -13,9 +13,11 @@
     },
     "ios": {
       "supportsTablet": true,
+      "userInterfaceStyle": "automatic",
       "bundleIdentifier": "com.trainer.app"
     },
     "android": {
+      "userInterfaceStyle": "automatic",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,6 +27,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.trainer.app"
     },
-    "plugins": ["expo-sqlite"]
+    "plugins": ["expo-sqlite", "expo-system-ui"]
   }
 }

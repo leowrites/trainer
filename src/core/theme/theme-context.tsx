@@ -15,8 +15,14 @@
  *   const bg = { backgroundColor: tokens.bgCard };
  */
 
-import React, { createContext, useContext, useMemo } from 'react';
-import { useColorScheme, View } from 'react-native';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { Appearance, useColorScheme, View } from 'react-native';
 
 import {
   darkTokens,
@@ -25,6 +31,12 @@ import {
   type ThemeTokens,
 } from './index';
 import { createNativeWindThemeVars } from './nativewind-theme';
+
+function normalizeColorScheme(
+  scheme: ReturnType<typeof Appearance.getColorScheme>,
+): ColorMode | null {
+  return scheme === 'light' || scheme === 'dark' ? scheme : null;
+}
 
 // ─── Context ───────────────────────────────────────────────────────────────────
 
@@ -75,7 +87,22 @@ export function ThemeProvider({
   colorMode: forcedMode,
   children,
 }: ThemeProviderProps): React.JSX.Element {
-  const systemScheme = useColorScheme();
+  const hookScheme = useColorScheme();
+  const [systemScheme, setSystemScheme] = useState<ColorMode | null>(() =>
+    normalizeColorScheme(Appearance.getColorScheme()),
+  );
+
+  useEffect(() => {
+    setSystemScheme(normalizeColorScheme(hookScheme));
+  }, [hookScheme]);
+
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      setSystemScheme(normalizeColorScheme(colorScheme));
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   const colorMode: ColorMode = useMemo(() => {
     if (forcedMode) return forcedMode;
