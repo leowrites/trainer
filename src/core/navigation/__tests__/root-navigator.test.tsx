@@ -124,7 +124,7 @@ describe('RootNavigator', () => {
     mockStackScreen.mockClear();
   });
 
-  it('registers exercise and routine detail routes as modal screens', () => {
+  it('registers exercise and routine detail and editor routes as modal screens', () => {
     render(<RootNavigator />);
 
     expect(getScreen('ExerciseDetail').options).toMatchObject({
@@ -132,7 +132,17 @@ describe('RootNavigator', () => {
       title: '',
       presentation: 'modal',
     });
+    expect(getScreen('ExerciseEditor').options).toMatchObject({
+      headerShown: true,
+      title: '',
+      presentation: 'modal',
+    });
     expect(getScreen('RoutineDetail').options).toMatchObject({
+      headerShown: true,
+      title: '',
+      presentation: 'modal',
+    });
+    expect(getScreen('RoutineEditor').options).toMatchObject({
       headerShown: true,
       title: '',
       presentation: 'modal',

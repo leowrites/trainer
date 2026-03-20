@@ -1,4 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -31,6 +32,7 @@ function RoutineDetailPage({
   averageDurationMinutes,
   recentSessions,
   onEdit,
+  topInset,
 }: {
   exercises: Exercise[];
   routineExercises: RoutineExercise[];
@@ -48,6 +50,7 @@ function RoutineDetailPage({
     totalSets: number;
   }[];
   onEdit: () => void;
+  topInset: number;
 }): React.JSX.Element {
   return (
     <ScrollView
@@ -55,6 +58,7 @@ function RoutineDetailPage({
       contentInsetAdjustmentBehavior="never"
       automaticallyAdjustContentInsets={false}
       contentContainerStyle={{
+        paddingTop: topInset,
         paddingBottom: 28,
       }}
     >
@@ -160,6 +164,7 @@ export function RoutineDetailScreen({
   RoutinesStackParamList,
   'RoutineDetail'
 >): React.JSX.Element {
+  const headerHeight = useHeaderHeight();
   const { exercises, refresh: refreshExercises } = useExercises();
   const {
     routines,
@@ -212,6 +217,7 @@ export function RoutineDetailScreen({
         averageVolume={routineInsight.averageVolume}
         averageDurationMinutes={routineInsight.averageDurationMinutes}
         recentSessions={routineInsight.recentSessions}
+        topInset={headerHeight + 16}
         onEdit={() =>
           navigation.navigate('RoutineEditor', {
             routineId: selectedRoutine.id,

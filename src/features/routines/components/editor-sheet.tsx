@@ -12,7 +12,7 @@ export function EditorSheet({
 }: React.PropsWithChildren<{
   visible: boolean;
   onClose: () => void;
-  footer?: React.ComponentType<unknown> | React.ReactElement;
+  footer?: React.ReactElement | null;
 }>): React.JSX.Element | null {
   const { colorMode, tokens } = useTheme();
   const sheetRef = useRef<TrueSheet>(null);
@@ -72,7 +72,7 @@ export function EditorSheet({
       grabber
       scrollable
       backgroundColor={tokens.bgBase}
-      footer={footer}
+      footer={footer ?? undefined}
       backgroundBlur={colorMode === 'dark' ? 'dark' : 'light'}
       onDidPresent={() => {
         isPresentedRef.current = true;
