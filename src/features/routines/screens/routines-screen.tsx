@@ -28,7 +28,7 @@ export function RoutinesScreen(): React.JSX.Element {
       <Stack.Screen
         name="ExerciseDetail"
         component={ExerciseDetailScreen}
-        options={{ presentation: 'modal' }}
+        options={{ headerShown: true, presentation: 'modal' }}
       />
       <Stack.Screen
         name="ExerciseEditor"
