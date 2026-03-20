@@ -74,6 +74,15 @@ This guide helps coding agents make safe, high-quality changes in the `trainer` 
 - Keep files focused: domain logic in feature/domain/hooks, not screen components.
 - Follow existing naming conventions and colocate tests with their feature area under `__tests__`.
 
+## Styling Guidelines
+
+- Use Design System Defaults. Prefer Tailwind’s standard scales for spacing, sizing, and typography.
+- Use utilities like text-sm, leading-5, max-w-sm, gap-4, p-4.
+- Avoid Arbitrary Values
+- Avoid [value] classes like: max-w-[320px], leading-[19px], top-[3px]
+- These should be rare and only used when absolutely necessary.
+- Fix Layout Properly. Do not use small positional tweaks to fix alignment. Use layout primitives instead: flex, grid, gap, items-_, justify-_.
+
 ## Development workflow for agents
 
 1. Read relevant docs first (`README.md`, `docs/architecture.md`, and touched feature files).
