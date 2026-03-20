@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import React, { type ForwardedRef, type PropsWithChildren } from 'react';
 
 import { RoutineDetailScreen } from '../screens/routine-detail-screen';
+import { LibraryScreen } from '../screens/library-screen';
 import { RoutinesScreen } from '../screens/routines-screen';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutineInsights } from '../hooks/use-routine-insights';
@@ -374,5 +375,111 @@ describe('RoutinesScreen', () => {
     expect(goBack).not.toHaveBeenCalled();
     expect(screen.getByText('Edit Routine')).toBeTruthy();
     expect(setOptions).toHaveBeenCalledWith({ title: 'Push A' });
+  });
+
+  it('opens library exercise details through the root exercise screen when available', () => {
+    const localNavigate = jest.fn();
+    const rootNavigate = jest.fn();
+
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-1',
+          name: 'Bench Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+      ],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+    mockUseRoutines.mockReturnValue({
+      routines: [],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createRoutine: jest.fn(),
+      updateRoutine: jest.fn(),
+      deleteRoutine: jest.fn(),
+      getRoutineExercises: jest.fn().mockReturnValue([]),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
+    });
+
+    render(
+      <LibraryScreen
+        route={{ key: 'library', name: 'Library' } as never}
+        navigation={
+          {
+            navigate: localNavigate,
+            getParent: () => ({
+              getParent: () => ({
+                navigate: rootNavigate,
+              }),
+            }),
+          } as never
+        }
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText('Open Bench Press'));
+
+    expect(rootNavigate).toHaveBeenCalledWith('ExerciseDetail', {
+      exerciseId: 'exercise-1',
+    });
+    expect(localNavigate).not.toHaveBeenCalled();
+  });
+
+  it('opens library routine details through the root routine screen when available', () => {
+    const localNavigate = jest.fn();
+    const rootNavigate = jest.fn();
+
+    mockUseExercises.mockReturnValue({
+      exercises: [],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+    mockUseRoutines.mockReturnValue({
+      routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createRoutine: jest.fn(),
+      updateRoutine: jest.fn(),
+      deleteRoutine: jest.fn(),
+      getRoutineExercises: jest.fn().mockReturnValue([]),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({
+        'routine-1': 0,
+      }),
+    });
+
+    render(
+      <LibraryScreen
+        route={{ key: 'library', name: 'Library' } as never}
+        navigation={
+          {
+            navigate: localNavigate,
+            getParent: () => ({
+              getParent: () => ({
+                navigate: rootNavigate,
+              }),
+            }),
+          } as never
+        }
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText('routines'));
+    fireEvent.press(screen.getByLabelText('Open Push A'));
+
+    expect(rootNavigate).toHaveBeenCalledWith('RoutineDetail', {
+      routineId: 'routine-1',
+    });
+    expect(localNavigate).not.toHaveBeenCalled();
   });
 });

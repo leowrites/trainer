@@ -21,6 +21,7 @@ import { HistoryScreen } from '@features/analytics';
 import { ProfileScreen } from '@features/health-tracking';
 import {
   ExerciseDetailScreen,
+  RoutineDetailScreen,
   RoutinesScreen,
   type RoutinesStackParamList,
 } from '@features/routines';
@@ -43,6 +44,7 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<RootTabParamList>;
   ActiveWorkout: undefined;
   ExerciseDetail: { exerciseId: string };
+  RoutineDetail: { routineId: string };
 };
 
 // ─── Navigator ─────────────────────────────────────────────────────────────────
@@ -247,6 +249,14 @@ export function RootNavigator(): React.JSX.Element {
         <Stack.Screen
           name="ExerciseDetail"
           component={ExerciseDetailScreen}
+          options={{
+            headerShown: true,
+            title: '',
+          }}
+        />
+        <Stack.Screen
+          name="RoutineDetail"
+          component={RoutineDetailScreen}
           options={{
             headerShown: true,
             title: '',

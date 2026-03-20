@@ -198,10 +198,10 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['System'],
-        heading: ['Georgia', 'serif'],
-        body: ['System'],
-        mono: ['Menlo', 'Courier New', 'monospace'],
+        sans: ['SF Pro', 'System'],
+        heading: ['SF Pro', 'Georgia', 'serif'],
+        body: ['SF Pro', 'System'],
+        mono: ['SF Pro', 'Menlo', 'Courier New', 'monospace'],
       },
       fontWeight: {
         extrablack: '950',

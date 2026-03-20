@@ -1,8 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { startTransition, useCallback, useMemo, useState } from 'react';
 import { FlatList } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, type NavigationProp } from '@react-navigation/native';
 
+import type { RootStackParamList } from '@core/navigation';
 import { Body, Card, Container, Muted } from '@shared/components';
 import { ExerciseEditorSheet } from '../components/exercise-editor-sheet';
 import { LibraryExerciseCard } from '../components/library-exercise-card';
@@ -89,6 +90,38 @@ export function LibraryScreen({
     setIsRoutineSheetOpen(true);
   }, [section]);
 
+  const openExerciseDetail = useCallback(
+    (exerciseId: string): void => {
+      const rootNavigation = navigation
+        .getParent()
+        ?.getParent<NavigationProp<RootStackParamList>>();
+
+      if (rootNavigation) {
+        rootNavigation.navigate('ExerciseDetail', { exerciseId });
+        return;
+      }
+
+      navigation.navigate('ExerciseDetail', { exerciseId });
+    },
+    [navigation],
+  );
+
+  const openRoutineDetail = useCallback(
+    (routineId: string): void => {
+      const rootNavigation = navigation
+        .getParent()
+        ?.getParent<NavigationProp<RootStackParamList>>();
+
+      if (rootNavigation) {
+        rootNavigation.navigate('RoutineDetail', { routineId });
+        return;
+      }
+
+      navigation.navigate('RoutineDetail', { routineId });
+    },
+    [navigation],
+  );
+
   const libraryHeader = (
     <LibraryHeader
       section={section}
@@ -110,11 +143,7 @@ export function LibraryScreen({
           renderItem={({ item }) => (
             <LibraryExerciseCard
               exercise={item}
-              onPress={() =>
-                navigation.navigate('ExerciseDetail', {
-                  exerciseId: item.id,
-                })
-              }
+              onPress={() => openExerciseDetail(item.id)}
             />
           )}
           ListHeaderComponent={libraryHeader}
@@ -138,11 +167,7 @@ export function LibraryScreen({
             <LibraryRoutineCard
               routine={item}
               exerciseCount={routineExerciseCounts[item.id] ?? 0}
-              onPress={() =>
-                navigation.navigate('RoutineDetail', {
-                  routineId: item.id,
-                })
-              }
+              onPress={() => openRoutineDetail(item.id)}
             />
           )}
           ListHeaderComponent={libraryHeader}
@@ -167,9 +192,7 @@ export function LibraryScreen({
         onSave={(input) => {
           const createdExercise = createExercise(input);
           setIsExerciseSheetOpen(false);
-          navigation.navigate('ExerciseDetail', {
-            exerciseId: createdExercise.id,
-          });
+          openExerciseDetail(createdExercise.id);
         }}
       />
 
@@ -182,9 +205,7 @@ export function LibraryScreen({
         onSave={(input) => {
           const createdRoutine = createRoutine(input);
           setIsRoutineSheetOpen(false);
-          navigation.navigate('RoutineDetail', {
-            routineId: createdRoutine.id,
-          });
+          openRoutineDetail(createdRoutine.id);
         }}
       />
     </Container>

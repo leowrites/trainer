@@ -19,7 +19,7 @@ export function RoutinesScreen(): React.JSX.Element {
       <Stack.Screen
         name="Library"
         component={LibraryScreen}
-        options={{ headerShown: false }}
+        options={{ title: '', headerShown: true }}
       />
       <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
       <Stack.Screen name="RoutineDetail" component={RoutineDetailScreen} />
