@@ -7,10 +7,12 @@ import { useTheme } from '@core/theme/theme-context';
 export function EditorSheet({
   visible,
   onClose,
+  footer,
   children,
 }: React.PropsWithChildren<{
   visible: boolean;
   onClose: () => void;
+  footer?: React.ReactElement | null;
 }>): React.JSX.Element | null {
   const { colorMode, tokens } = useTheme();
   const sheetRef = useRef<TrueSheet>(null);
@@ -65,11 +67,12 @@ export function EditorSheet({
   return (
     <TrueSheet
       ref={sheetRef}
-      detents={['auto', 1]}
+      detents={[0.5, 1]}
       cornerRadius={28}
       grabber
       scrollable
       backgroundColor={tokens.bgBase}
+      footer={footer ?? undefined}
       backgroundBlur={colorMode === 'dark' ? 'dark' : 'light'}
       onDidPresent={() => {
         isPresentedRef.current = true;

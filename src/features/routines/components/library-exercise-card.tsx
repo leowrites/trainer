@@ -27,12 +27,6 @@ export function LibraryExerciseCard({
           {exercise.muscle_group}
         </Muted>
       </View>
-
-      <Muted className="mt-4 text-sm leading-[18px]">
-        {exercise.how_to?.trim()
-          ? exercise.how_to
-          : 'Add how-to notes and review past logged sets from the detail page.'}
-      </Muted>
     </Card>
   );
 }
