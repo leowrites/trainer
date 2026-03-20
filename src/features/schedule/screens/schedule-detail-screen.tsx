@@ -20,6 +20,7 @@ import {
   Button,
   Card,
   Container,
+  Heading,
   Input,
   Label,
   Meta,
@@ -37,7 +38,6 @@ import type { ScheduleStackParamList } from '../types';
 
 function DraftRoutineRow({
   routine,
-  index,
   drag,
   isActive,
   onRemove,
@@ -67,10 +67,6 @@ function DraftRoutineRow({
         <View className="flex-row items-center gap-3">
           <View className="flex-1">
             <Body className="font-medium">{routine.name}</Body>
-            <Muted className="mt-1 text-sm leading-[18px]">
-              Position {index + 1}. Long press and drag anywhere on this card to
-              reorder.
-            </Muted>
           </View>
 
           <Pressable
@@ -332,29 +328,23 @@ export function ScheduleDetailScreen({
         ) : null}
       </Card>
 
-      <View className="mt-5 flex-row items-center justify-between gap-3">
+      <View className="mt-5 mb-3 flex-row items-center justify-between gap-3">
         <View className="flex-1">
-          <Label>Rotation order</Label>
-          <Muted className="mt-1 text-sm leading-[18px]">
-            Long press and drag a routine card to reorder it.
-          </Muted>
+          <Heading>Rotation order</Heading>
         </View>
-        <View className="items-end gap-2">
-          <Meta>{selectedRoutines.length} selected</Meta>
-          <Button
-            size="sm"
-            variant="ghost"
-            onPress={() => setIsRoutinePickerOpen(true)}
-          >
-            Add Routine
-          </Button>
-        </View>
+        <Button
+          size="sm"
+          variant="ghost"
+          onPress={() => setIsRoutinePickerOpen(true)}
+        >
+          Add Routine
+        </Button>
       </View>
     </View>
   );
 
-  const listFooter = (
-    <View className="pb-7">
+  const detailFooter = (
+    <View className="pt-4 pb-7">
       {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
       {selectedSchedule ? (
         <Button variant="danger" className="mt-5 w-full" onPress={handleDelete}>
@@ -366,42 +356,45 @@ export function ScheduleDetailScreen({
 
   return (
     <Container edges={['left', 'right']}>
-      <DraggableFlatList
-        data={selectedRoutines}
-        keyExtractor={(item) => item.id}
-        activationDistance={8}
-        onDragEnd={({ data }) => {
-          setSelectedRoutineIds(data.map((routine) => routine.id));
-        }}
-        renderItem={({
-          item,
-          drag,
-          isActive,
-          getIndex,
-        }: RenderItemParams<Routine>) => (
-          <DraftRoutineRow
-            routine={item}
-            index={getIndex() ?? 0}
-            drag={drag}
-            isActive={isActive}
-            onRemove={() =>
-              setSelectedRoutineIds((current) =>
-                current.filter((routineId) => routineId !== item.id),
-              )
-            }
-          />
-        )}
-        ListHeaderComponent={listHeader}
-        ListFooterComponent={listFooter}
-        ListEmptyComponent={
-          <Muted className="mt-4 rounded-[18px] border border-dashed border-surface-border px-4 py-4 text-sm leading-[18px]">
-            No routines added yet. Use Add Routine to start building this
-            rotation.
-          </Muted>
-        }
-        contentContainerStyle={{ paddingBottom: 12 }}
-        showsVerticalScrollIndicator={false}
-      />
+      <View className="flex-1">
+        <DraggableFlatList
+          data={selectedRoutines}
+          keyExtractor={(item) => item.id}
+          activationDistance={8}
+          onDragEnd={({ data }) => {
+            setSelectedRoutineIds(data.map((routine) => routine.id));
+          }}
+          renderItem={({
+            item,
+            drag,
+            isActive,
+            getIndex,
+          }: RenderItemParams<Routine>) => (
+            <DraftRoutineRow
+              routine={item}
+              index={getIndex() ?? 0}
+              drag={drag}
+              isActive={isActive}
+              onRemove={() =>
+                setSelectedRoutineIds((current) =>
+                  current.filter((routineId) => routineId !== item.id),
+                )
+              }
+            />
+          )}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={
+            <Muted className="mt-4 rounded-[18px] border border-dashed border-surface-border px-4 py-4 text-sm leading-[18px]">
+              No routines added yet. Use Add Routine to start building this
+              rotation.
+            </Muted>
+          }
+          contentContainerStyle={{ paddingBottom: 12 }}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+
+      {detailFooter}
 
       <RoutinePickerSheet
         visible={isRoutinePickerOpen}
