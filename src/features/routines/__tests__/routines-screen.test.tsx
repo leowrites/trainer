@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import React, { type ForwardedRef, type PropsWithChildren } from 'react';
 
+import { RoutineDetailScreen } from '../screens/routine-detail-screen';
 import { RoutinesScreen } from '../screens/routines-screen';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutineInsights } from '../hooks/use-routine-insights';
@@ -15,6 +16,15 @@ jest.mock('@react-navigation/native', () => {
   return {
     ...actual,
     useFocusEffect: (callback: () => void) => callback(),
+  };
+});
+
+jest.mock('@react-navigation/elements', () => {
+  const actual = jest.requireActual('@react-navigation/elements');
+
+  return {
+    ...actual,
+    useHeaderHeight: () => 96,
   };
 });
 
@@ -129,6 +139,7 @@ describe('RoutinesScreen', () => {
     });
     mockUseRoutines.mockReturnValue({
       routines: [],
+      hasLoaded: true,
       refresh: refreshRoutines,
       createRoutine: jest.fn(),
       updateRoutine: jest.fn(),
@@ -188,6 +199,7 @@ describe('RoutinesScreen', () => {
     });
     mockUseRoutines.mockReturnValue({
       routines: [],
+      hasLoaded: true,
       refresh: jest.fn(),
       createRoutine: jest.fn(),
       updateRoutine: jest.fn(),
@@ -239,6 +251,7 @@ describe('RoutinesScreen', () => {
     });
     mockUseRoutines.mockReturnValue({
       routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      hasLoaded: true,
       refresh: jest.fn(),
       createRoutine: jest.fn(),
       updateRoutine,
@@ -291,5 +304,75 @@ describe('RoutinesScreen', () => {
         },
       ],
     });
+  });
+
+  it('waits for routines to load before leaving routine detail', () => {
+    const goBack = jest.fn();
+    const setOptions = jest.fn();
+
+    mockUseExercises.mockReturnValue({
+      exercises: [],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+
+    mockUseRoutines.mockReturnValue({
+      routines: [],
+      hasLoaded: false,
+      refresh: jest.fn(),
+      createRoutine: jest.fn(),
+      updateRoutine: jest.fn(),
+      deleteRoutine: jest.fn(),
+      getRoutineExercises: jest.fn().mockReturnValue([]),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
+    });
+
+    const view = render(
+      <NavigationContainer>
+        <RoutineDetailScreen
+          route={{
+            key: 'routine-detail',
+            name: 'RoutineDetail',
+            params: { routineId: 'routine-1' },
+          }}
+          navigation={{ goBack, setOptions } as never}
+        />
+      </NavigationContainer>,
+    );
+
+    expect(goBack).not.toHaveBeenCalled();
+
+    mockUseRoutines.mockReturnValue({
+      routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createRoutine: jest.fn(),
+      updateRoutine: jest.fn(),
+      deleteRoutine: jest.fn(),
+      getRoutineExercises: jest.fn().mockReturnValue([]),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({
+        'routine-1': 0,
+      }),
+    });
+
+    view.rerender(
+      <NavigationContainer>
+        <RoutineDetailScreen
+          route={{
+            key: 'routine-detail',
+            name: 'RoutineDetail',
+            params: { routineId: 'routine-1' },
+          }}
+          navigation={{ goBack, setOptions } as never}
+        />
+      </NavigationContainer>,
+    );
+
+    expect(goBack).not.toHaveBeenCalled();
+    expect(screen.getByText('Edit Routine')).toBeTruthy();
+    expect(setOptions).toHaveBeenCalledWith({ title: 'Push A' });
   });
 });

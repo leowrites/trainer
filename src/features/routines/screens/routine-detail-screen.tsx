@@ -164,8 +164,13 @@ export function RoutineDetailScreen({
   'RoutineDetail'
 >): React.JSX.Element {
   const { exercises } = useExercises();
-  const { routines, updateRoutine, deleteRoutine, getRoutineExercises } =
-    useRoutines();
+  const {
+    routines,
+    hasLoaded,
+    updateRoutine,
+    deleteRoutine,
+    getRoutineExercises,
+  } = useRoutines();
   const { getRoutineInsight } = useRoutineInsights();
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -173,15 +178,17 @@ export function RoutineDetailScreen({
     routines.find((routine) => routine.id === route.params.routineId) ?? null;
 
   useEffect(() => {
-    if (selectedRoutine === null) {
+    if (selectedRoutine === null && hasLoaded) {
       navigation.goBack();
       return;
     }
 
-    navigation.setOptions({
-      title: selectedRoutine.name,
-    });
-  }, [navigation, selectedRoutine]);
+    if (selectedRoutine) {
+      navigation.setOptions({
+        title: selectedRoutine.name,
+      });
+    }
+  }, [hasLoaded, navigation, selectedRoutine]);
 
   if (selectedRoutine === null) {
     return (

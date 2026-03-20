@@ -28,6 +28,7 @@ export interface NewRoutineInput {
  */
 export function useRoutines(): {
   routines: Routine[];
+  hasLoaded: boolean;
   refresh: () => void;
   getRoutineExercises: (routineId: string) => RoutineExercise[];
   getRoutineExerciseCounts: () => Record<string, number>;
@@ -37,6 +38,7 @@ export function useRoutines(): {
 } {
   const db = useDatabase();
   const [routines, setRoutines] = useState<Routine[]>([]);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
   const refresh = useCallback((): void => {
@@ -48,6 +50,7 @@ export function useRoutines(): {
       'SELECT id, name, notes FROM routines ORDER BY name ASC',
     );
     setRoutines(rows);
+    setHasLoaded(true);
   }, [db, refreshKey]);
 
   const getRoutineExercises = useCallback(
@@ -211,6 +214,7 @@ export function useRoutines(): {
 
   return {
     routines,
+    hasLoaded,
     refresh,
     getRoutineExercises,
     getRoutineExerciseCounts,

@@ -42,6 +42,7 @@ describe('ScheduleScreen', () => {
     });
     mockUseRoutines.mockReturnValue({
       routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      hasLoaded: true,
       refresh: refreshRoutines,
       createRoutine: jest.fn(),
       updateRoutine: jest.fn(),
@@ -96,6 +97,7 @@ describe('ScheduleScreen', () => {
     });
     mockUseRoutines.mockReturnValue({
       routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      hasLoaded: true,
       refresh: jest.fn(),
       createRoutine: jest.fn(),
       updateRoutine: jest.fn(),

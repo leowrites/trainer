@@ -16,6 +16,7 @@ describe('useRoutines', () => {
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useRoutines(), { wrapper });
     expect(result.current.routines).toEqual([]);
+    expect(result.current.hasLoaded).toBe(true);
   });
 
   it('returns routines fetched from the DB on mount', () => {
@@ -28,6 +29,7 @@ describe('useRoutines', () => {
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useRoutines(), { wrapper });
     expect(result.current.routines).toEqual(mockRows);
+    expect(result.current.hasLoaded).toBe(true);
   });
 
   it('createRoutine inserts the routine row', () => {
