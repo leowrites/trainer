@@ -44,6 +44,30 @@ jest.mock('@features/routines', () => ({
   useRoutines: jest.fn(),
 }));
 
+jest.mock('@lodev09/react-native-true-sheet', () => {
+  const React = require('react');
+  const ReactNative = require('react-native');
+
+  return {
+    TrueSheet: React.forwardRef(
+      (
+        { children }: React.PropsWithChildren,
+        ref: React.ForwardedRef<{
+          present: () => Promise<void>;
+          dismiss: () => Promise<void>;
+        }>,
+      ) => {
+        React.useImperativeHandle(ref, () => ({
+          present: async () => undefined,
+          dismiss: async () => undefined,
+        }));
+
+        return <ReactNative.View>{children}</ReactNative.View>;
+      },
+    ),
+  };
+});
+
 jest.mock('react-native-draggable-flatlist', () => {
   const ReactNative = require('react-native');
 
@@ -328,6 +352,7 @@ describe('ScheduleScreen', () => {
       screen.getByPlaceholderText('Push / Pull Rotation'),
       ' Upper Rotation ',
     );
+    fireEvent.press(screen.getByText('Add Routine'));
     fireEvent.press(screen.getByLabelText('Add Push A'));
     fireEvent.press(screen.getByLabelText('Save'));
 
@@ -382,6 +407,7 @@ describe('ScheduleScreen', () => {
 
     fireEvent.press(screen.getByLabelText('Open Upper Rotation'));
     fireEvent.press(screen.getByLabelText('Remove Push A'));
+    fireEvent.press(screen.getByText('Add Routine'));
     fireEvent.press(screen.getByLabelText('Add Legs A'));
     fireEvent(screen.getByLabelText('Reorder Legs A'), 'onLongPress');
     fireEvent.press(screen.getByLabelText('Save'));

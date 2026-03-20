@@ -26,11 +26,11 @@ import {
   Muted,
   Surface,
 } from '@shared/components';
-import { normalizeQuery } from '@shared/utils';
 import {
   buildScheduleSummary,
   getScheduleStatusText,
 } from '../domain/schedule-preview';
+import { RoutinePickerSheet } from '../components/routine-picker-sheet';
 import type { NewScheduleInput } from '../hooks/use-schedules';
 import { useSchedules } from '../hooks/use-schedules';
 import type { ScheduleStackParamList } from '../types';
@@ -130,7 +130,7 @@ export function ScheduleDetailScreen({
   );
   const [name, setName] = useState('');
   const [selectedRoutineIds, setSelectedRoutineIds] = useState<string[]>([]);
-  const [addRoutineQuery, setAddRoutineQuery] = useState('');
+  const [isRoutinePickerOpen, setIsRoutinePickerOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(scheduleId === undefined);
   const [error, setError] = useState<string | null>(null);
   const cancelActionRef = useRef<() => void>(() => undefined);
@@ -213,7 +213,7 @@ export function ScheduleDetailScreen({
     if (scheduleId === undefined) {
       setName('');
       setSelectedRoutineIds([]);
-      setAddRoutineQuery('');
+      setIsRoutinePickerOpen(false);
       setIsEditingName(true);
       setError(null);
     }
@@ -235,7 +235,7 @@ export function ScheduleDetailScreen({
     setSelectedRoutineIds(
       getScheduleEntries(selectedSchedule.id).map((entry) => entry.routine_id),
     );
-    setAddRoutineQuery('');
+    setIsRoutinePickerOpen(false);
     setIsEditingName(false);
     setError(null);
   }, [
@@ -257,22 +257,6 @@ export function ScheduleDetailScreen({
         .filter((routine): routine is Routine => routine !== undefined),
     [routines, selectedRoutineIds],
   );
-
-  const availableRoutines = useMemo(() => {
-    const query = normalizeQuery(addRoutineQuery);
-
-    return routines.filter((routine) => {
-      if (selectedRoutineIds.includes(routine.id)) {
-        return false;
-      }
-
-      if (query === '') {
-        return true;
-      }
-
-      return normalizeQuery(routine.name).includes(query);
-    });
-  }, [addRoutineQuery, routines, selectedRoutineIds]);
 
   const handleDelete = (): void => {
     if (selectedSchedule === null) {
@@ -355,53 +339,22 @@ export function ScheduleDetailScreen({
             Long press and drag a routine card to reorder it.
           </Muted>
         </View>
-        <Meta>{selectedRoutines.length} selected</Meta>
+        <View className="items-end gap-2">
+          <Meta>{selectedRoutines.length} selected</Meta>
+          <Button
+            size="sm"
+            variant="ghost"
+            onPress={() => setIsRoutinePickerOpen(true)}
+          >
+            Add Routine
+          </Button>
+        </View>
       </View>
     </View>
   );
 
   const listFooter = (
     <View className="pb-7">
-      <Card className="mt-2 rounded-[24px] px-5 py-5">
-        <Label>Add routines</Label>
-        <Input
-          className="mt-3"
-          placeholder="Search routines to add"
-          value={addRoutineQuery}
-          onChangeText={setAddRoutineQuery}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-
-        <View className="mt-4 gap-2">
-          {availableRoutines.length > 0 ? (
-            availableRoutines.map((routine) => (
-              <Pressable
-                key={routine.id}
-                accessibilityRole="button"
-                accessibilityLabel={`Add ${routine.name}`}
-                className="rounded-[18px] border border-surface-border bg-surface-elevated px-4 py-4"
-                onPress={() => {
-                  setSelectedRoutineIds((current) => [...current, routine.id]);
-                  setAddRoutineQuery('');
-                }}
-              >
-                <Body className="font-medium">{routine.name}</Body>
-                <Muted className="mt-1 text-sm leading-[18px]">
-                  Add this routine to the end of the rotation.
-                </Muted>
-              </Pressable>
-            ))
-          ) : (
-            <Muted className="text-sm leading-[18px]">
-              {routines.length === 0
-                ? 'No routines available yet. Create one from the Routines tab first.'
-                : 'No matching routines available to add.'}
-            </Muted>
-          )}
-        </View>
-      </Card>
-
       {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
       {selectedSchedule ? (
         <Button variant="danger" className="mt-5 w-full" onPress={handleDelete}>
@@ -442,12 +395,22 @@ export function ScheduleDetailScreen({
         ListFooterComponent={listFooter}
         ListEmptyComponent={
           <Muted className="mt-4 rounded-[18px] border border-dashed border-surface-border px-4 py-4 text-sm leading-[18px]">
-            No routines added yet. Use the search section below to start
-            building this rotation.
+            No routines added yet. Use Add Routine to start building this
+            rotation.
           </Muted>
         }
         contentContainerStyle={{ paddingBottom: 12 }}
         showsVerticalScrollIndicator={false}
+      />
+
+      <RoutinePickerSheet
+        visible={isRoutinePickerOpen}
+        routines={routines}
+        selectedRoutineIds={selectedRoutineIds}
+        onClose={() => setIsRoutinePickerOpen(false)}
+        onAddRoutine={(routineId) =>
+          setSelectedRoutineIds((current) => [...current, routineId])
+        }
       />
     </Container>
   );
