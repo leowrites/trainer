@@ -7,7 +7,7 @@ export interface ActionRowProps {
   primaryLabel?: string;
   secondaryLabel?: string;
   onPrimaryPress: () => void;
-  onSecondaryPress: () => void;
+  onSecondaryPress?: () => void;
   primaryLoading?: boolean;
   primaryDisabled?: boolean;
   secondaryDisabled?: boolean;
@@ -16,7 +16,7 @@ export interface ActionRowProps {
 
 export function ActionRow({
   primaryLabel = 'Save',
-  secondaryLabel = 'Cancel',
+  secondaryLabel,
   onPrimaryPress,
   onSecondaryPress,
   primaryLoading = false,
@@ -27,24 +27,25 @@ export function ActionRow({
   return (
     <View className={`mt-5 gap-2 ${className}`}>
       <Button
-        className="w-full"
         onPress={onPrimaryPress}
         loading={primaryLoading}
         disabled={primaryDisabled || primaryLoading}
       >
         {primaryLabel}
       </Button>
-      <View className="items-end">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="px-1"
-          onPress={onSecondaryPress}
-          disabled={secondaryDisabled}
-        >
-          {secondaryLabel}
-        </Button>
-      </View>
+      {secondaryLabel && (
+        <View className="items-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-4"
+            onPress={onSecondaryPress}
+            disabled={secondaryDisabled}
+          >
+            {secondaryLabel}
+          </Button>
+        </View>
+      )}
     </View>
   );
 }

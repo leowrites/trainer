@@ -1,8 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import type { Exercise, Routine, RoutineExercise } from '@core/database/types';
-import { Body, Button, Heading, Input, Label, Muted } from '@shared/components';
+import {
+  ActionRow,
+  Button,
+  Checkbox,
+  Heading,
+  Input,
+  Label,
+  Muted,
+} from '@shared/components';
 import { normalizeQuery } from '@shared/utils';
 import type { NewRoutineInput } from '../hooks/use-routines';
 import type { RoutineExerciseDraft } from '../types';
@@ -39,6 +47,7 @@ export function RoutineEditorSheet({
   );
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [addExerciseQuery, setAddExerciseQuery] = useState('');
+  const [pendingExerciseIds, setPendingExerciseIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,6 +59,7 @@ export function RoutineEditorSheet({
     setExerciseDrafts(buildRoutineExerciseDrafts(routineExercises));
     setShowAddExercise(false);
     setAddExerciseQuery('');
+    setPendingExerciseIds([]);
     setError(null);
   }, [routine, routineExercises, visible]);
 
@@ -66,6 +76,10 @@ export function RoutineEditorSheet({
         return false;
       }
 
+      if (pendingExerciseIds.includes(exercise.id)) {
+        return true;
+      }
+
       if (query === '') {
         return true;
       }
@@ -75,7 +89,7 @@ export function RoutineEditorSheet({
         normalizeQuery(exercise.muscle_group).includes(query)
       );
     });
-  }, [addExerciseQuery, exercises, selectedExerciseIds]);
+  }, [addExerciseQuery, exercises, pendingExerciseIds, selectedExerciseIds]);
 
   const handleUpdateDraft = useCallback(
     (index: number, patch: Partial<RoutineExerciseDraft>): void => {
@@ -112,18 +126,46 @@ export function RoutineEditorSheet({
     );
   }, []);
 
-  const handleAddExercise = useCallback((exerciseId: string): void => {
-    setExerciseDrafts((current) => [
-      ...current,
-      {
-        exerciseId,
-        targetSets: DEFAULT_TARGET_SETS,
-        targetReps: DEFAULT_TARGET_REPS,
-      },
-    ]);
+  const handleTogglePendingExercise = useCallback(
+    (exerciseId: string): void => {
+      setPendingExerciseIds((current) =>
+        current.includes(exerciseId)
+          ? current.filter((id) => id !== exerciseId)
+          : [...current, exerciseId],
+      );
+    },
+    [],
+  );
+
+  const handleCloseAddExercise = useCallback((): void => {
     setAddExerciseQuery('');
+    setPendingExerciseIds([]);
     setShowAddExercise(false);
   }, []);
+
+  const handleAddSelectedExercises = useCallback((): void => {
+    if (pendingExerciseIds.length === 0) {
+      return;
+    }
+
+    setExerciseDrafts((current) => {
+      const currentExerciseIds = new Set(
+        current.map((entry) => entry.exerciseId),
+      );
+
+      return [
+        ...current,
+        ...pendingExerciseIds
+          .filter((exerciseId) => !currentExerciseIds.has(exerciseId))
+          .map((exerciseId) => ({
+            exerciseId,
+            targetSets: DEFAULT_TARGET_SETS,
+            targetReps: DEFAULT_TARGET_REPS,
+          })),
+      ];
+    });
+    handleCloseAddExercise();
+  }, [handleCloseAddExercise, pendingExerciseIds]);
 
   const handleSave = (): void => {
     const trimmedName = name.trim();
@@ -173,7 +215,14 @@ export function RoutineEditorSheet({
         <Button
           size="sm"
           variant="ghost"
-          onPress={() => setShowAddExercise((current) => !current)}
+          onPress={() => {
+            if (showAddExercise) {
+              handleCloseAddExercise();
+              return;
+            }
+
+            setShowAddExercise(true);
+          }}
         >
           {showAddExercise ? 'Close' : 'Add Exercise'}
         </Button>
@@ -192,25 +241,39 @@ export function RoutineEditorSheet({
           <View className="mt-4 gap-2">
             {availableExercises.length > 0 ? (
               availableExercises.map((exercise) => (
-                <Pressable
+                <Checkbox
                   key={exercise.id}
-                  accessibilityRole="button"
                   accessibilityLabel={`Add ${exercise.name} to routine`}
-                  className="rounded-[16px] border border-surface-border bg-surface-card px-4 py-3"
-                  onPress={() => handleAddExercise(exercise.id)}
-                >
-                  <Body className="font-medium">{exercise.name}</Body>
-                  <Muted className="mt-1 text-xs uppercase tracking-[1.2px]">
-                    {exercise.muscle_group}
-                  </Muted>
-                </Pressable>
+                  checked={pendingExerciseIds.includes(exercise.id)}
+                  onToggle={() => handleTogglePendingExercise(exercise.id)}
+                  label={exercise.name}
+                  sublabel={exercise.muscle_group}
+                  className="mb-0 bg-surface-card"
+                />
               ))
             ) : (
-              <Muted className="text-sm leading-[18px]">
+              <Muted className="text-sm leading-5">
                 No matching exercises available to add.
               </Muted>
             )}
           </View>
+
+          <Muted className="mt-4 text-sm leading-5">
+            {pendingExerciseIds.length === 0
+              ? 'Select one or more exercises to add them together.'
+              : `${pendingExerciseIds.length} exercise${
+                  pendingExerciseIds.length === 1 ? '' : 's'
+                } selected`}
+          </Muted>
+
+          <ActionRow
+            primaryLabel="Add Selected"
+            secondaryLabel="Close"
+            className="mt-4"
+            onPrimaryPress={handleAddSelectedExercises}
+            onSecondaryPress={handleCloseAddExercise}
+            primaryDisabled={pendingExerciseIds.length === 0}
+          />
         </View>
       ) : null}
 

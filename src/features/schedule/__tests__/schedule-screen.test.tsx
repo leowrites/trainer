@@ -51,7 +51,10 @@ jest.mock('@lodev09/react-native-true-sheet', () => {
   return {
     TrueSheet: React.forwardRef(
       (
-        { children }: React.PropsWithChildren,
+        {
+          children,
+          footer,
+        }: React.PropsWithChildren<{ footer?: React.ReactNode }>,
         ref: React.ForwardedRef<{
           present: () => Promise<void>;
           dismiss: () => Promise<void>;
@@ -62,7 +65,12 @@ jest.mock('@lodev09/react-native-true-sheet', () => {
           dismiss: async () => undefined,
         }));
 
-        return <ReactNative.View>{children}</ReactNative.View>;
+        return (
+          <ReactNative.View>
+            {children}
+            {footer}
+          </ReactNative.View>
+        );
       },
     ),
   };
@@ -341,7 +349,10 @@ describe('ScheduleScreen', () => {
     );
     mockUseRoutines.mockReturnValue(
       buildRoutinesHookState({
-        routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+        routines: [
+          { id: 'routine-1', name: 'Push A', notes: null },
+          { id: 'routine-2', name: 'Pull A', notes: null },
+        ],
       }),
     );
 
@@ -354,11 +365,13 @@ describe('ScheduleScreen', () => {
     );
     fireEvent.press(screen.getByText('Add Routine'));
     fireEvent.press(screen.getByLabelText('Add Push A'));
+    fireEvent.press(screen.getByLabelText('Add Pull A'));
+    fireEvent.press(screen.getByText('Add Selected'));
     fireEvent.press(screen.getByLabelText('Save'));
 
     expect(createSchedule).toHaveBeenCalledWith({
       name: 'Upper Rotation',
-      routineIds: ['routine-1'],
+      routineIds: ['routine-1', 'routine-2'],
     });
     expect(screen.queryByPlaceholderText('Push / Pull Rotation')).toBeNull();
   });
@@ -409,6 +422,7 @@ describe('ScheduleScreen', () => {
     fireEvent.press(screen.getByLabelText('Remove Push A'));
     fireEvent.press(screen.getByText('Add Routine'));
     fireEvent.press(screen.getByLabelText('Add Legs A'));
+    fireEvent.press(screen.getByText('Add Selected'));
     fireEvent(screen.getByLabelText('Reorder Legs A'), 'onLongPress');
     fireEvent.press(screen.getByLabelText('Save'));
 

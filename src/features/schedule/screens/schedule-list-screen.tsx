@@ -29,7 +29,6 @@ import type { ScheduleStackParamList } from '../types';
 function ScheduleListCard({
   schedule,
   routineCount,
-  nextRoutineName,
   onPress,
 }: {
   schedule: Schedule;
@@ -51,21 +50,11 @@ function ScheduleListCard({
           <Muted className="mt-2 text-sm leading-[18px]">
             {routineCount} routine{routineCount === 1 ? '' : 's'}
           </Muted>
-          <Muted className="mt-2 text-sm leading-[18px]">
-            {nextRoutineName
-              ? `Next up: ${nextRoutineName}`
-              : 'No routines in this schedule yet'}
-          </Muted>
         </View>
         <View className="items-end">
           <Label className={schedule.is_active ? 'text-secondary' : ''}>
             {schedule.is_active ? 'Active' : 'Inactive'}
           </Label>
-          <Meta className="mt-2">
-            {schedule.current_position >= 0
-              ? `Last ${schedule.current_position + 1}`
-              : 'Not started'}
-          </Meta>
         </View>
       </View>
     </Card>
@@ -135,8 +124,7 @@ export function ScheduleListScreen({
             <View accessibilityRole="header" className="gap-2">
               <Heading className="text-4xl leading-[36px]">Schedule</Heading>
               <Muted className="max-w-[320px] text-sm leading-[19px]">
-                Search every schedule, inspect the next routine in rotation, and
-                edit each plan from its own dedicated detail flow.
+                Search, inspect, and edit your schedules.
               </Muted>
             </View>
 

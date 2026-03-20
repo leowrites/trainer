@@ -31,6 +31,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
+import { Caption } from './typography';
 
 export interface CheckboxProps {
   checked: boolean;
@@ -94,12 +95,7 @@ export function Checkbox({
           {label}
         </Text>
         {sublabel !== undefined && sublabel !== '' ? (
-          <Text
-            className="mt-1 font-mono text-2xs uppercase tracking-[1.5px]"
-            style={{ color: tokens.textMuted }}
-          >
-            {sublabel}
-          </Text>
+          <Caption className="mt-1 font-mono"> {sublabel} </Caption>
         ) : null}
       </View>
     </Pressable>

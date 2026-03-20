@@ -27,10 +27,6 @@ import {
   Muted,
   Surface,
 } from '@shared/components';
-import {
-  buildScheduleSummary,
-  getScheduleStatusText,
-} from '../domain/schedule-preview';
 import { RoutinePickerSheet } from '../components/routine-picker-sheet';
 import type { NewScheduleInput } from '../hooks/use-schedules';
 import { useSchedules } from '../hooks/use-schedules';
@@ -43,7 +39,6 @@ function DraftRoutineRow({
   onRemove,
 }: {
   routine: Routine;
-  index: number;
   drag: () => void;
   isActive: boolean;
   onRemove: () => void;
@@ -112,18 +107,6 @@ export function ScheduleDetailScreen({
   const scheduleId = route.params?.scheduleId;
   const selectedSchedule =
     schedules.find((schedule) => schedule.id === scheduleId) ?? null;
-  const selectedEntries = useMemo(
-    () =>
-      selectedSchedule === null ? [] : getScheduleEntries(selectedSchedule.id),
-    [getScheduleEntries, selectedSchedule],
-  );
-  const scheduleSummary = useMemo(
-    () =>
-      selectedSchedule === null
-        ? null
-        : buildScheduleSummary(selectedSchedule, selectedEntries, routines),
-    [routines, selectedEntries, selectedSchedule],
-  );
   const [name, setName] = useState('');
   const [selectedRoutineIds, setSelectedRoutineIds] = useState<string[]>([]);
   const [isRoutinePickerOpen, setIsRoutinePickerOpen] = useState(false);
@@ -290,12 +273,12 @@ export function ScheduleDetailScreen({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Edit schedule name"
-          className="mb-4 flex-row items-center gap-3"
+          className="flex-row items-center gap-3"
           onPress={() => setIsEditingName(true)}
         >
-          <Body className="font-heading text-4xl leading-[36px]">
+          <Heading className="font-heading text-4xl leading-[36px]">
             {draftTitle}
-          </Body>
+          </Heading>
           <Feather name="edit-2" size={18} color={tokens.textPrimary} />
         </Pressable>
       )}
@@ -312,11 +295,6 @@ export function ScheduleDetailScreen({
             {selectedRoutines.length === 1 ? '' : 's'}
           </Meta>
         </View>
-        <Muted className="mt-3 text-sm leading-[18px]">
-          {scheduleSummary
-            ? getScheduleStatusText(scheduleSummary)
-            : 'Save this schedule to keep it in your library.'}
-        </Muted>
         {selectedSchedule && selectedSchedule.is_active === 0 ? (
           <Button
             className="mt-4 w-full"
@@ -356,23 +334,18 @@ export function ScheduleDetailScreen({
 
   return (
     <Container edges={['left', 'right']}>
-      <View className="flex-1">
+      <View>
         <DraggableFlatList
           data={selectedRoutines}
           keyExtractor={(item) => item.id}
           activationDistance={8}
+          style={{ height: '100%' }}
           onDragEnd={({ data }) => {
             setSelectedRoutineIds(data.map((routine) => routine.id));
           }}
-          renderItem={({
-            item,
-            drag,
-            isActive,
-            getIndex,
-          }: RenderItemParams<Routine>) => (
+          renderItem={({ item, drag, isActive }: RenderItemParams<Routine>) => (
             <DraftRoutineRow
               routine={item}
-              index={getIndex() ?? 0}
               drag={drag}
               isActive={isActive}
               onRemove={() =>
@@ -383,26 +356,27 @@ export function ScheduleDetailScreen({
             />
           )}
           ListHeaderComponent={listHeader}
+          ListFooterComponent={detailFooter}
           ListEmptyComponent={
             <Muted className="mt-4 rounded-[18px] border border-dashed border-surface-border px-4 py-4 text-sm leading-[18px]">
               No routines added yet. Use Add Routine to start building this
               rotation.
             </Muted>
           }
-          contentContainerStyle={{ paddingBottom: 12 }}
           showsVerticalScrollIndicator={false}
         />
       </View>
-
-      {detailFooter}
 
       <RoutinePickerSheet
         visible={isRoutinePickerOpen}
         routines={routines}
         selectedRoutineIds={selectedRoutineIds}
         onClose={() => setIsRoutinePickerOpen(false)}
-        onAddRoutine={(routineId) =>
-          setSelectedRoutineIds((current) => [...current, routineId])
+        onAddRoutines={(routineIds) =>
+          setSelectedRoutineIds((current) => [
+            ...current,
+            ...routineIds.filter((routineId) => !current.includes(routineId)),
+          ])
         }
       />
     </Container>

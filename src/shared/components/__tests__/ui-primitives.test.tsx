@@ -277,7 +277,6 @@ describe('ActionRow', () => {
     );
 
     expect(screen.getByText('Save')).toBeTruthy();
-    expect(screen.getByText('Cancel')).toBeTruthy();
   });
 
   it('calls both action handlers', () => {

@@ -1,8 +1,15 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
 
 import type { Routine } from '@core/database/types';
-import { Body, Button, Heading, Input, Label, Muted } from '@shared/components';
+import {
+  ActionRow,
+  Checkbox,
+  Heading,
+  Input,
+  Label,
+  Muted,
+} from '@shared/components';
 import { normalizeQuery } from '@shared/utils';
 import { EditorSheet } from './editor-sheet';
 
@@ -11,15 +18,46 @@ export function RoutinePickerSheet({
   routines,
   selectedRoutineIds,
   onClose,
-  onAddRoutine,
+  onAddRoutines,
 }: {
   visible: boolean;
   routines: Routine[];
   selectedRoutineIds: string[];
   onClose: () => void;
-  onAddRoutine: (routineId: string) => void;
+  onAddRoutines: (routineIds: string[]) => void;
 }): React.JSX.Element | null {
   const [query, setQuery] = useState('');
+  const [pendingRoutineIds, setPendingRoutineIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!visible) {
+      setQuery('');
+      setPendingRoutineIds([]);
+    }
+  }, [visible]);
+
+  const handleToggleRoutine = useCallback((routineId: string): void => {
+    setPendingRoutineIds((current) =>
+      current.includes(routineId)
+        ? current.filter((id) => id !== routineId)
+        : [...current, routineId],
+    );
+  }, []);
+
+  const handleClose = useCallback((): void => {
+    setQuery('');
+    setPendingRoutineIds([]);
+    onClose();
+  }, [onClose]);
+
+  const handleAddSelected = useCallback((): void => {
+    if (pendingRoutineIds.length === 0) {
+      return;
+    }
+
+    onAddRoutines(pendingRoutineIds);
+    handleClose();
+  }, [handleClose, onAddRoutines, pendingRoutineIds]);
 
   const availableRoutines = useMemo(() => {
     const normalizedQuery = normalizeQuery(query);
@@ -29,29 +67,33 @@ export function RoutinePickerSheet({
         return false;
       }
 
+      if (pendingRoutineIds.includes(routine.id)) {
+        return true;
+      }
+
       if (normalizedQuery === '') {
         return true;
       }
 
       return normalizeQuery(routine.name).includes(normalizedQuery);
     });
-  }, [query, routines, selectedRoutineIds]);
+  }, [pendingRoutineIds, query, routines, selectedRoutineIds]);
 
   return (
     <EditorSheet
       visible={visible}
-      onClose={() => {
-        setQuery('');
-        onClose();
-      }}
+      onClose={handleClose}
+      footer={
+        <ActionRow
+          className="p-4 mb-2"
+          primaryLabel="Add Selected"
+          onPrimaryPress={handleAddSelected}
+          primaryDisabled={pendingRoutineIds.length === 0}
+        />
+      }
     >
-      <Heading className="text-2xl leading-[28px]">Add Routine</Heading>
-      <Muted className="mt-2 text-sm leading-[18px]">
-        Search your routines library and append the next routine to this
-        schedule.
-      </Muted>
-
-      <Label className="mt-5">Search routines</Label>
+      <Heading className="text-2xl leading-[28px]">Add Routines</Heading>
+      <Label className="mt-2">Search routines</Label>
       <Input
         className="mt-3"
         placeholder="Search routines to add"
@@ -64,35 +106,24 @@ export function RoutinePickerSheet({
       <View className="mt-4 gap-2">
         {availableRoutines.length > 0 ? (
           availableRoutines.map((routine) => (
-            <Pressable
+            <Checkbox
               key={routine.id}
-              accessibilityRole="button"
               accessibilityLabel={`Add ${routine.name}`}
-              className="rounded-[18px] border border-surface-border bg-surface-elevated px-4 py-4"
-              onPress={() => {
-                onAddRoutine(routine.id);
-                setQuery('');
-                onClose();
-              }}
-            >
-              <Body className="font-medium">{routine.name}</Body>
-              <Muted className="mt-1 text-sm leading-[18px]">
-                Add this routine to the end of the rotation.
-              </Muted>
-            </Pressable>
+              checked={pendingRoutineIds.includes(routine.id)}
+              onToggle={() => handleToggleRoutine(routine.id)}
+              label={routine.name}
+              sublabel={routine.notes ? routine.notes : undefined}
+              className="mb-0"
+            />
           ))
         ) : (
-          <Muted className="text-sm leading-[18px]">
+          <Muted className="text-sm leading-5">
             {routines.length === 0
               ? 'No routines available yet. Create one from the Routines tab first.'
               : 'No matching routines available to add.'}
           </Muted>
         )}
       </View>
-
-      <Button variant="ghost" className="mt-5 w-full" onPress={onClose}>
-        Close
-      </Button>
     </EditorSheet>
   );
 }

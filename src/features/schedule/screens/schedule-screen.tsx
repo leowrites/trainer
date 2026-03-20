@@ -24,9 +24,8 @@ export function ScheduleScreen(): React.JSX.Element {
         name="ScheduleDetail"
         component={ScheduleDetailScreen}
         options={{
-          title: '',
           headerShown: true,
-          presentation: 'fullScreenModal',
+          presentation: 'modal',
         }}
       />
     </Stack.Navigator>
