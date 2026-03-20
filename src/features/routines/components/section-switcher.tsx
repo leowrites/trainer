@@ -6,11 +6,13 @@ import type { Section } from '../types';
 
 export function SectionSwitcher({
   section,
+  schedulesCount,
   exercisesCount,
   routinesCount,
   onChange,
 }: {
   section: Section;
+  schedulesCount: number;
   exercisesCount: number;
   routinesCount: number;
   onChange: (section: Section) => void;
@@ -20,8 +22,9 @@ export function SectionSwitcher({
       <View className="flex-row">
         {(
           [
-            ['exercises', exercisesCount],
+            ['schedules', schedulesCount],
             ['routines', routinesCount],
+            ['exercises', exercisesCount],
           ] as const
         ).map(([item, count]) => {
           const active = section === item;

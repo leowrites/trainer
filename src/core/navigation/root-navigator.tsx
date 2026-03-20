@@ -21,14 +21,12 @@ import { HistoryScreen } from '@features/analytics';
 import { ProfileScreen } from '@features/health-tracking';
 import {
   ExerciseDetailScreen,
+  ExerciseEditorScreen,
   RoutineDetailScreen,
+  RoutineEditorScreen,
   RoutinesScreen,
   type RoutinesStackParamList,
 } from '@features/routines';
-import {
-  ScheduleScreen,
-  type ScheduleStackParamList,
-} from '@features/schedule';
 import { WorkoutActiveScreen, WorkoutScreen } from '@features/workout-mode';
 import { useWorkoutStore } from '@features/workout-mode/store';
 import { useTheme } from '@core/theme/theme-context';
@@ -38,7 +36,6 @@ import { useTheme } from '@core/theme/theme-context';
 export type RootTabParamList = {
   Workout: undefined;
   Routines: NavigatorScreenParams<RoutinesStackParamList>;
-  Schedule: NavigatorScreenParams<ScheduleStackParamList>;
   History: undefined;
   Profile: undefined;
 };
@@ -47,7 +44,9 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<RootTabParamList>;
   ActiveWorkout: undefined;
   ExerciseDetail: { exerciseId: string };
+  ExerciseEditor: { exerciseId?: string };
   RoutineDetail: { routineId: string };
+  RoutineEditor: { routineId?: string };
 };
 
 // ─── Navigator ─────────────────────────────────────────────────────────────────
@@ -57,7 +56,15 @@ const NativeTab = createNativeBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function getTabLabel(routeName: keyof RootTabParamList): string {
-  return routeName === 'Workout' ? 'Home' : routeName;
+  if (routeName === 'Workout') {
+    return 'Home';
+  }
+
+  if (routeName === 'Routines') {
+    return 'Plan';
+  }
+
+  return routeName;
 }
 
 function getAndroidTabIconName(
@@ -68,8 +75,6 @@ function getAndroidTabIconName(
       return 'home';
     case 'Routines':
       return 'layers';
-    case 'Schedule':
-      return 'calendar';
     case 'History':
       return 'bar-chart-2';
     case 'Profile':
@@ -90,11 +95,6 @@ function getIosTabIcon(
       return {
         type: 'sfSymbol',
         name: focused ? 'square.stack.3d.up.fill' : 'square.stack.3d.up',
-      };
-    case 'Schedule':
-      return {
-        type: 'sfSymbol',
-        name: focused ? 'calendar.circle.fill' : 'calendar.circle',
       };
     case 'History':
       return {
@@ -132,11 +132,6 @@ function IosTabs(): React.JSX.Element {
         component={RoutinesScreen}
         options={{ headerShown: false }}
       />
-      <NativeTab.Screen
-        name="Schedule"
-        component={ScheduleScreen}
-        options={{ headerShown: false }}
-      />
       <NativeTab.Screen name="History" component={HistoryScreen} />
       <NativeTab.Screen name="Profile" component={ProfileScreen} />
     </NativeTab.Navigator>
@@ -169,7 +164,6 @@ function AndroidTabs(): React.JSX.Element {
     >
       <BottomTab.Screen name="Workout" component={WorkoutScreen} />
       <BottomTab.Screen name="Routines" component={RoutinesScreen} />
-      <BottomTab.Screen name="Schedule" component={ScheduleScreen} />
       <BottomTab.Screen name="History" component={HistoryScreen} />
       <BottomTab.Screen name="Profile" component={ProfileScreen} />
     </BottomTab.Navigator>
@@ -259,6 +253,16 @@ export function RootNavigator(): React.JSX.Element {
           options={{
             headerShown: true,
             title: '',
+            presentation: 'modal',
+          }}
+        />
+        <Stack.Screen
+          name="ExerciseEditor"
+          component={ExerciseEditorScreen}
+          options={{
+            headerShown: true,
+            title: '',
+            presentation: 'modal',
           }}
         />
         <Stack.Screen
@@ -267,6 +271,16 @@ export function RootNavigator(): React.JSX.Element {
           options={{
             headerShown: true,
             title: '',
+            presentation: 'modal',
+          }}
+        />
+        <Stack.Screen
+          name="RoutineEditor"
+          component={RoutineEditorScreen}
+          options={{
+            headerShown: true,
+            title: '',
+            presentation: 'modal',
           }}
         />
       </Stack.Navigator>

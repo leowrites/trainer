@@ -1,6 +1,7 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import type { Exercise } from '@core/database/types';
@@ -12,7 +13,6 @@ import {
   Label,
   Muted,
 } from '@shared/components';
-import { ExerciseEditorSheet } from '../components/exercise-editor-sheet';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutineInsights } from '../hooks/use-routine-insights';
 import type { RoutinesStackParamList } from '../types';
@@ -142,14 +142,18 @@ export function ExerciseDetailScreen({
   route,
   navigation,
 }: ExerciseDetailScreenProps): React.JSX.Element {
-  const { exercises, hasLoaded, updateExercise, deleteExercise } =
-    useExercises();
+  const { exercises, hasLoaded, refresh } = useExercises();
   const { getExerciseInsight } = useRoutineInsights();
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   const selectedExercise =
     exercises.find((exercise) => exercise.id === route.params.exerciseId) ??
     null;
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh]),
+  );
 
   useEffect(() => {
     if (selectedExercise === null && hasLoaded) {
@@ -178,26 +182,15 @@ export function ExerciseDetailScreen({
     <Container edges={['left', 'right']}>
       <ExerciseDetailPage
         exercise={selectedExercise}
-        onEdit={() => setIsEditorOpen(true)}
+        onEdit={() =>
+          navigation.navigate('ExerciseEditor', {
+            exerciseId: selectedExercise.id,
+          })
+        }
         totalSessions={exerciseInsight.totalSessions}
         lastPerformedAt={exerciseInsight.lastPerformedAt}
         bestCompletedWeight={exerciseInsight.bestCompletedWeight}
         history={exerciseInsight.history}
-      />
-
-      <ExerciseEditorSheet
-        visible={isEditorOpen}
-        exercise={selectedExercise}
-        onClose={() => setIsEditorOpen(false)}
-        onSave={(input) => {
-          updateExercise(selectedExercise.id, input);
-          setIsEditorOpen(false);
-        }}
-        onDelete={() => {
-          deleteExercise(selectedExercise.id);
-          setIsEditorOpen(false);
-          navigation.goBack();
-        }}
       />
     </Container>
   );

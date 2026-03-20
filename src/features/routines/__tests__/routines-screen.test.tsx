@@ -5,6 +5,7 @@ import React, { type ForwardedRef, type PropsWithChildren } from 'react';
 import { RoutineDetailScreen } from '../screens/routine-detail-screen';
 import { LibraryScreen } from '../screens/library-screen';
 import { RoutinesScreen } from '../screens/routines-screen';
+import { useSchedules } from '@features/schedule';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutineInsights } from '../hooks/use-routine-insights';
 import { useRoutines } from '../hooks/use-routines';
@@ -41,6 +42,39 @@ jest.mock('../hooks/use-routines', () => ({
   useRoutines: jest.fn(),
 }));
 
+jest.mock('@features/schedule', () => ({
+  ScheduleDetailScreen: () => null,
+  useSchedules: jest.fn(),
+  buildScheduleSummary: (
+    schedule: { id: string },
+    entries: Array<{ routine_id: string }>,
+  ) => ({
+    schedule: { id: schedule.id },
+    routineCount: entries.length,
+    nextRoutineName: null,
+  }),
+  getActiveScheduleSummary: (
+    schedules: Array<{ id: string; is_active: number }>,
+    routines: Array<unknown>,
+    getScheduleEntries: (scheduleId: string) => Array<{ routine_id: string }>,
+  ) => {
+    const activeSchedule =
+      schedules.find((schedule) => schedule.is_active === 1) ?? null;
+
+    if (activeSchedule === null) {
+      return null;
+    }
+
+    return {
+      schedule: activeSchedule,
+      routineCount: getScheduleEntries(activeSchedule.id).length,
+      nextRoutineName: null,
+      entries: routines,
+    };
+  },
+  getScheduleStatusText: () => 'Ready to start from the first routine.',
+}));
+
 jest.mock('@lodev09/react-native-true-sheet', () => {
   const React = require('react');
   const ReactNative = require('react-native');
@@ -48,7 +82,7 @@ jest.mock('@lodev09/react-native-true-sheet', () => {
   return {
     TrueSheet: React.forwardRef(
       (
-        { children }: PropsWithChildren,
+        { children, footer }: PropsWithChildren<{ footer?: React.ReactNode }>,
         ref: ForwardedRef<{
           present: () => Promise<void>;
           dismiss: () => Promise<void>;
@@ -59,15 +93,89 @@ jest.mock('@lodev09/react-native-true-sheet', () => {
           dismiss: async () => undefined,
         }));
 
-        return <ReactNative.View>{children}</ReactNative.View>;
+        return (
+          <ReactNative.View>
+            {children}
+            {footer}
+          </ReactNative.View>
+        );
       },
     ),
   };
 });
 
+jest.mock('react-native-draggable-flatlist', () => {
+  const ReactNative = require('react-native');
+
+  return {
+    __esModule: true,
+    default: ({
+      data,
+      renderItem,
+      ListHeaderComponent,
+      ListFooterComponent,
+      ListEmptyComponent,
+      onDragEnd,
+    }: {
+      data: Array<{ exerciseId?: string }>;
+      renderItem: (props: {
+        item: { exerciseId?: string };
+        drag: () => void;
+        isActive: boolean;
+        getIndex: () => number;
+      }) => React.ReactNode;
+      ListHeaderComponent?: React.ReactNode;
+      ListFooterComponent?: React.ReactNode;
+      ListEmptyComponent?: React.ReactNode;
+      onDragEnd?: (params: {
+        data: Array<{ exerciseId?: string }>;
+        from: number;
+        to: number;
+      }) => void;
+    }) => (
+      <ReactNative.View>
+        {ListHeaderComponent}
+        {data.length === 0
+          ? ListEmptyComponent
+          : data.map((item, index) => (
+              <ReactNative.View key={item.exerciseId}>
+                {renderItem({
+                  item,
+                  drag: () => {
+                    const nextData = [...data];
+                    const [moved] = nextData.splice(index, 1);
+                    nextData.unshift(moved);
+                    onDragEnd?.({ data: nextData, from: index, to: 0 });
+                  },
+                  isActive: false,
+                  getIndex: () => index,
+                })}
+              </ReactNative.View>
+            ))}
+        {ListFooterComponent}
+      </ReactNative.View>
+    ),
+  };
+});
+
+const mockUseSchedules = jest.mocked(useSchedules);
 const mockUseExercises = jest.mocked(useExercises);
 const mockUseRoutineInsights = jest.mocked(useRoutineInsights);
 const mockUseRoutines = jest.mocked(useRoutines);
+
+function buildSchedulesHookState(): ReturnType<typeof useSchedules> {
+  return {
+    schedules: [],
+    hasLoaded: true,
+    refresh: jest.fn(),
+    version: 0,
+    getScheduleEntries: jest.fn().mockReturnValue([]),
+    createSchedule: jest.fn(),
+    updateSchedule: jest.fn(),
+    setActiveSchedule: jest.fn(),
+    deleteSchedule: jest.fn(),
+  };
+}
 
 function renderScreen(): ReturnType<typeof render> {
   return render(
@@ -80,6 +188,8 @@ function renderScreen(): ReturnType<typeof render> {
 describe('RoutinesScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    mockUseSchedules.mockReturnValue(buildSchedulesHookState());
 
     mockUseRoutineInsights.mockReturnValue({
       getExerciseInsight: jest.fn().mockReturnValue({
@@ -153,7 +263,9 @@ describe('RoutinesScreen', () => {
 
     expect(refreshExercises).toHaveBeenCalledTimes(1);
     expect(refreshRoutines).toHaveBeenCalledTimes(1);
+    expect(mockUseSchedules().refresh).toHaveBeenCalledTimes(1);
 
+    fireEvent.press(screen.getByLabelText('exercises'));
     fireEvent.press(screen.getByText('New Exercise'));
     fireEvent.changeText(
       screen.getByPlaceholderText('Bench Press'),
@@ -170,7 +282,7 @@ describe('RoutinesScreen', () => {
       ),
       ' Set your shoulders before every rep. ',
     );
-    fireEvent.press(screen.getAllByText('Create Exercise')[1]);
+    fireEvent.press(screen.getByLabelText('Save'));
 
     expect(createExercise).toHaveBeenCalledWith({
       name: 'Bench Press',
@@ -211,6 +323,7 @@ describe('RoutinesScreen', () => {
 
     renderScreen();
 
+    fireEvent.press(screen.getByLabelText('exercises'));
     fireEvent.press(screen.getByLabelText('Open Bench Press'));
 
     expect(screen.getByText('Edit Exercise')).toBeTruthy();
@@ -286,8 +399,8 @@ describe('RoutinesScreen', () => {
     fireEvent.press(screen.getByLabelText('Open Push A'));
     expect(screen.getByText('Edit Routine')).toBeTruthy();
     fireEvent.press(screen.getByText('Edit Routine'));
-    fireEvent.press(screen.getByLabelText('Move Overhead Press up'));
-    fireEvent.press(screen.getByText('Save Routine'));
+    fireEvent(screen.getByLabelText('Reorder Overhead Press'), 'onLongPress');
+    fireEvent.press(screen.getByLabelText('Save'));
 
     expect(screen.getByText('Progression')).toBeTruthy();
     expect(updateRoutine).toHaveBeenCalledWith('routine-1', {
@@ -367,7 +480,7 @@ describe('RoutinesScreen', () => {
       screen.getByLabelText('Add Incline Dumbbell Press to routine'),
     );
     fireEvent.press(screen.getByText('Add Selected'));
-    fireEvent.press(screen.getByText('Save Routine'));
+    fireEvent.press(screen.getByLabelText('Save'));
 
     expect(updateRoutine).toHaveBeenCalledWith('routine-1', {
       name: 'Push A',
@@ -456,7 +569,7 @@ describe('RoutinesScreen', () => {
     expect(setOptions).toHaveBeenCalledWith({ title: 'Push A' });
   });
 
-  it('opens library exercise details through the root exercise screen when available', () => {
+  it('opens library exercise details through the local plan stack', () => {
     const localNavigate = jest.fn();
     const rootNavigate = jest.fn();
 
@@ -504,15 +617,16 @@ describe('RoutinesScreen', () => {
       />,
     );
 
+    fireEvent.press(screen.getByLabelText('exercises'));
     fireEvent.press(screen.getByLabelText('Open Bench Press'));
 
-    expect(rootNavigate).toHaveBeenCalledWith('ExerciseDetail', {
+    expect(localNavigate).toHaveBeenCalledWith('ExerciseDetail', {
       exerciseId: 'exercise-1',
     });
-    expect(localNavigate).not.toHaveBeenCalled();
+    expect(rootNavigate).not.toHaveBeenCalled();
   });
 
-  it('opens library routine details through the root routine screen when available', () => {
+  it('opens library routine details through the local plan stack', () => {
     const localNavigate = jest.fn();
     const rootNavigate = jest.fn();
 
@@ -556,9 +670,9 @@ describe('RoutinesScreen', () => {
     fireEvent.press(screen.getByLabelText('routines'));
     fireEvent.press(screen.getByLabelText('Open Push A'));
 
-    expect(rootNavigate).toHaveBeenCalledWith('RoutineDetail', {
+    expect(localNavigate).toHaveBeenCalledWith('RoutineDetail', {
       routineId: 'routine-1',
     });
-    expect(localNavigate).not.toHaveBeenCalled();
+    expect(rootNavigate).not.toHaveBeenCalled();
   });
 });

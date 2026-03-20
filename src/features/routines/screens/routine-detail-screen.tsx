@@ -1,6 +1,6 @@
-import { useHeaderHeight } from '@react-navigation/elements';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import type { Exercise, RoutineExercise } from '@core/database/types';
@@ -12,7 +12,6 @@ import {
   Label,
   Muted,
 } from '@shared/components';
-import { RoutineEditorSheet } from '../components/routine-editor-sheet';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutineInsights } from '../hooks/use-routine-insights';
 import { useRoutines } from '../hooks/use-routines';
@@ -50,14 +49,12 @@ function RoutineDetailPage({
   }[];
   onEdit: () => void;
 }): React.JSX.Element {
-  const headerHeight = useHeaderHeight();
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentInsetAdjustmentBehavior="never"
       automaticallyAdjustContentInsets={false}
       contentContainerStyle={{
-        paddingTop: headerHeight + 8,
         paddingBottom: 28,
       }}
     >
@@ -163,19 +160,23 @@ export function RoutineDetailScreen({
   RoutinesStackParamList,
   'RoutineDetail'
 >): React.JSX.Element {
-  const { exercises } = useExercises();
+  const { exercises, refresh: refreshExercises } = useExercises();
   const {
     routines,
     hasLoaded,
-    updateRoutine,
-    deleteRoutine,
+    refresh: refreshRoutines,
     getRoutineExercises,
   } = useRoutines();
   const { getRoutineInsight } = useRoutineInsights();
-
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const selectedRoutine =
     routines.find((routine) => routine.id === route.params.routineId) ?? null;
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshExercises();
+      refreshRoutines();
+    }, [refreshExercises, refreshRoutines]),
+  );
 
   useEffect(() => {
     if (selectedRoutine === null && hasLoaded) {
@@ -211,24 +212,11 @@ export function RoutineDetailScreen({
         averageVolume={routineInsight.averageVolume}
         averageDurationMinutes={routineInsight.averageDurationMinutes}
         recentSessions={routineInsight.recentSessions}
-        onEdit={() => setIsEditorOpen(true)}
-      />
-
-      <RoutineEditorSheet
-        visible={isEditorOpen}
-        routine={selectedRoutine}
-        exercises={exercises}
-        routineExercises={selectedRoutineExercises}
-        onClose={() => setIsEditorOpen(false)}
-        onSave={(input) => {
-          updateRoutine(selectedRoutine.id, input);
-          setIsEditorOpen(false);
-        }}
-        onDelete={() => {
-          deleteRoutine(selectedRoutine.id);
-          setIsEditorOpen(false);
-          navigation.goBack();
-        }}
+        onEdit={() =>
+          navigation.navigate('RoutineEditor', {
+            routineId: selectedRoutine.id,
+          })
+        }
       />
     </Container>
   );

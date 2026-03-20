@@ -102,24 +102,6 @@ export function RoutineEditorSheet({
     [],
   );
 
-  const handleMoveDraft = useCallback(
-    (index: number, direction: -1 | 1): void => {
-      setExerciseDrafts((current) => {
-        const nextIndex = index + direction;
-
-        if (nextIndex < 0 || nextIndex >= current.length) {
-          return current;
-        }
-
-        const nextDrafts = [...current];
-        const [moved] = nextDrafts.splice(index, 1);
-        nextDrafts.splice(nextIndex, 0, moved);
-        return nextDrafts;
-      });
-    },
-    [],
-  );
-
   const handleRemoveDraft = useCallback((index: number): void => {
     setExerciseDrafts((current) =>
       current.filter((_, entryIndex) => entryIndex !== index),
@@ -289,10 +271,8 @@ export function RoutineEditorSheet({
                 key={entry.exerciseId}
                 draft={entry}
                 exerciseName={exerciseName}
-                isFirst={index === 0}
-                isLast={index === exerciseDrafts.length - 1}
-                onMoveUp={() => handleMoveDraft(index, -1)}
-                onMoveDown={() => handleMoveDraft(index, 1)}
+                drag={() => undefined}
+                isActive={false}
                 onRemove={() => handleRemoveDraft(index)}
                 onChangeTargetSets={(value) =>
                   handleUpdateDraft(index, { targetSets: value })

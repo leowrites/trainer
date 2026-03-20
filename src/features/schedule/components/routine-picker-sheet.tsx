@@ -119,7 +119,7 @@ export function RoutinePickerSheet({
         ) : (
           <Muted className="text-sm leading-5">
             {routines.length === 0
-              ? 'No routines available yet. Create one from the Routines tab first.'
+              ? 'No routines available yet. Create one from the Plan tab first.'
               : 'No matching routines available to add.'}
           </Muted>
         )}
