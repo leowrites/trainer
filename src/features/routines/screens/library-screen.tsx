@@ -5,6 +5,7 @@ import { useFocusEffect, type NavigationProp } from '@react-navigation/native';
 
 import type { RootStackParamList } from '@core/navigation';
 import { Body, Card, Container, Muted } from '@shared/components';
+import { normalizeQuery } from '@shared/utils';
 import { ExerciseEditorSheet } from '../components/exercise-editor-sheet';
 import { LibraryExerciseCard } from '../components/library-exercise-card';
 import { LibraryHeader } from '../components/library-header';
@@ -13,7 +14,6 @@ import { RoutineEditorSheet } from '../components/routine-editor-sheet';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutines } from '../hooks/use-routines';
 import type { RoutinesStackParamList, Section } from '../types';
-import { normalizeQuery } from '../utils/formatters';
 
 export function LibraryScreen({
   navigation,

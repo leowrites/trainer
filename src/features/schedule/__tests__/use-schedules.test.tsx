@@ -16,6 +16,7 @@ describe('useSchedules', () => {
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useSchedules(), { wrapper });
     expect(result.current.schedules).toEqual([]);
+    expect(result.current.hasLoaded).toBe(true);
   });
 
   it('returns schedules fetched from the DB on mount', () => {
@@ -27,6 +28,17 @@ describe('useSchedules', () => {
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useSchedules(), { wrapper });
     expect(result.current.schedules).toEqual(mockRows);
+    expect(result.current.hasLoaded).toBe(true);
+  });
+
+  it('starts unloaded only before the first effect completes', () => {
+    const db = createMockDb();
+    db.getAllSync.mockReturnValue([]);
+    const wrapper = createDatabaseWrapper(db);
+
+    const { result } = renderHook(() => useSchedules(), { wrapper });
+
+    expect(result.current.hasLoaded).toBe(true);
   });
 
   it('createSchedule inserts the schedule row', () => {

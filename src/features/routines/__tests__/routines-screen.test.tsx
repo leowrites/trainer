@@ -307,6 +307,85 @@ describe('RoutinesScreen', () => {
     });
   });
 
+  it('adds multiple exercises to a routine before saving', () => {
+    const updateRoutine = jest.fn();
+
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-1',
+          name: 'Bench Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+        {
+          id: 'exercise-2',
+          name: 'Overhead Press',
+          muscle_group: 'Shoulders',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+        {
+          id: 'exercise-3',
+          name: 'Incline Dumbbell Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+      ],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+    mockUseRoutines.mockReturnValue({
+      routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createRoutine: jest.fn(),
+      updateRoutine,
+      deleteRoutine: jest.fn(),
+      getRoutineExercises: jest.fn().mockReturnValue([]),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({
+        'routine-1': 0,
+      }),
+    });
+
+    renderScreen();
+
+    fireEvent.press(screen.getByLabelText('routines'));
+    fireEvent.press(screen.getByLabelText('Open Push A'));
+    fireEvent.press(screen.getByText('Edit Routine'));
+    fireEvent.press(screen.getByText('Add Exercise'));
+    fireEvent.press(screen.getByLabelText('Add Bench Press to routine'));
+    fireEvent.press(
+      screen.getByLabelText('Add Incline Dumbbell Press to routine'),
+    );
+    fireEvent.press(screen.getByText('Add Selected'));
+    fireEvent.press(screen.getByText('Save Routine'));
+
+    expect(updateRoutine).toHaveBeenCalledWith('routine-1', {
+      name: 'Push A',
+      exercises: [
+        {
+          exerciseId: 'exercise-1',
+          targetSets: 3,
+          targetReps: 10,
+        },
+        {
+          exerciseId: 'exercise-3',
+          targetSets: 3,
+          targetReps: 10,
+        },
+      ],
+    });
+  });
+
   it('waits for routines to load before leaving routine detail', () => {
     const goBack = jest.fn();
     const setOptions = jest.fn();
