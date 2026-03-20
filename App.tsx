@@ -1,6 +1,7 @@
 import './global.css';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DatabaseProvider } from '@core/database';
@@ -19,15 +20,17 @@ function ThemedStatusBar(): React.JSX.Element {
 
 export default function App(): React.JSX.Element {
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <GluestackUIProvider>
-          <DatabaseProvider>
-            <ThemedStatusBar />
-            <RootNavigator />
-          </DatabaseProvider>
-        </GluestackUIProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <GluestackUIProvider>
+            <DatabaseProvider>
+              <ThemedStatusBar />
+              <RootNavigator />
+            </DatabaseProvider>
+          </GluestackUIProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

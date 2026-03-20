@@ -3,11 +3,11 @@ import { Alert, Pressable, View } from 'react-native';
 
 import type { Exercise, Routine, RoutineExercise } from '@core/database/types';
 import { Body, Button, Heading, Input, Label, Muted } from '@shared/components';
+import { normalizeQuery } from '@shared/utils';
 import type { NewRoutineInput } from '../hooks/use-routines';
 import type { RoutineExerciseDraft } from '../types';
 import {
   buildRoutineExerciseDrafts,
-  normalizeQuery,
   parsePositiveWholeNumber,
 } from '../utils/formatters';
 import { EditorSheet } from './editor-sheet';

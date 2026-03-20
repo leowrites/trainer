@@ -1,0 +1,1 @@
+export { normalizeQuery } from './query';

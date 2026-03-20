@@ -23,6 +23,7 @@ export interface NewScheduleInput {
  */
 export function useSchedules(): {
   schedules: Schedule[];
+  hasLoaded: boolean;
   refresh: () => void;
   /** Increments on every mutation, useful for invalidating derived state. */
   version: number;
@@ -34,6 +35,7 @@ export function useSchedules(): {
 } {
   const db = useDatabase();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
   const refresh = useCallback((): void => {
@@ -45,6 +47,7 @@ export function useSchedules(): {
       'SELECT id, name, is_active, current_position FROM schedules ORDER BY name ASC',
     );
     setSchedules(rows);
+    setHasLoaded(true);
   }, [db, refreshKey]);
 
   const getScheduleEntries = useCallback(
@@ -125,6 +128,7 @@ export function useSchedules(): {
 
   return {
     schedules,
+    hasLoaded,
     refresh,
     version: refreshKey,
     getScheduleEntries,

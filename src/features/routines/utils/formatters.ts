@@ -31,10 +31,6 @@ export function formatVolumeLabel(value: number | null): string {
   return `${Math.round(value)} avg volume`;
 }
 
-export function normalizeQuery(value: string): string {
-  return value.trim().toLowerCase();
-}
-
 export function parsePositiveWholeNumber(
   value: string,
   fallback: number,

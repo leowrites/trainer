@@ -25,7 +25,10 @@ import {
   RoutinesScreen,
   type RoutinesStackParamList,
 } from '@features/routines';
-import { ScheduleScreen } from '@features/schedule';
+import {
+  ScheduleScreen,
+  type ScheduleStackParamList,
+} from '@features/schedule';
 import { WorkoutActiveScreen, WorkoutScreen } from '@features/workout-mode';
 import { useWorkoutStore } from '@features/workout-mode/store';
 import { useTheme } from '@core/theme/theme-context';
@@ -35,7 +38,7 @@ import { useTheme } from '@core/theme/theme-context';
 export type RootTabParamList = {
   Workout: undefined;
   Routines: NavigatorScreenParams<RoutinesStackParamList>;
-  Schedule: undefined;
+  Schedule: NavigatorScreenParams<ScheduleStackParamList>;
   History: undefined;
   Profile: undefined;
 };
@@ -129,7 +132,11 @@ function IosTabs(): React.JSX.Element {
         component={RoutinesScreen}
         options={{ headerShown: false }}
       />
-      <NativeTab.Screen name="Schedule" component={ScheduleScreen} />
+      <NativeTab.Screen
+        name="Schedule"
+        component={ScheduleScreen}
+        options={{ headerShown: false }}
+      />
       <NativeTab.Screen name="History" component={HistoryScreen} />
       <NativeTab.Screen name="Profile" component={ProfileScreen} />
     </NativeTab.Navigator>
