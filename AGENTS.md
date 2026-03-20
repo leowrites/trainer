@@ -2,6 +2,41 @@
 
 This guide helps coding agents make safe, high-quality changes in the `trainer` repository.
 
+## LLM-Oriented Design
+
+- Treat `docs/llm_oriented_design.md` as the mandatory design baseline for all non-iOS code in this repository.
+- `AGENTS.md` is the repo-specific enforcement layer. If a subtree needs a temporary exception, write it explicitly in `AGENTS.md` or a nested subtree `AGENTS.md`; never infer exceptions.
+- Hard rules for non-iOS production code:
+  - max file size: `800` LOC
+  - one file, one responsibility
+  - every module begins with a calling spec block
+  - prefer pure functions over methods when object state is unnecessary
+  - prefer dict dispatch and thin registries over factory / strategy indirection
+  - keep deterministic logic in standalone, tested helpers or tools
+  - keep entrypoints and coordinators as slim recipe-style orchestrators
+  - separate schema-like contracts from mutation or orchestration logic
+  - request/config models should reject unknown fields unless a documented exception is required
+
+## Before Committing
+
+- Review `git diff` for secrets, tokens, credentials, local paths, private data, or other sensitive material.
+- Do not commit until the diff is clean.
+
+## Commit Messages
+
+- Use conventional commit format: `type(scope): subject`. Type is lowercase: `feat`, `fix`, `docs`, `test`, `chore`, `refactor`, etc. Scope is optional (e.g. `feat(dashboard):`, `fix:`).
+- Subject: overall change in imperative mood.
+- Following lines: bullet points summarizing concrete changes in the diff.
+- Do not invent details.
+
+## PR hygiene
+
+- Keep PR descriptions concise and structured:
+  - What changed
+  - Why
+  - Validation performed
+  - Risks / follow-ups
+
 ## Mission and product context
 
 - Trainer is an **offline-first** React Native fitness app built with Expo.
@@ -44,11 +79,10 @@ This guide helps coding agents make safe, high-quality changes in the `trainer` 
 1. Read relevant docs first (`README.md`, `docs/architecture.md`, and touched feature files).
 2. Make the smallest change that solves the task.
 3. Do not implement changes directly in the shared `main` checkout. Treat local `main` as pull-only and keep it clean.
-4. Use a dedicated branch/worktree for all implementation work, including primary agent work.
-5. When delegating implementation work to a subagent, always create a dedicated git worktree for that subagent.
-6. Each subagent must use its own branch in its assigned worktree and commit/push from that branch instead of working in the shared workspace.
-7. Run validation commands before finalizing.
-8. Summarize behavior impact, not just code diffs.
+4. When delegating implementation work to a subagent, always create a dedicated git worktree for that subagent.
+5. Each subagent must use its own branch in its assigned worktree and commit/push from that branch instead of working in the shared workspace.
+6. Run validation commands before finalizing.
+7. Summarize behavior impact, not just code diffs.
 
 ## Validation checklist
 
@@ -67,15 +101,6 @@ If a command fails due to environment limits, report it explicitly.
 
 - For perceptible UI changes, capture a screenshot via the browser tooling when available.
 - Include the screenshot artifact path in your final report.
-
-## Commit and PR hygiene
-
-- Use Conventional Commits (example: `docs(agents): add repository operating guide`).
-- Keep PR descriptions concise and structured:
-  - What changed
-  - Why
-  - Validation performed
-  - Risks / follow-ups
 
 ## Safety
 
