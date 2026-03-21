@@ -7,6 +7,7 @@ import type {
 export interface ActiveWorkoutSet {
   id: string;
   exerciseId: string;
+  position?: number | null;
   reps: number;
   weight: number;
   isCompleted: boolean;
@@ -17,6 +18,7 @@ export interface ActiveWorkoutSet {
 export interface ActiveWorkoutExercise {
   exerciseId: string;
   exerciseName: string;
+  restSeconds?: number | null;
   targetSets: number | null;
   targetReps: number | null;
   sets: ActiveWorkoutSet[];
@@ -46,6 +48,7 @@ export type WorkoutSetRow = Pick<
   | 'id'
   | 'session_id'
   | 'exercise_id'
+  | 'position'
   | 'weight'
   | 'reps'
   | 'is_completed'

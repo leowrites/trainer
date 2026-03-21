@@ -7,10 +7,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import type DraggableFlatListType from 'react-native-draggable-flatlist';
 import type { RenderItemParams } from 'react-native-draggable-flatlist';
 
+import { useTheme } from '@core/theme/theme-context';
 import {
   Body,
   Button,
@@ -22,20 +23,22 @@ import {
   Muted,
 } from '@shared/components';
 import { useReducedMotionPreference } from '@shared/hooks';
-import { configureInteractionLayoutAnimation } from '@shared/utils';
+import {
+  DEFAULT_EXERCISE_TIMER_SECONDS,
+  configureInteractionLayoutAnimation,
+  showExerciseTimerPicker,
+} from '@shared/utils';
 import { ExercisePickerSheet } from '../components/exercise-picker-sheet';
 import { RoutineExerciseEditor } from '../components/routine-exercise-editor';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutines } from '../hooks/use-routines';
-import type { NewRoutineInput } from '../hooks/use-routines';
 import type { RoutineExerciseDraft, RoutinesStackParamList } from '../types';
 import {
+  buildDefaultRoutineExerciseDraft,
+  buildDefaultRoutineSetDraft,
   buildRoutineExerciseDrafts,
-  parsePositiveWholeNumber,
+  buildRoutineInput,
 } from '../utils/formatters';
-
-const DEFAULT_TARGET_SETS = '3';
-const DEFAULT_TARGET_REPS = '10';
 
 export function RoutineEditorScreen({
   route,
@@ -44,6 +47,7 @@ export function RoutineEditorScreen({
   RoutinesStackParamList,
   'RoutineEditor'
 >): React.JSX.Element {
+  const { colorMode } = useTheme();
   const DraggableFlatList = useMemo(
     () =>
       require('react-native-draggable-flatlist')
@@ -56,14 +60,13 @@ export function RoutineEditorScreen({
     hasLoaded,
     refresh: refreshRoutines,
     getRoutineExercises,
+    getRoutineTemplateExercises,
     createRoutine,
     updateRoutine,
-    deleteRoutine,
   } = useRoutines();
   const routineId = route.params?.routineId;
   const selectedRoutine =
     routines.find((routine) => routine.id === routineId) ?? null;
-
   const [name, setName] = useState('');
   const [exerciseDrafts, setExerciseDrafts] = useState<RoutineExerciseDraft[]>(
     [],
@@ -71,7 +74,6 @@ export function RoutineEditorScreen({
   const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const prefersReducedMotion = useReducedMotionPreference();
-
   const cancelActionRef = useRef<() => void>(() => undefined);
   const saveActionRef = useRef<() => void>(() => undefined);
 
@@ -100,11 +102,21 @@ export function RoutineEditorScreen({
 
     setName(selectedRoutine.name);
     setExerciseDrafts(
-      buildRoutineExerciseDrafts(getRoutineExercises(selectedRoutine.id)),
+      buildRoutineExerciseDrafts(
+        getRoutineTemplateExercises?.(selectedRoutine.id) ??
+          getRoutineExercises(selectedRoutine.id),
+      ),
     );
     setIsExercisePickerOpen(false);
     setError(null);
-  }, [getRoutineExercises, hasLoaded, navigation, routineId, selectedRoutine]);
+  }, [
+    getRoutineTemplateExercises,
+    getRoutineExercises,
+    hasLoaded,
+    navigation,
+    routineId,
+    selectedRoutine,
+  ]);
 
   const selectedExerciseIds = useMemo(
     () => exerciseDrafts.map((entry) => entry.exerciseId),
@@ -116,31 +128,26 @@ export function RoutineEditorScreen({
   }, [navigation]);
 
   const handleSave = useCallback((): void => {
-    const trimmedName = name.trim();
-
-    if (!trimmedName) {
+    if (!name.trim()) {
       setError('Routine name is required.');
       return;
     }
 
-    const input: NewRoutineInput = {
-      name: trimmedName,
-      exercises: exerciseDrafts.map((entry) => ({
-        exerciseId: entry.exerciseId,
-        targetSets: parsePositiveWholeNumber(entry.targetSets, 1),
-        targetReps: parsePositiveWholeNumber(entry.targetReps, 1),
-      })),
-    };
-
+    const input = buildRoutineInput(name, exerciseDrafts);
     setError(null);
 
     if (selectedRoutine === null) {
-      createRoutine(input);
-    } else {
-      updateRoutine(selectedRoutine.id, input);
+      const createdRoutine = createRoutine(input);
+      navigation.replace('RoutineDetail', {
+        routineId: createdRoutine.id,
+      });
+      return;
     }
 
-    navigation.goBack();
+    updateRoutine(selectedRoutine.id, input);
+    navigation.replace('RoutineDetail', {
+      routineId: selectedRoutine.id,
+    });
   }, [
     createRoutine,
     exerciseDrafts,
@@ -149,31 +156,6 @@ export function RoutineEditorScreen({
     selectedRoutine,
     updateRoutine,
   ]);
-
-  const handleArchive = useCallback((): void => {
-    if (selectedRoutine === null) {
-      return;
-    }
-
-    Alert.alert(
-      'Archive Routine',
-      `Archive ${selectedRoutine.name}? It will be removed from schedules but kept for historical workouts.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Archive',
-          style: 'destructive',
-          onPress: () => {
-            deleteRoutine(selectedRoutine.id);
-            navigation.goBack();
-          },
-        },
-      ],
-    );
-  }, [deleteRoutine, navigation, selectedRoutine]);
 
   cancelActionRef.current = handleCancel;
   saveActionRef.current = handleSave;
@@ -216,11 +198,69 @@ export function RoutineEditorScreen({
     [],
   );
 
+  const handleUpdateSetDraft = useCallback(
+    (
+      exerciseId: string,
+      setId: string,
+      patch: Partial<RoutineExerciseDraft['sets'][number]>,
+    ): void => {
+      setExerciseDrafts((current) =>
+        current.map((entry) =>
+          entry.exerciseId === exerciseId
+            ? {
+                ...entry,
+                sets: entry.sets.map((setEntry) =>
+                  setEntry.id === setId ? { ...setEntry, ...patch } : setEntry,
+                ),
+              }
+            : entry,
+        ),
+      );
+    },
+    [],
+  );
+
   const handleRemoveDraft = useCallback(
     (exerciseId: string): void => {
       configureInteractionLayoutAnimation(prefersReducedMotion);
       setExerciseDrafts((current) =>
         current.filter((entry) => entry.exerciseId !== exerciseId),
+      );
+    },
+    [prefersReducedMotion],
+  );
+
+  const handleAddSet = useCallback(
+    (exerciseId: string): void => {
+      configureInteractionLayoutAnimation(prefersReducedMotion);
+      setExerciseDrafts((current) =>
+        current.map((entry) =>
+          entry.exerciseId === exerciseId
+            ? {
+                ...entry,
+                sets: [...entry.sets, buildDefaultRoutineSetDraft()],
+              }
+            : entry,
+        ),
+      );
+    },
+    [prefersReducedMotion],
+  );
+
+  const handleRemoveSet = useCallback(
+    (exerciseId: string, setId: string): void => {
+      configureInteractionLayoutAnimation(prefersReducedMotion);
+      setExerciseDrafts((current) =>
+        current.map((entry) => {
+          if (entry.exerciseId !== exerciseId || entry.sets.length === 1) {
+            return entry;
+          }
+
+          return {
+            ...entry,
+            sets: entry.sets.filter((setEntry) => setEntry.id !== setId),
+          };
+        }),
       );
     },
     [prefersReducedMotion],
@@ -238,22 +278,46 @@ export function RoutineEditorScreen({
           ...current,
           ...exerciseIds
             .filter((exerciseId) => !currentExerciseIds.has(exerciseId))
-            .map((exerciseId) => ({
-              exerciseId,
-              targetSets: DEFAULT_TARGET_SETS,
-              targetReps: DEFAULT_TARGET_REPS,
-            })),
+            .map((exerciseId) => buildDefaultRoutineExerciseDraft(exerciseId)),
         ];
       });
     },
     [prefersReducedMotion],
   );
 
+  const handleOpenRestTimerOptions = useCallback(
+    (exerciseId: string, exerciseName: string, restSeconds: string): void => {
+      const parsedRestSeconds = Number.parseInt(restSeconds, 10);
+      const currentDurationSeconds =
+        Number.isFinite(parsedRestSeconds) && parsedRestSeconds > 0
+          ? parsedRestSeconds
+          : null;
+
+      showExerciseTimerPicker({
+        title: `${exerciseName} timer`,
+        message: 'Choose the timer duration for this exercise.',
+        colorMode,
+        currentDurationSeconds,
+        onSelectDuration: (nextDuration) => {
+          handleUpdateDraft(exerciseId, { restSeconds: String(nextDuration) });
+        },
+        onClear: () => {
+          handleUpdateDraft(exerciseId, { restSeconds: '' });
+        },
+        clearActionLabel:
+          currentDurationSeconds === null
+            ? `Use Default (${DEFAULT_EXERCISE_TIMER_SECONDS} sec) ✓`
+            : `Use Default (${DEFAULT_EXERCISE_TIMER_SECONDS} sec)`,
+      });
+    },
+    [colorMode, handleUpdateDraft],
+  );
+
   const listHeader = (
     <View>
-      <Label>{selectedRoutine ? 'Edit Routine' : 'Create Routine'}</Label>
+      <Label>Create Routine</Label>
       <Body className="mt-3 font-heading text-4xl leading-[36px]">
-        {selectedRoutine ? selectedRoutine.name : 'New Routine'}
+        New Routine
       </Body>
       <Label className="mt-3">Routine name</Label>
       <Input
@@ -266,7 +330,7 @@ export function RoutineEditorScreen({
 
       <View className="mt-5 mb-3 flex-row items-center justify-between gap-3">
         <View className="flex-1">
-          <Heading>Exercises</Heading>
+          <Heading>Template exercises</Heading>
         </View>
         <Button
           size="sm"
@@ -281,15 +345,6 @@ export function RoutineEditorScreen({
 
   const listFooter = (
     <View className="pb-7">
-      {selectedRoutine ? (
-        <Button
-          className="mt-4 w-full"
-          variant="danger"
-          onPress={handleArchive}
-        >
-          Archive Routine
-        </Button>
-      ) : null}
       {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
     </View>
   );
@@ -320,12 +375,30 @@ export function RoutineEditorScreen({
                 exerciseName={exerciseName}
                 drag={drag}
                 isActive={isActive}
-                onRemove={() => handleRemoveDraft(item.exerciseId)}
-                onChangeTargetSets={(value) =>
-                  handleUpdateDraft(item.exerciseId, { targetSets: value })
+                onOpenDetails={() =>
+                  navigation.navigate('ExerciseDetail', {
+                    exerciseId: item.exerciseId,
+                  })
                 }
-                onChangeTargetReps={(value) =>
-                  handleUpdateDraft(item.exerciseId, { targetReps: value })
+                onRemove={() => handleRemoveDraft(item.exerciseId)}
+                onOpenRestTimerOptions={() =>
+                  handleOpenRestTimerOptions(
+                    item.exerciseId,
+                    exerciseName,
+                    item.restSeconds,
+                  )
+                }
+                onAddSet={() => handleAddSet(item.exerciseId)}
+                onRemoveSet={(setId) => handleRemoveSet(item.exerciseId, setId)}
+                onChangeSetTargetReps={(setId, value) =>
+                  handleUpdateSetDraft(item.exerciseId, setId, {
+                    targetReps: value,
+                  })
+                }
+                onChangeSetPlannedWeight={(setId, value) =>
+                  handleUpdateSetDraft(item.exerciseId, setId, {
+                    plannedWeight: value,
+                  })
                 }
               />
             );
@@ -335,7 +408,7 @@ export function RoutineEditorScreen({
           ListEmptyComponent={
             <Muted className="mt-4 rounded-[18px] border border-dashed border-surface-border px-4 py-4 text-sm leading-[18px]">
               No exercises added yet. Use the picker above to build out this
-              routine.
+              routine template.
             </Muted>
           }
           showsVerticalScrollIndicator={false}

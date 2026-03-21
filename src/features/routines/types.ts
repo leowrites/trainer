@@ -9,8 +9,14 @@ export type RoutinesStackParamList = {
   ScheduleDetail: { scheduleId?: string };
 };
 
+export interface RoutineSetDraft {
+  id: string;
+  targetReps: string;
+  plannedWeight: string;
+}
+
 export interface RoutineExerciseDraft {
   exerciseId: string;
-  targetSets: string;
-  targetReps: string;
+  restSeconds: string;
+  sets: RoutineSetDraft[];
 }

@@ -4,16 +4,19 @@ import { useDatabase } from '@core/database/provider';
 import type { ActiveWorkoutSession } from '../types';
 import {
   completeWorkoutSessionRecord,
+  createWorkoutSessionExerciseRecord,
   createWorkoutSetRecord,
   deleteWorkoutSessionRecord,
-  deleteWorkoutSetsForExercise,
+  deleteWorkoutExerciseRecords,
   deleteWorkoutSetRecord,
+  getNextWorkoutSessionExercisePosition,
   loadActiveWorkoutSession,
+  updateWorkoutSessionExerciseRest,
   updateWorkoutSetCompletion,
   updateWorkoutSetReps,
   updateWorkoutSetWeight,
 } from '../session-repository';
-import { useWorkoutStore } from '../store';
+import { DEFAULT_EXERCISE_TIMER_SECONDS, useWorkoutStore } from '../store';
 
 function normalizeInteger(value: number): number {
   if (!Number.isFinite(value)) {
@@ -37,6 +40,7 @@ export function useActiveWorkout(): {
   removeExercise: (exerciseId: string) => void;
   addSet: (exerciseId: string) => void;
   deleteSet: (setId: string) => void;
+  updateExerciseRestSeconds?: (exerciseId: string, restSeconds: number) => void;
   updateReps: (setId: string, reps: number) => void;
   updateWeight: (setId: string, weight: number) => void;
   toggleSetLogged: (setId: string, isCompleted: boolean) => void;
@@ -83,19 +87,39 @@ export function useActiveWorkout(): {
         return;
       }
 
-      const newSet = createWorkoutSetRecord(
-        db,
-        currentActiveSessionId,
-        exerciseId,
-        0,
-        0,
-        null,
-        null,
+      const nextExercisePosition = Math.max(
+        currentActiveSession.exercises.length,
+        getNextWorkoutSessionExercisePosition(db, currentActiveSessionId),
       );
+      let newSet: ReturnType<typeof createWorkoutSetRecord> | null = null;
+
+      db.withTransactionSync(() => {
+        newSet = createWorkoutSetRecord(
+          db,
+          currentActiveSessionId,
+          exerciseId,
+          0,
+          0,
+          null,
+          null,
+        );
+        createWorkoutSessionExerciseRecord(
+          db,
+          currentActiveSessionId,
+          exerciseId,
+          nextExercisePosition,
+          DEFAULT_EXERCISE_TIMER_SECONDS,
+        );
+      });
+
+      if (!newSet) {
+        return;
+      }
 
       addExerciseToStore({
         exerciseId,
         exerciseName,
+        restSeconds: DEFAULT_EXERCISE_TIMER_SECONDS,
         targetSets: null,
         targetReps: null,
         sets: [newSet],
@@ -114,7 +138,7 @@ export function useActiveWorkout(): {
         return;
       }
 
-      deleteWorkoutSetsForExercise(db, currentActiveSessionId, exerciseId);
+      deleteWorkoutExerciseRecords(db, currentActiveSessionId, exerciseId);
       removeExerciseFromStore(exerciseId);
     },
     [db, removeExerciseFromStore],
@@ -171,6 +195,22 @@ export function useActiveWorkout(): {
     [db, deleteSetFromStore],
   );
 
+  const updateExerciseRestSeconds = useCallback(
+    (exerciseId: string, restSeconds: number): void => {
+      if (!activeSessionId) {
+        return;
+      }
+
+      updateWorkoutSessionExerciseRest(
+        db,
+        activeSessionId,
+        exerciseId,
+        restSeconds,
+      );
+    },
+    [activeSessionId, db],
+  );
+
   const toggleSetLogged = useCallback(
     (setId: string, isCompleted: boolean): void => {
       updateWorkoutSetCompletion(db, setId, isCompleted);
@@ -206,6 +246,7 @@ export function useActiveWorkout(): {
     removeExercise,
     addSet,
     deleteSet,
+    updateExerciseRestSeconds,
     updateReps,
     updateWeight,
     toggleSetLogged,

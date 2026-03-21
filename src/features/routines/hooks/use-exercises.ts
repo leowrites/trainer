@@ -82,6 +82,15 @@ export function useExercises(): {
     (id: string): void => {
       db.withTransactionSync(() => {
         // Cascade-delete any routine_exercise rows referencing this exercise.
+        db.runSync(
+          `DELETE FROM routine_exercise_sets
+           WHERE routine_exercise_id IN (
+             SELECT id
+             FROM routine_exercises
+             WHERE exercise_id = ?
+           )`,
+          [id],
+        );
         db.runSync('DELETE FROM routine_exercises WHERE exercise_id = ?', [id]);
         db.runSync('UPDATE exercises SET is_deleted = 1 WHERE id = ?', [id]);
       });

@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
+import { Alert } from 'react-native';
 
 import { WorkoutSummaryScreen } from '../screens/workout-summary-screen';
 import { useWorkoutSummary } from '../hooks/use-workout-summary';
@@ -205,5 +206,86 @@ describe('WorkoutSummaryScreen', () => {
     );
 
     expect(screen.getByText('Loading summary')).toBeTruthy();
+  });
+
+  it('shows a blocking alert for routine template updates', () => {
+    const applyTemplateUpdate = jest.fn();
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+
+    mockUseWorkoutSummary.mockReturnValue({
+      isLoading: false,
+      saveFeedback: jest.fn(),
+      applyTemplateUpdate,
+      summary: {
+        unit: 'kg',
+        completedAtLabel: '8:42 AM',
+        dateLabel: 'Mar 21, 2026',
+        durationLabel: '42m',
+        volumeLabel: '5,240 kg',
+        streakLabel: '3 week streak',
+        weeklyProgressLabel: '2 workouts completed this week',
+        effortLevel: null,
+        fatigueLevel: null,
+        scheduleContext: null,
+        recordBadges: [],
+        templateUpdate: {
+          routineName: 'Pull A',
+          canApply: true,
+          appliedAtLabel: null,
+        },
+        session: {
+          id: 'session-1',
+          routineId: 'routine-1',
+          routineName: 'Pull A',
+          startTime: 1,
+          endTime: 2,
+          durationMinutes: 42,
+          totalSets: 6,
+          totalCompletedSets: 6,
+          totalReps: 48,
+          totalVolume: 3000,
+          exerciseCount: 2,
+          exercises: [],
+        },
+      },
+    });
+
+    render(
+      <WorkoutSummaryScreen
+        navigation={
+          {
+            canGoBack: jest.fn(() => true),
+            goBack: jest.fn(),
+            navigate: jest.fn(),
+            setOptions: jest.fn(),
+          } as never
+        }
+        route={{
+          key: 'WorkoutSummary-key',
+          name: 'WorkoutSummary',
+          params: { sessionId: 'session-1' },
+        }}
+      />,
+    );
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Update routine template?',
+      expect.stringContaining('Pull A'),
+      expect.any(Array),
+      { cancelable: false },
+    );
+
+    const buttons = alertSpy.mock.calls[0]?.[2] as Array<{
+      text: string;
+      onPress?: () => void;
+    }>;
+
+    act(() => {
+      buttons.find((button) => button.text === 'Apply')?.onPress?.();
+    });
+
+    expect(applyTemplateUpdate).toHaveBeenCalledTimes(1);
+
+    alertSpy.mockRestore();
   });
 });

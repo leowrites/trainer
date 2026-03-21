@@ -96,19 +96,25 @@ describe('useActiveWorkout', () => {
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      ['new-set-1', 'session-2', 'exercise-2', 0, 0, 0, null, null],
+      expect.stringContaining('INSERT INTO workout_session_exercises'),
+      ['new-set-1', 'session-2', 'exercise-2', 0, 60],
+    );
+    expect(db.runSync).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO workout_sets'),
+      ['new-set-1', 'session-2', 'exercise-2', 0, 0, 0, 0, null, null],
     );
     expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([
       {
         exerciseId: 'exercise-2',
         exerciseName: 'Goblet Squat',
+        restSeconds: 60,
         targetSets: null,
         targetReps: null,
         sets: [
           {
             id: 'new-set-1',
             exerciseId: 'exercise-2',
+            position: 0,
             reps: 0,
             weight: 0,
             isCompleted: false,
@@ -152,13 +158,55 @@ describe('useActiveWorkout', () => {
     });
 
     expect(
-      db.runSync.mock.calls.filter(
-        ([sql]) =>
-          sql ===
-          'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      db.runSync.mock.calls.filter(([sql]) =>
+        (sql as string).includes('INSERT INTO workout_sets'),
       ),
     ).toHaveLength(1);
     expect(useWorkoutStore.getState().activeSession?.exercises).toHaveLength(1);
+  });
+
+  it('uses the next persisted exercise position when re-adding after removals', () => {
+    const db = createMockDb();
+    db.getFirstSync.mockImplementation((query: string) => {
+      if (query.includes('MAX(position) AS max_position')) {
+        return { max_position: 2 };
+      }
+
+      return null;
+    });
+    const wrapper = createDatabaseWrapper(db);
+    useWorkoutStore.setState({
+      isWorkoutActive: true,
+      activeSessionId: 'session-2',
+      startTime: activeSession.startTime,
+      activeSession: {
+        ...activeSession,
+        id: 'session-2',
+        exercises: [
+          activeSession.exercises[0],
+          {
+            exerciseId: 'exercise-3',
+            exerciseName: 'Shoulder Press',
+            restSeconds: 90,
+            targetSets: 3,
+            targetReps: 10,
+            sets: [],
+          },
+        ],
+      },
+    });
+
+    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
+
+    act(() => {
+      result.current.addExercise('exercise-4', 'Cable Row');
+    });
+
+    expect(db.withTransactionSync).toHaveBeenCalled();
+    expect(db.runSync).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO workout_session_exercises'),
+      ['new-set-1', 'session-2', 'exercise-4', 3, 60],
+    );
   });
 
   it('removes planned routine exercises during an active workout', () => {
@@ -204,8 +252,8 @@ describe('useActiveWorkout', () => {
       [145.5, 'set-1'],
     );
     expect(db.runSync).toHaveBeenCalledWith(
-      'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      ['new-set-1', 'session-1', 'exercise-1', 145.5, 10, 0, 3, 8],
+      expect.stringContaining('INSERT INTO workout_sets'),
+      ['new-set-1', 'session-1', 'exercise-1', 0, 145.5, 10, 0, 3, 8],
     );
     expect(db.runSync).toHaveBeenCalledWith(
       'DELETE FROM workout_sets WHERE id = ?',
@@ -216,6 +264,7 @@ describe('useActiveWorkout', () => {
         {
           id: 'new-set-1',
           exerciseId: 'exercise-1',
+          position: 0,
           reps: 10,
           weight: 145.5,
           isCompleted: false,

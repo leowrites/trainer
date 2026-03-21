@@ -6,7 +6,7 @@
  * changes. Forward-only migration steps belong in migrations.ts.
  */
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS exercises (
@@ -31,13 +31,25 @@ export const CREATE_TABLES_SQL = `
     exercise_id TEXT NOT NULL,
     position    INTEGER NOT NULL,
     target_sets INTEGER NOT NULL,
-    target_reps INTEGER NOT NULL
+    target_reps INTEGER NOT NULL,
+    rest_seconds INTEGER
   );
 
   CREATE INDEX IF NOT EXISTS idx_routine_exercises_routine
     ON routine_exercises (routine_id);
   CREATE INDEX IF NOT EXISTS idx_routine_exercises_exercise
     ON routine_exercises (exercise_id);
+
+  CREATE TABLE IF NOT EXISTS routine_exercise_sets (
+    id                  TEXT PRIMARY KEY NOT NULL,
+    routine_exercise_id TEXT NOT NULL,
+    position            INTEGER NOT NULL,
+    target_reps         INTEGER NOT NULL,
+    planned_weight      REAL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_routine_exercise_sets_routine_exercise
+    ON routine_exercise_sets (routine_exercise_id);
 
   CREATE TABLE IF NOT EXISTS schedules (
     id               TEXT PRIMARY KEY NOT NULL,
@@ -67,7 +79,8 @@ export const CREATE_TABLES_SQL = `
     start_time    INTEGER NOT NULL,
     end_time      INTEGER,
     effort_level  INTEGER,
-    fatigue_level INTEGER
+    fatigue_level INTEGER,
+    template_applied_at INTEGER
   );
 
   CREATE INDEX IF NOT EXISTS idx_workout_sessions_routine
@@ -75,10 +88,22 @@ export const CREATE_TABLES_SQL = `
   CREATE INDEX IF NOT EXISTS idx_workout_sessions_schedule
     ON workout_sessions (schedule_id);
 
+  CREATE TABLE IF NOT EXISTS workout_session_exercises (
+    id          TEXT PRIMARY KEY NOT NULL,
+    session_id  TEXT NOT NULL,
+    exercise_id TEXT NOT NULL,
+    position    INTEGER NOT NULL,
+    rest_seconds INTEGER
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_workout_session_exercises_session
+    ON workout_session_exercises (session_id);
+
   CREATE TABLE IF NOT EXISTS workout_sets (
     id           TEXT PRIMARY KEY NOT NULL,
     session_id   TEXT NOT NULL,
     exercise_id  TEXT NOT NULL,
+    position     INTEGER,
     weight       REAL NOT NULL,
     reps         INTEGER NOT NULL,
     is_completed INTEGER NOT NULL DEFAULT 0,

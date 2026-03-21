@@ -12,8 +12,16 @@
 export interface RoutineExerciseData {
   exerciseId: string;
   position: number;
-  targetSets: number;
+  restSeconds?: number | null;
+  sets?: RoutineSetData[];
+  targetSets?: number;
+  targetReps?: number;
+}
+
+export interface RoutineSetData {
+  position: number;
   targetReps: number;
+  plannedWeight: number | null;
 }
 
 export interface WorkoutSnapshotInput {
@@ -43,6 +51,19 @@ export function buildRoutineSnapshot(
     // primitive values, so a single spread is sufficient.
     exercises: [...exercises]
       .sort((a, b) => a.position - b.position)
-      .map((e) => ({ ...e })),
+      .map((exercise) => ({
+        ...exercise,
+        restSeconds: exercise.restSeconds ?? null,
+        sets: [
+          ...(exercise.sets ??
+            Array.from({ length: exercise.targetSets ?? 0 }, (_, index) => ({
+              position: index,
+              targetReps: exercise.targetReps ?? 0,
+              plannedWeight: null,
+            }))),
+        ]
+          .sort((a, b) => a.position - b.position)
+          .map((setEntry) => ({ ...setEntry })),
+      })),
   };
 }

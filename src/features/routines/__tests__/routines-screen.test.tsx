@@ -440,8 +440,6 @@ describe('RoutinesScreen', () => {
 
     fireEvent.press(screen.getByLabelText('routines'));
     fireEvent.press(screen.getByLabelText('Open Push A'));
-    expect(screen.getByText('Edit Routine')).toBeTruthy();
-    fireEvent.press(screen.getByText('Edit Routine'));
     fireEvent(screen.getByLabelText('Reorder Overhead Press'), 'onLongPress');
     fireEvent.press(screen.getByLabelText('Save'));
 
@@ -451,13 +449,22 @@ describe('RoutinesScreen', () => {
       exercises: [
         {
           exerciseId: 'exercise-2',
-          targetSets: 4,
-          targetReps: 8,
+          restSeconds: null,
+          sets: [
+            { targetReps: 8, plannedWeight: null },
+            { targetReps: 8, plannedWeight: null },
+            { targetReps: 8, plannedWeight: null },
+            { targetReps: 8, plannedWeight: null },
+          ],
         },
         {
           exerciseId: 'exercise-1',
-          targetSets: 3,
-          targetReps: 10,
+          restSeconds: null,
+          sets: [
+            { targetReps: 10, plannedWeight: null },
+            { targetReps: 10, plannedWeight: null },
+            { targetReps: 10, plannedWeight: null },
+          ],
         },
       ],
     });
@@ -507,7 +514,6 @@ describe('RoutinesScreen', () => {
 
     fireEvent.press(screen.getByLabelText('routines'));
     fireEvent.press(screen.getByLabelText('Open Push A'));
-    fireEvent.press(screen.getByText('Edit Routine'));
 
     expect(screen.queryByText('Delete Routine')).toBeNull();
     expect(screen.getByText('Archive Routine')).toBeTruthy();
@@ -566,7 +572,6 @@ describe('RoutinesScreen', () => {
 
     fireEvent.press(screen.getByLabelText('routines'));
     fireEvent.press(screen.getByLabelText('Open Push A'));
-    fireEvent.press(screen.getByText('Edit Routine'));
     fireEvent.press(screen.getByText('Add Exercise'));
     fireEvent.press(screen.getByLabelText('Add Bench Press to routine'));
     fireEvent.press(
@@ -580,13 +585,13 @@ describe('RoutinesScreen', () => {
       exercises: [
         {
           exerciseId: 'exercise-1',
-          targetSets: 3,
-          targetReps: 10,
+          restSeconds: null,
+          sets: [{ targetReps: 10, plannedWeight: null }],
         },
         {
           exerciseId: 'exercise-3',
-          targetSets: 3,
-          targetReps: 10,
+          restSeconds: null,
+          sets: [{ targetReps: 10, plannedWeight: null }],
         },
       ],
     });
@@ -658,7 +663,7 @@ describe('RoutinesScreen', () => {
     );
 
     expect(goBack).not.toHaveBeenCalled();
-    expect(screen.getByText('Edit Routine')).toBeTruthy();
+    expect(screen.getByText('Template exercises')).toBeTruthy();
     expect(setOptions).toHaveBeenCalledWith({ title: 'Push A' });
   });
 
