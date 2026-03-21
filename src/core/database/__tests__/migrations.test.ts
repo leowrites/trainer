@@ -17,6 +17,8 @@ function createMigrationDbMock({
     workout_sessions: ['schedule_id'],
     workout_sets: ['target_sets', 'target_reps'],
     exercises: ['how_to', 'equipment'],
+    routines: ['is_deleted'],
+    schedules: ['is_deleted'],
   } as Record<string, string[]>,
 }: {
   version?: number;
@@ -166,6 +168,30 @@ describe('prepareDatabase', () => {
     expect(finalVersion).toBe(SCHEMA_VERSION + 1);
     expect(db.execSync).not.toHaveBeenCalledWith(
       expect.stringContaining('CREATE TABLE IF NOT EXISTS'),
+    );
+  });
+
+  it('adds routine and schedule archive columns for version 6 databases', () => {
+    const db = createMigrationDbMock({
+      version: 6,
+      tableNames: ['routines', 'schedules'],
+      columnsByTable: {
+        workout_sessions: ['schedule_id', 'snapshot_name'],
+        workout_sets: ['target_sets', 'target_reps'],
+        exercises: ['how_to', 'equipment', 'is_deleted'],
+        routines: [],
+        schedules: [],
+      },
+    });
+
+    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+
+    expect(finalVersion).toBe(SCHEMA_VERSION);
+    expect(db.execSync).toHaveBeenCalledWith(
+      'ALTER TABLE routines ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
+    );
+    expect(db.execSync).toHaveBeenCalledWith(
+      'ALTER TABLE schedules ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
     );
   });
 });

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React from 'react';
+import { FlatList } from 'react-native';
 
 import type { HistoryStackParamList } from '../navigation-types';
 import { HistoryScreen } from '../screens/history-screen';
@@ -117,6 +118,8 @@ describe('HistoryScreen', () => {
     const refresh = jest.fn();
     mockUseHistoryAnalytics.mockReturnValue({
       isLoading: false,
+      isLoadingMore: false,
+      hasMore: false,
       sessions: [],
       trendSeriesByMetric: {
         volume: [],
@@ -124,6 +127,7 @@ describe('HistoryScreen', () => {
         reps: [],
         sets: [],
       },
+      loadMore: jest.fn(),
       refresh,
     });
 
@@ -147,6 +151,8 @@ describe('HistoryScreen', () => {
 
     mockUseHistoryAnalytics.mockReturnValue({
       isLoading: false,
+      isLoadingMore: false,
+      hasMore: true,
       sessions: [
         buildSession(),
         buildSession({
@@ -161,6 +167,7 @@ describe('HistoryScreen', () => {
         }),
       ],
       trendSeriesByMetric: buildTrendSeries(),
+      loadMore: jest.fn(),
       refresh,
     });
 
@@ -192,5 +199,25 @@ describe('HistoryScreen', () => {
         sessionId: 'session-2',
       }),
     );
+  });
+
+  it('requests the next page when the list reaches the end', () => {
+    const loadMore = jest.fn();
+
+    mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
+      isLoadingMore: false,
+      hasMore: true,
+      sessions: [buildSession()],
+      trendSeriesByMetric: buildTrendSeries(),
+      loadMore,
+      refresh: jest.fn(),
+    });
+
+    const view = render(<HistoryScreen />);
+
+    view.UNSAFE_getByType(FlatList).props.onEndReached();
+
+    expect(loadMore).toHaveBeenCalledTimes(1);
   });
 });

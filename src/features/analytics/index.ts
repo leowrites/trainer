@@ -8,8 +8,13 @@ export { HistoryNavigator } from './screens/history-navigator';
 export { HistoryScreen } from './screens/history-screen';
 export { HistorySessionDetailScreen } from './screens/history-session-detail-screen';
 export { useHistoryAnalytics } from './hooks/use-history-analytics';
+export { useHistorySessionDetail } from './hooks/use-history-session-detail';
 export { buildDashboardMetrics } from './domain/dashboard-metrics';
-export { buildHistorySessions } from './domain/history';
+export {
+  buildHistorySession,
+  buildHistorySessions,
+  buildHistoryTrendSessions,
+} from './domain/history';
 export { findHistorySessionById } from './domain/history-session-selector';
 export { filterSessionsByTrendRange } from './domain/history-trend-range';
 export {
@@ -25,6 +30,7 @@ export type {
   HistoryExerciseSummary,
   HistorySession,
   HistorySessionRow,
+  HistoryTrendSessionRow,
   HistoryTrendMetric,
   HistoryTrendRange,
   HistoryTrendSeriesByMetric,

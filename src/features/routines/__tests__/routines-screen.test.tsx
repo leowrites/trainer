@@ -339,6 +339,44 @@ describe('RoutinesScreen', () => {
     expect(screen.getByText('8 × 185 • 8 × 185 • 7 × 185')).toBeTruthy();
   });
 
+  it('does not show a delete action in the exercise editor', () => {
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-1',
+          name: 'Bench Press',
+          muscle_group: 'Chest',
+          how_to: 'Drive your feet and keep the bar path stacked.',
+          equipment: 'Barbell',
+          is_deleted: 0,
+        },
+      ],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+    mockUseRoutines.mockReturnValue({
+      routines: [],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createRoutine: jest.fn(),
+      updateRoutine: jest.fn(),
+      deleteRoutine: jest.fn(),
+      getRoutineExercises: jest.fn().mockReturnValue([]),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
+    });
+
+    renderScreen();
+
+    fireEvent.press(screen.getByLabelText('exercises'));
+    fireEvent.press(screen.getByLabelText('Open Bench Press'));
+    fireEvent.press(screen.getByText('Edit Exercise'));
+
+    expect(screen.queryByText('Delete Exercise')).toBeNull();
+  });
+
   it('opens the routine detail page and saves reordered exercises', () => {
     const updateRoutine = jest.fn();
 
@@ -422,6 +460,55 @@ describe('RoutinesScreen', () => {
         },
       ],
     });
+  });
+
+  it('does not show a delete action in the routine editor', () => {
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-1',
+          name: 'Bench Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+      ],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+    mockUseRoutines.mockReturnValue({
+      routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createRoutine: jest.fn(),
+      updateRoutine: jest.fn(),
+      deleteRoutine: jest.fn(),
+      getRoutineExercises: jest.fn().mockReturnValue([
+        {
+          id: 'routine-exercise-1',
+          routine_id: 'routine-1',
+          exercise_id: 'exercise-1',
+          position: 0,
+          target_sets: 3,
+          target_reps: 10,
+        },
+      ]),
+      getRoutineExerciseCounts: jest.fn().mockReturnValue({
+        'routine-1': 1,
+      }),
+    });
+
+    renderScreen();
+
+    fireEvent.press(screen.getByLabelText('routines'));
+    fireEvent.press(screen.getByLabelText('Open Push A'));
+    fireEvent.press(screen.getByText('Edit Routine'));
+
+    expect(screen.queryByText('Delete Routine')).toBeNull();
   });
 
   it('adds multiple exercises to a routine before saving', () => {

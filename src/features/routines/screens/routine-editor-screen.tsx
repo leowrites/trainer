@@ -150,6 +150,31 @@ export function RoutineEditorScreen({
     updateRoutine,
   ]);
 
+  const handleArchive = useCallback((): void => {
+    if (selectedRoutine === null) {
+      return;
+    }
+
+    Alert.alert(
+      'Archive Routine',
+      `Archive ${selectedRoutine.name}? It will be removed from schedules but kept for historical workouts.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: () => {
+            deleteRoutine(selectedRoutine.id);
+            navigation.goBack();
+          },
+        },
+      ],
+    );
+  }, [deleteRoutine, navigation, selectedRoutine]);
+
   cancelActionRef.current = handleCancel;
   saveActionRef.current = handleSave;
 
@@ -256,29 +281,16 @@ export function RoutineEditorScreen({
 
   const listFooter = (
     <View className="pb-7">
-      {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
-
       {selectedRoutine ? (
         <Button
-          variant="ghost"
-          className="mt-6 w-full"
-          onPress={() =>
-            Alert.alert('Delete Routine', `Delete ${selectedRoutine.name}?`, [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: () => {
-                  deleteRoutine(selectedRoutine.id);
-                  navigation.goBack();
-                },
-              },
-            ])
-          }
+          className="mt-4 w-full"
+          variant="danger"
+          onPress={handleArchive}
         >
-          Delete Routine
+          Archive Routine
         </Button>
       ) : null}
+      {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
     </View>
   );
 

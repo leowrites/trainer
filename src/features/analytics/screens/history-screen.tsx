@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { FlatList, View } from 'react-native';
 
 import { Caption, Container, Heading, Muted } from '@shared/components';
 import { DEFAULT_PROGRESSION_CONFIG } from '../constants';
@@ -30,9 +30,15 @@ export function HistoryScreen({
   const [activeMetric, setActiveMetric] =
     useState<HistoryTrendMetric>('volume');
   const [activeRange, setActiveRange] = useState<HistoryTrendRange>('3m');
-  const { sessions, trendSeriesByMetric, refresh } = useHistoryAnalytics({
-    trendRange: activeRange,
-  });
+  const {
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    sessions,
+    trendSeriesByMetric,
+    loadMore,
+    refresh,
+  } = useHistoryAnalytics({ trendRange: activeRange });
   const hasHandledInitialFocus = useRef(false);
 
   useFocusEffect(
@@ -49,66 +55,94 @@ export function HistoryScreen({
 
   return (
     <Container className="px-0 pb-0" edges={['left', 'right']}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 28 }}
-      >
-        <View className="pb-4">
-          <View accessibilityRole="header" className="gap-2">
-            <Heading className="text-4xl leading-[36px]">History</Heading>
-            <Muted className="text-sm leading-[19px]">
-              Review past sessions, progression trends, and session-level detail
-              in modal view.
-            </Muted>
-          </View>
-        </View>
-
-        <HistoryChartCard
-          activeMetric={activeMetric}
-          activeRange={activeRange}
-          onChangeMetric={setActiveMetric}
-          onChangeRange={setActiveRange}
-          trendSeriesByMetric={trendSeriesByMetric}
-          unit={progressionConfig.unit}
-        />
-
-        <View className="pb-2 pt-3">
-          <Heading className="text-2xl leading-[24px]">Sessions</Heading>
-          <Muted className="mt-2 text-sm leading-[17px]">
-            Open a session to inspect exercise details and progression cues.
-          </Muted>
-        </View>
-
-        {sessions.length > 0 ? (
-          <View className="gap-3 pt-2">
-            {sessions.map((session) => (
-              <HistorySessionCard
-                key={session.id}
-                session={session}
-                unit={progressionConfig.unit}
-                onPress={() =>
-                  navigation?.navigate('HistorySessionDetail', {
-                    sessionId: session.id,
-                    session,
-                  })
-                }
-              />
-            ))}
-          </View>
-        ) : (
+      <FlatList
+        data={sessions}
+        keyExtractor={(session) => session.id}
+        renderItem={({ item: session }) => (
           <View className="pt-2">
-            <View className="rounded-[24px] border border-surface-border/80 bg-surface-card px-5 py-5">
-              <Caption className="font-medium text-foreground">
-                No workout history yet
-              </Caption>
-              <Muted className="mt-2">
-                Completed sessions will appear here with routine, date, set
-                totals, and duration.
-              </Muted>
-            </View>
+            <HistorySessionCard
+              session={session}
+              unit={progressionConfig.unit}
+              onPress={() =>
+                navigation?.navigate('HistorySessionDetail', {
+                  sessionId: session.id,
+                  session,
+                })
+              }
+            />
           </View>
         )}
-      </ScrollView>
+        ListHeaderComponent={
+          <>
+            <View className="pb-4">
+              <View accessibilityRole="header" className="gap-2">
+                <Heading className="text-4xl leading-[36px]">History</Heading>
+                <Muted className="text-sm leading-[19px]">
+                  Review past sessions, progression trends, and session-level
+                  detail in modal view.
+                </Muted>
+              </View>
+            </View>
+
+            <HistoryChartCard
+              activeMetric={activeMetric}
+              activeRange={activeRange}
+              onChangeMetric={setActiveMetric}
+              onChangeRange={setActiveRange}
+              trendSeriesByMetric={trendSeriesByMetric}
+              unit={progressionConfig.unit}
+            />
+
+            <View className="pb-2 pt-3">
+              <Heading className="text-2xl leading-[24px]">Sessions</Heading>
+              <Muted className="mt-2 text-sm leading-[17px]">
+                Open a session to inspect exercise details and progression cues.
+              </Muted>
+            </View>
+          </>
+        }
+        ListEmptyComponent={
+          <View className="pt-2">
+            {isLoading ? (
+              <View className="rounded-[24px] border border-surface-border/80 bg-surface-card px-5 py-5">
+                <Caption className="font-medium text-foreground">
+                  Loading history
+                </Caption>
+                <Muted className="mt-2">
+                  Fetching your recent workout sessions.
+                </Muted>
+              </View>
+            ) : (
+              <View className="rounded-[24px] border border-surface-border/80 bg-surface-card px-5 py-5">
+                <Caption className="font-medium text-foreground">
+                  No workout history yet
+                </Caption>
+                <Muted className="mt-2">
+                  Completed sessions will appear here with routine, date, set
+                  totals, and duration.
+                </Muted>
+              </View>
+            )}
+          </View>
+        }
+        ListFooterComponent={
+          isLoadingMore ? (
+            <View className="pb-2 pt-4">
+              <Muted className="text-sm leading-[17px]">
+                Loading more sessions...
+              </Muted>
+            </View>
+          ) : null
+        }
+        onEndReached={() => {
+          if (hasMore) {
+            loadMore();
+          }
+        }}
+        onEndReachedThreshold={0.4}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 28 }}
+      />
     </Container>
   );
 }

@@ -5,3 +5,5 @@ export const DEFAULT_PROGRESSION_CONFIG: ProgressiveOverloadConfig = {
   unit: 'kg',
   precision: 1,
 };
+
+export const HISTORY_PAGE_SIZE = 20;

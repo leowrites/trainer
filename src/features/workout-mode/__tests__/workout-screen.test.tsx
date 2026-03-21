@@ -222,6 +222,8 @@ describe('WorkoutScreen', () => {
     });
     mockUseHistoryAnalytics.mockReturnValue({
       isLoading: false,
+      isLoadingMore: false,
+      hasMore: false,
       sessions: [
         {
           id: 'completed-session-1',
@@ -244,6 +246,7 @@ describe('WorkoutScreen', () => {
         reps: [],
         sets: [],
       },
+      loadMore: jest.fn(),
       refresh: jest.fn(),
     });
     mockUseUserProfile.mockReturnValue({

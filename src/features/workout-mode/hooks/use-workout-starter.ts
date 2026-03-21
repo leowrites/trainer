@@ -59,7 +59,7 @@ export function useWorkoutStarter(): {
   // the db reference or refreshKey changes.
   useEffect(() => {
     const activeSchedule = db.getFirstSync<Schedule>(
-      'SELECT id, name, is_active, current_position FROM schedules WHERE is_active = 1 LIMIT 1',
+      'SELECT id, name, is_active, current_position FROM schedules WHERE is_active = 1 AND is_deleted = 0 LIMIT 1',
     );
 
     if (!activeSchedule) {
@@ -86,7 +86,7 @@ export function useWorkoutStarter(): {
     }
 
     const routine = db.getFirstSync<Routine>(
-      'SELECT id, name, notes FROM routines WHERE id = ? LIMIT 1',
+      'SELECT id, name, notes FROM routines WHERE id = ? AND is_deleted = 0 LIMIT 1',
       [routineId],
     );
 
@@ -124,7 +124,7 @@ export function useWorkoutStarter(): {
     db.withTransactionSync(() => {
       // Re-fetch the active schedule inside the transaction.
       const activeSchedule = db.getFirstSync<Schedule>(
-        'SELECT id, name, is_active, current_position FROM schedules WHERE is_active = 1 LIMIT 1',
+        'SELECT id, name, is_active, current_position FROM schedules WHERE is_active = 1 AND is_deleted = 0 LIMIT 1',
       );
       if (!activeSchedule) return;
 
@@ -143,7 +143,7 @@ export function useWorkoutStarter(): {
       if (!routineId) return;
 
       const routine = db.getFirstSync<Routine>(
-        'SELECT id, name, notes FROM routines WHERE id = ? LIMIT 1',
+        'SELECT id, name, notes FROM routines WHERE id = ? AND is_deleted = 0 LIMIT 1',
         [routineId],
       );
       if (!routine) return;

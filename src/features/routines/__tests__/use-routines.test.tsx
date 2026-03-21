@@ -42,7 +42,7 @@ describe('useRoutines', () => {
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'INSERT INTO routines (id, name, notes) VALUES (?, ?, ?)',
+      'INSERT INTO routines (id, name, notes, is_deleted) VALUES (?, ?, ?, 0)',
       expect.arrayContaining(['Push A']),
     );
   });
@@ -109,7 +109,7 @@ describe('useRoutines', () => {
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'UPDATE routines SET name = ? WHERE id = ?',
+      'UPDATE routines SET name = ? WHERE id = ? AND is_deleted = 0',
       ['Push B', 'r1'],
     );
   });
@@ -199,7 +199,7 @@ describe('useRoutines', () => {
     expect(updateScheduleCall![1]).toEqual([1, 's1']);
   });
 
-  it('deleteRoutine cascades to routine_exercises', () => {
+  it('deleteRoutine archives the routine row instead of deleting it', () => {
     const db = createMockDb();
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useRoutines(), { wrapper });
@@ -209,21 +209,10 @@ describe('useRoutines', () => {
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'DELETE FROM routine_exercises WHERE routine_id = ?',
+      'UPDATE routines SET is_deleted = 1 WHERE id = ?',
       ['r1'],
     );
-  });
-
-  it('deleteRoutine deletes the routine itself', () => {
-    const db = createMockDb();
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useRoutines(), { wrapper });
-
-    act(() => {
-      result.current.deleteRoutine('r1');
-    });
-
-    expect(db.runSync).toHaveBeenCalledWith(
+    expect(db.runSync).not.toHaveBeenCalledWith(
       'DELETE FROM routines WHERE id = ?',
       ['r1'],
     );

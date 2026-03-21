@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import React from 'react';
-import { Alert } from 'react-native';
 
 import { ScheduleDetailScreen } from '../screens/schedule-detail-screen';
 import { ScheduleScreen } from '../screens/schedule-screen';
@@ -474,14 +473,7 @@ describe('ScheduleScreen', () => {
     expect(setActiveSchedule).toHaveBeenCalledWith('schedule-1');
   });
 
-  it('deletes a schedule from detail and dismisses the modal', () => {
-    const deleteSchedule = jest.fn();
-    const alertSpy = jest
-      .spyOn(Alert, 'alert')
-      .mockImplementation((_title, _message, buttons) => {
-        buttons?.[1]?.onPress?.();
-      });
-
+  it('does not show a delete action in schedule detail', () => {
     mockUseSchedules.mockReturnValue(
       buildScheduleHookState({
         schedules: [
@@ -492,7 +484,6 @@ describe('ScheduleScreen', () => {
             current_position: -1,
           },
         ],
-        deleteSchedule,
         getScheduleEntries: jest.fn().mockReturnValue([]),
       }),
     );
@@ -501,11 +492,8 @@ describe('ScheduleScreen', () => {
     renderNavigator();
 
     fireEvent.press(screen.getByLabelText('Open Upper Rotation'));
-    fireEvent.press(screen.getByText('Delete Schedule'));
 
-    expect(deleteSchedule).toHaveBeenCalledWith('schedule-1');
-
-    alertSpy.mockRestore();
+    expect(screen.queryByText('Delete Schedule')).toBeNull();
   });
 
   it('waits for schedules to load before leaving an invalid detail route', () => {
