@@ -125,6 +125,31 @@ export function ExerciseEditorScreen({
   cancelActionRef.current = handleCancel;
   saveActionRef.current = handleSave;
 
+  const handleArchive = useCallback((): void => {
+    if (selectedExercise === null) {
+      return;
+    }
+
+    Alert.alert(
+      'Archive Exercise',
+      `Archive ${selectedExercise.name}? It will be removed from routines but preserved in workout history.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: () => {
+            deleteExercise(selectedExercise.id);
+            navigation.goBack();
+          },
+        },
+      ],
+    );
+  }, [deleteExercise, navigation, selectedExercise]);
+
   useEffect(() => {
     navigation.setOptions({
       title: '',
@@ -210,33 +235,17 @@ export function ExerciseEditorScreen({
           autoCapitalize="sentences"
         />
 
-        {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
-
         {selectedExercise ? (
           <Button
-            variant="ghost"
             className="mt-6 w-full"
-            onPress={() =>
-              Alert.alert(
-                'Delete Exercise',
-                `Delete ${selectedExercise.name} and remove it from any routines?`,
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                      deleteExercise(selectedExercise.id);
-                      navigation.goBack();
-                    },
-                  },
-                ],
-              )
-            }
+            variant="danger"
+            onPress={handleArchive}
           >
-            Delete Exercise
+            Archive Exercise
           </Button>
         ) : null}
+
+        {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
       </ScrollView>
     </Container>
   );

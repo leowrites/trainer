@@ -1,14 +1,13 @@
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { Body, Card, Container, Heading, Muted } from '@shared/components';
 import { DEFAULT_PROGRESSION_CONFIG } from '../constants';
 import { HistorySessionDetailContent } from '../components/history-session-detail-content';
-import { findHistorySessionById } from '../domain/history-session-selector';
 import { formatSessionDate } from '../formatters';
-import { useHistoryAnalytics } from '../hooks/use-history-analytics';
+import { useHistorySessionDetail } from '../hooks/use-history-session-detail';
 import type { HistoryStackParamList } from '../navigation-types';
 import type { ProgressiveOverloadConfig } from '../types';
 
@@ -25,13 +24,9 @@ export function HistorySessionDetailScreen({
   route,
   progressionConfig = DEFAULT_PROGRESSION_CONFIG,
 }: HistorySessionDetailScreenProps): React.JSX.Element {
-  const { isLoading, sessions } = useHistoryAnalytics();
-  const session = useMemo(
-    () =>
-      findHistorySessionById(sessions, route.params.sessionId) ??
-      route.params.session ??
-      null,
-    [route.params.session, route.params.sessionId, sessions],
+  const { isLoading, session } = useHistorySessionDetail(
+    route.params.sessionId,
+    route.params.session ?? null,
   );
 
   return (

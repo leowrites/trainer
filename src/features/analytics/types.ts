@@ -21,6 +21,16 @@ export interface HistorySetRow {
   target_reps: number | null;
 }
 
+export interface HistoryTrendSessionRow {
+  id: string;
+  start_time: number;
+  end_time: number | null;
+  total_volume: number;
+  total_reps: number;
+  total_sets: number;
+  total_completed_sets: number;
+}
+
 export interface HistorySet {
   id: string;
   exerciseId: string;

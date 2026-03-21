@@ -102,6 +102,23 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    version: 7,
+    description: 'Add soft deletion for routines and schedules.',
+    up: (db) => {
+      if (!columnExists(db, 'routines', 'is_deleted')) {
+        db.execSync(
+          'ALTER TABLE routines ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
+        );
+      }
+
+      if (!columnExists(db, 'schedules', 'is_deleted')) {
+        db.execSync(
+          'ALTER TABLE schedules ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
+        );
+      }
+    },
+  },
 ];
 
 function setUserVersion(db: SQLiteDatabase, version: number): void {

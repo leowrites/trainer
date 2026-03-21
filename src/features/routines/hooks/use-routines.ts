@@ -47,7 +47,7 @@ export function useRoutines(): {
 
   useEffect(() => {
     const rows = db.getAllSync<Routine>(
-      'SELECT id, name, notes FROM routines ORDER BY name ASC',
+      'SELECT id, name, notes FROM routines WHERE is_deleted = 0 ORDER BY name ASC',
     );
     setRoutines(rows);
     setHasLoaded(true);
@@ -81,11 +81,10 @@ export function useRoutines(): {
     (input: NewRoutineInput): Routine => {
       const id = generateId();
       db.withTransactionSync(() => {
-        db.runSync('INSERT INTO routines (id, name, notes) VALUES (?, ?, ?)', [
-          id,
-          input.name,
-          null,
-        ]);
+        db.runSync(
+          'INSERT INTO routines (id, name, notes, is_deleted) VALUES (?, ?, ?, 0)',
+          [id, input.name, null],
+        );
         input.exercises.forEach((entry, i) => {
           db.runSync(
             'INSERT INTO routine_exercises (id, routine_id, exercise_id, position, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?)',
@@ -176,9 +175,7 @@ export function useRoutines(): {
           }
         });
 
-        // Cascade-delete associated routine exercises.
-        db.runSync('DELETE FROM routine_exercises WHERE routine_id = ?', [id]);
-        db.runSync('DELETE FROM routines WHERE id = ?', [id]);
+        db.runSync('UPDATE routines SET is_deleted = 1 WHERE id = ?', [id]);
       });
       refresh();
     },
@@ -188,10 +185,10 @@ export function useRoutines(): {
   const updateRoutine = useCallback(
     (id: string, input: NewRoutineInput): void => {
       db.withTransactionSync(() => {
-        db.runSync('UPDATE routines SET name = ? WHERE id = ?', [
-          input.name,
-          id,
-        ]);
+        db.runSync(
+          'UPDATE routines SET name = ? WHERE id = ? AND is_deleted = 0',
+          [input.name, id],
+        );
         db.runSync('DELETE FROM routine_exercises WHERE routine_id = ?', [id]);
         input.exercises.forEach((entry, i) => {
           db.runSync(

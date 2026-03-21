@@ -44,7 +44,7 @@ export function useSchedules(): {
 
   useEffect(() => {
     const rows = db.getAllSync<Schedule>(
-      'SELECT id, name, is_active, current_position FROM schedules ORDER BY name ASC',
+      'SELECT id, name, is_active, current_position FROM schedules WHERE is_deleted = 0 ORDER BY name ASC',
     );
     setSchedules(rows);
     setHasLoaded(true);
@@ -65,7 +65,7 @@ export function useSchedules(): {
       const id = generateId();
       db.withTransactionSync(() => {
         db.runSync(
-          'INSERT INTO schedules (id, name, is_active, current_position) VALUES (?, ?, 0, -1)',
+          'INSERT INTO schedules (id, name, is_active, current_position, is_deleted) VALUES (?, ?, 0, -1, 0)',
           [id, input.name],
         );
         input.routineIds.forEach((routineId, i) => {
@@ -86,7 +86,10 @@ export function useSchedules(): {
       db.withTransactionSync(() => {
         // Deactivate all other schedules first.
         db.runSync('UPDATE schedules SET is_active = 0 WHERE id != ?', [id]);
-        db.runSync('UPDATE schedules SET is_active = 1 WHERE id = ?', [id]);
+        db.runSync(
+          'UPDATE schedules SET is_active = 1 WHERE id = ? AND is_deleted = 0',
+          [id],
+        );
       });
       refresh();
     },
@@ -96,8 +99,10 @@ export function useSchedules(): {
   const deleteSchedule = useCallback(
     (id: string): void => {
       db.withTransactionSync(() => {
-        db.runSync('DELETE FROM schedule_entries WHERE schedule_id = ?', [id]);
-        db.runSync('DELETE FROM schedules WHERE id = ?', [id]);
+        db.runSync(
+          'UPDATE schedules SET is_active = 0, is_deleted = 1 WHERE id = ?',
+          [id],
+        );
       });
       refresh();
     },
@@ -110,7 +115,7 @@ export function useSchedules(): {
         // NOTE: current_position is reset to -1 so that the next workout
         // always starts from the first entry in the updated rotation order.
         db.runSync(
-          'UPDATE schedules SET name = ?, current_position = -1 WHERE id = ?',
+          'UPDATE schedules SET name = ?, current_position = -1 WHERE id = ? AND is_deleted = 0',
           [input.name, id],
         );
         db.runSync('DELETE FROM schedule_entries WHERE schedule_id = ?', [id]);

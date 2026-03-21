@@ -51,7 +51,7 @@ describe('useSchedules', () => {
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'INSERT INTO schedules (id, name, is_active, current_position) VALUES (?, ?, 0, -1)',
+      'INSERT INTO schedules (id, name, is_active, current_position, is_deleted) VALUES (?, ?, 0, -1, 0)',
       expect.arrayContaining(['My Schedule']),
     );
   });
@@ -126,7 +126,7 @@ describe('useSchedules', () => {
       ['s1'],
     );
     expect(db.runSync).toHaveBeenCalledWith(
-      'UPDATE schedules SET is_active = 1 WHERE id = ?',
+      'UPDATE schedules SET is_active = 1 WHERE id = ? AND is_deleted = 0',
       ['s1'],
     );
   });
@@ -158,7 +158,7 @@ describe('useSchedules', () => {
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'UPDATE schedules SET name = ?, current_position = -1 WHERE id = ?',
+      'UPDATE schedules SET name = ?, current_position = -1 WHERE id = ? AND is_deleted = 0',
       ['New Name', 's1'],
     );
   });
@@ -185,7 +185,7 @@ describe('useSchedules', () => {
     expect(insertCalls).toHaveLength(2);
   });
 
-  it('deleteSchedule removes schedule_entries then the schedule', () => {
+  it('deleteSchedule archives the schedule and clears the active flag', () => {
     const db = createMockDb();
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useSchedules(), { wrapper });
@@ -195,11 +195,7 @@ describe('useSchedules', () => {
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'DELETE FROM schedule_entries WHERE schedule_id = ?',
-      ['s1'],
-    );
-    expect(db.runSync).toHaveBeenCalledWith(
-      'DELETE FROM schedules WHERE id = ?',
+      'UPDATE schedules SET is_active = 0, is_deleted = 1 WHERE id = ?',
       ['s1'],
     );
   });

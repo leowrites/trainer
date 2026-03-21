@@ -12,6 +12,16 @@ import {
   parseWholeNumber,
 } from '../utils/formatters';
 
+export function shouldHandleHorizontalGesture(
+  dx: number,
+  dy: number,
+  currentOffset: number,
+): boolean {
+  return (
+    Math.abs(dx) > Math.abs(dy) && (dx < -6 || (currentOffset < 0 && dx > 6))
+  );
+}
+
 export function WorkoutSetRow({
   exerciseName,
   setItem,
@@ -108,9 +118,17 @@ export function WorkoutSetRow({
           dragStartOffsetRef.current = offsetRef.current;
         },
         onMoveShouldSetPanResponder: (_, gestureState) =>
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) &&
-          (gestureState.dx < -6 ||
-            (offsetRef.current < 0 && gestureState.dx > 6)),
+          shouldHandleHorizontalGesture(
+            gestureState.dx,
+            gestureState.dy,
+            offsetRef.current,
+          ),
+        onMoveShouldSetPanResponderCapture: (_, gestureState) =>
+          shouldHandleHorizontalGesture(
+            gestureState.dx,
+            gestureState.dy,
+            offsetRef.current,
+          ),
         onPanResponderMove: (_, gestureState) => {
           const nextOffset = Math.max(
             -SWIPE_ACTION_WIDTH,

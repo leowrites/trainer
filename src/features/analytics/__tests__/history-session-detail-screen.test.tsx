@@ -2,14 +2,14 @@ import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 
 import { HistorySessionDetailScreen } from '../screens/history-session-detail-screen';
-import { useHistoryAnalytics } from '../hooks/use-history-analytics';
+import { useHistorySessionDetail } from '../hooks/use-history-session-detail';
 import type { HistorySession } from '../types';
 
-jest.mock('../hooks/use-history-analytics', () => ({
-  useHistoryAnalytics: jest.fn(),
+jest.mock('../hooks/use-history-session-detail', () => ({
+  useHistorySessionDetail: jest.fn(),
 }));
 
-const mockUseHistoryAnalytics = jest.mocked(useHistoryAnalytics);
+const mockUseHistorySessionDetail = jest.mocked(useHistorySessionDetail);
 
 function buildSession(overrides: Partial<HistorySession> = {}): HistorySession {
   return {
@@ -69,16 +69,9 @@ describe('HistorySessionDetailScreen', () => {
   });
 
   it('renders the selected session details and progression recommendations', () => {
-    mockUseHistoryAnalytics.mockReturnValue({
+    mockUseHistorySessionDetail.mockReturnValue({
       isLoading: false,
-      sessions: [buildSession()],
-      trendSeriesByMetric: {
-        volume: [],
-        hours: [],
-        reps: [],
-        sets: [],
-      },
-      refresh: jest.fn(),
+      session: buildSession(),
     });
 
     render(
@@ -98,16 +91,9 @@ describe('HistorySessionDetailScreen', () => {
   });
 
   it('uses the caller progression config for volume and recommendations', () => {
-    mockUseHistoryAnalytics.mockReturnValue({
+    mockUseHistorySessionDetail.mockReturnValue({
       isLoading: false,
-      sessions: [buildSession()],
-      trendSeriesByMetric: {
-        volume: [],
-        hours: [],
-        reps: [],
-        sets: [],
-      },
-      refresh: jest.fn(),
+      session: buildSession(),
     });
 
     render(
@@ -130,17 +116,10 @@ describe('HistorySessionDetailScreen', () => {
     expect(screen.getByText('+2.5 lb')).toBeTruthy();
   });
 
-  it('shows a loading state before the history query resolves', () => {
-    mockUseHistoryAnalytics.mockReturnValue({
+  it('shows a loading state before the detail query resolves', () => {
+    mockUseHistorySessionDetail.mockReturnValue({
       isLoading: true,
-      sessions: [],
-      trendSeriesByMetric: {
-        volume: [],
-        hours: [],
-        reps: [],
-        sets: [],
-      },
-      refresh: jest.fn(),
+      session: null,
     });
 
     render(
@@ -159,16 +138,9 @@ describe('HistorySessionDetailScreen', () => {
   });
 
   it('shows fallback UI for an invalid session id', () => {
-    mockUseHistoryAnalytics.mockReturnValue({
+    mockUseHistorySessionDetail.mockReturnValue({
       isLoading: false,
-      sessions: [buildSession()],
-      trendSeriesByMetric: {
-        volume: [],
-        hours: [],
-        reps: [],
-        sets: [],
-      },
-      refresh: jest.fn(),
+      session: null,
     });
 
     render(
@@ -185,19 +157,12 @@ describe('HistorySessionDetailScreen', () => {
     expect(screen.getByText('Session unavailable')).toBeTruthy();
   });
 
-  it('renders the route session while the query is still loading', () => {
+  it('renders the route session while the detail query is still loading', () => {
     const session = buildSession();
 
-    mockUseHistoryAnalytics.mockReturnValue({
+    mockUseHistorySessionDetail.mockReturnValue({
       isLoading: true,
-      sessions: [],
-      trendSeriesByMetric: {
-        volume: [],
-        hours: [],
-        reps: [],
-        sets: [],
-      },
-      refresh: jest.fn(),
+      session,
     });
 
     render(

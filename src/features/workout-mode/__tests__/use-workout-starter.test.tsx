@@ -111,7 +111,9 @@ describe('useWorkoutStarter', () => {
 
     const db = createMockDb();
     db.getFirstSync.mockImplementation((query: string, params?: unknown[]) => {
-      if (query.includes('FROM schedules WHERE is_active = 1')) {
+      if (
+        query.includes('FROM schedules WHERE is_active = 1 AND is_deleted = 0')
+      ) {
         return {
           id: 'schedule-1',
           name: 'Upper Split',
@@ -120,7 +122,7 @@ describe('useWorkoutStarter', () => {
         };
       }
 
-      if (query.includes('FROM routines WHERE id = ?')) {
+      if (query.includes('FROM routines WHERE id = ? AND is_deleted = 0')) {
         expect(params).toEqual(['routine-1']);
         return {
           id: 'routine-1',

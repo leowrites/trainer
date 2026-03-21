@@ -158,6 +158,31 @@ export function ScheduleDetailScreen({
   cancelActionRef.current = handleCancel;
   saveActionRef.current = handleSave;
 
+  const handleArchive = useCallback((): void => {
+    if (selectedSchedule === null) {
+      return;
+    }
+
+    Alert.alert(
+      'Archive Schedule',
+      `Archive ${selectedSchedule.name}? It will be removed from active rotation but kept for history.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: () => {
+            deleteSchedule(selectedSchedule.id);
+            navigation.goBack();
+          },
+        },
+      ],
+    );
+  }, [deleteSchedule, navigation, selectedSchedule]);
+
   useEffect(() => {
     navigation.setOptions({
       title: '',
@@ -241,25 +266,6 @@ export function ScheduleDetailScreen({
     [routines, selectedRoutineIds],
   );
 
-  const handleDelete = (): void => {
-    if (selectedSchedule === null) {
-      navigation.goBack();
-      return;
-    }
-
-    Alert.alert('Delete Schedule', `Delete ${selectedSchedule.name}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          deleteSchedule(selectedSchedule.id);
-          navigation.goBack();
-        },
-      },
-    ]);
-  };
-
   const draftTitle = name.trim() || selectedSchedule?.name || 'New Schedule';
 
   const listHeader = (
@@ -330,12 +336,12 @@ export function ScheduleDetailScreen({
 
   const detailFooter = (
     <View className="pt-4 pb-7">
-      {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
       {selectedSchedule ? (
-        <Button variant="danger" className="mt-5 w-full" onPress={handleDelete}>
-          Delete Schedule
+        <Button className="w-full" variant="danger" onPress={handleArchive}>
+          Archive Schedule
         </Button>
       ) : null}
+      {error ? <Muted className="mt-4 text-error">{error}</Muted> : null}
     </View>
   );
 
