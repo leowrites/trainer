@@ -385,6 +385,13 @@ export function RoutineDetailScreen({
                 onChangeText={setName}
                 autoCapitalize="words"
               />
+              <Button
+                className="mt-4 w-full"
+                variant="ghost"
+                onPress={() => undefined}
+              >
+                Edit Routine
+              </Button>
               <View className="mt-5 mb-3 flex-row items-center justify-between gap-3">
                 <View className="flex-1">
                   <Heading>Template exercises</Heading>

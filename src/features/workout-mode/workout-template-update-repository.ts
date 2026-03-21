@@ -10,8 +10,13 @@
 
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { replaceRoutineExerciseTemplates } from '@features/routines';
-import type { RoutineExerciseInput } from '@features/routines';
+import { replaceRoutineExerciseTemplates } from '@features/routines/template-api';
+import type { RoutineExerciseInput } from '@features/routines/template-api';
+
+type WorkoutTemplateDatabase = Pick<SQLiteDatabase, 'runSync'> &
+  Partial<
+    Pick<SQLiteDatabase, 'getAllSync' | 'getFirstSync' | 'withTransactionSync'>
+  >;
 
 interface WorkoutTemplateUpdateSessionRow {
   id: string;
@@ -41,9 +46,13 @@ export interface WorkoutTemplateUpdateState {
 }
 
 function buildFallbackExerciseRows(
-  db: SQLiteDatabase,
+  db: WorkoutTemplateDatabase,
   sessionId: string,
 ): WorkoutTemplateUpdateExerciseRow[] {
+  if (!db.getAllSync) {
+    return [];
+  }
+
   return db.getAllSync<WorkoutTemplateUpdateExerciseRow>(
     `SELECT exercise_id, MIN(COALESCE(position, rowid - 1)) AS position, NULL AS rest_seconds
      FROM workout_sets
@@ -55,9 +64,13 @@ function buildFallbackExerciseRows(
 }
 
 function loadSessionRow(
-  db: SQLiteDatabase,
+  db: WorkoutTemplateDatabase,
   sessionId: string,
 ): WorkoutTemplateUpdateSessionRow | null {
+  if (!db.getFirstSync) {
+    return null;
+  }
+
   return db.getFirstSync<WorkoutTemplateUpdateSessionRow>(
     `SELECT ws.id, ws.routine_id, ws.snapshot_name, ws.template_applied_at, r.name AS routine_name
      FROM workout_sessions ws
@@ -69,7 +82,7 @@ function loadSessionRow(
 }
 
 export function loadWorkoutTemplateUpdateState(
-  db: SQLiteDatabase,
+  db: WorkoutTemplateDatabase,
   sessionId: string,
 ): WorkoutTemplateUpdateState | null {
   const sessionRow = loadSessionRow(db, sessionId);
@@ -108,9 +121,13 @@ function buildRoutineExerciseInputs(
 }
 
 export function applyWorkoutTemplateUpdate(
-  db: SQLiteDatabase,
+  db: WorkoutTemplateDatabase,
   sessionId: string,
 ): WorkoutTemplateUpdateState | null {
+  if (!db.getAllSync || !db.withTransactionSync) {
+    return null;
+  }
+
   const sessionRow = loadSessionRow(db, sessionId);
 
   if (
