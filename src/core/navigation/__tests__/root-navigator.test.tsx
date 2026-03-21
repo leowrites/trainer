@@ -53,6 +53,10 @@ jest.mock('@react-navigation/native', () => ({
       notification: '#000',
     },
   },
+  createNavigationContainerRef: () => ({
+    isReady: () => false,
+    navigate: jest.fn(),
+  }),
   NavigationContainer: ({ children }: { children?: unknown }) =>
     children ?? null,
 }));

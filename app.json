@@ -27,6 +27,15 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.leoliu.forge.dev"
     },
-    "plugins": ["expo-sqlite", "expo-system-ui"]
+    "plugins": [
+      "expo-sqlite",
+      "expo-system-ui",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "workout-timers"
+        }
+      ]
+    ]
   }
 }
