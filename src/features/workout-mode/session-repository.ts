@@ -96,6 +96,38 @@ export function loadActiveWorkoutSession(
   return buildActiveWorkoutSession(sessionRow, setRows, exerciseRows);
 }
 
+export function loadInProgressWorkoutSession(
+  db: SQLiteDatabase,
+  sessionId: string,
+): ActiveWorkoutSession | null {
+  const sessionRow = db.getFirstSync<WorkoutSessionRow>(
+    'SELECT id, snapshot_name, start_time FROM workout_sessions WHERE id = ? AND end_time IS NULL LIMIT 1',
+    [sessionId],
+  );
+
+  if (!sessionRow) {
+    return null;
+  }
+
+  const setRows = db.getAllSync<WorkoutSetRow>(
+    'SELECT id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps FROM workout_sets WHERE session_id = ? ORDER BY rowid ASC',
+    [sessionId],
+  );
+
+  const exerciseIds = [
+    ...new Set(setRows.map((row: WorkoutSetRow) => row.exercise_id)),
+  ];
+  const exerciseRows =
+    exerciseIds.length > 0
+      ? db.getAllSync<ExerciseNameRow>(
+          `SELECT id, name FROM exercises WHERE id IN (${exerciseIds.map(() => '?').join(', ')})`,
+          exerciseIds,
+        )
+      : [];
+
+  return buildActiveWorkoutSession(sessionRow, setRows, exerciseRows);
+}
+
 export function createWorkoutSetRecord(
   db: SQLiteDatabase,
   sessionId: string,

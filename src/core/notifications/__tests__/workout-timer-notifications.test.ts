@@ -43,9 +43,10 @@ const mockRuntime = {
     TIME_INTERVAL: 'timeInterval',
   },
 };
+const mockGetExpoNotificationsRuntime = jest.fn(() => mockRuntime);
 
 jest.mock('../expo-notifications-runtime', () => ({
-  getExpoNotificationsRuntime: () => mockRuntime,
+  getExpoNotificationsRuntime: () => mockGetExpoNotificationsRuntime(),
 }));
 
 function grantedPermissions(): NotificationPermissionsStatus {
@@ -79,6 +80,7 @@ async function loadNotificationsModule(): Promise<WorkoutTimerNotificationsModul
 describe('workout-timer-notifications', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetExpoNotificationsRuntime.mockImplementation(() => mockRuntime);
     mockRuntime.setNotificationChannelAsync.mockResolvedValue(null);
     mockRuntime.getPermissionsAsync.mockResolvedValue(grantedPermissions());
     mockRuntime.requestPermissionsAsync.mockResolvedValue(grantedPermissions());
@@ -235,6 +237,56 @@ describe('workout-timer-notifications', () => {
     expect(secondAttempt).toBe('skipped');
     expect(mockRuntime.requestPermissionsAsync).toHaveBeenCalledTimes(1);
     expect(mockRuntime.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('skips stale timer requests that are already past due', async () => {
+    const notifications = await loadNotificationsModule();
+
+    const result = await notifications.scheduleWorkoutTimerNotificationAsync({
+      key: 'rest',
+      title: 'Rest timer finished',
+      body: 'Time for your next set.',
+      triggerAt: Date.now() - 1_000,
+      data: {
+        notificationType: 'workout-timer',
+        kind: 'rest',
+        sessionId: 'session-1',
+      },
+    });
+
+    expect(result).toBe('skipped');
+    expect(mockRuntime.cancelScheduledNotificationAsync).toHaveBeenCalledWith(
+      'workout-timer:rest',
+    );
+    expect(mockRuntime.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('returns error when runtime loading fails during scheduling', async () => {
+    let runtimeCallCount = 0;
+    mockGetExpoNotificationsRuntime.mockImplementation(() => {
+      runtimeCallCount += 1;
+      if (runtimeCallCount >= 4) {
+        throw new Error('native runtime missing');
+      }
+
+      return mockRuntime;
+    });
+
+    const notifications = await loadNotificationsModule();
+
+    const result = await notifications.scheduleWorkoutTimerNotificationAsync({
+      key: 'rest',
+      title: 'Rest timer finished',
+      body: 'Time for your next set.',
+      triggerAt: Date.now() + 30_000,
+      data: {
+        notificationType: 'workout-timer',
+        kind: 'rest',
+        sessionId: 'session-1',
+      },
+    });
+
+    expect(result).toBe('error');
   });
 
   it('cancels every scheduled workout timer notification', async () => {

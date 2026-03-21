@@ -194,7 +194,6 @@ export async function ensureWorkoutTimerNotificationPermissionAsync(): Promise<W
 export async function scheduleWorkoutTimerNotificationAsync(
   request: WorkoutTimerNotificationRequest,
 ): Promise<WorkoutTimerNotificationScheduleStatus> {
-  const Notifications = getExpoNotificationsRuntime();
   const permissionStatus =
     await ensureWorkoutTimerNotificationPermissionAsync();
   if (permissionStatus === 'unsupported') {
@@ -206,13 +205,17 @@ export async function scheduleWorkoutTimerNotificationAsync(
   }
 
   const identifier = buildNotificationIdentifier(request.key);
-  const secondsUntilTrigger = Math.max(
-    1,
-    Math.ceil((request.triggerAt - Date.now()) / 1000),
-  );
+  const delayMs = request.triggerAt - Date.now();
 
   try {
+    const Notifications = getExpoNotificationsRuntime();
     await Notifications.cancelScheduledNotificationAsync(identifier);
+
+    if (delayMs <= 0) {
+      return 'skipped';
+    }
+
+    const secondsUntilTrigger = Math.ceil(delayMs / 1000);
     await Notifications.scheduleNotificationAsync({
       identifier,
       content: {

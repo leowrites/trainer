@@ -10,6 +10,8 @@ const mockCancelAllWorkoutTimerNotificationsAsync = jest.fn();
 const mockGetLastWorkoutTimerNotificationResponseData = jest.fn();
 const mockAddWorkoutTimerNotificationResponseListener = jest.fn();
 const mockNavigateToActiveWorkoutScreen = jest.fn();
+const mockLoadInProgressWorkoutSession = jest.fn();
+const mockDatabase = { name: 'mock-db' };
 
 jest.mock('../workout-timer-notifications', () => ({
   scheduleWorkoutTimerNotificationAsync:
@@ -26,6 +28,19 @@ jest.mock('../workout-timer-notifications', () => ({
 jest.mock('@core/navigation', () => ({
   navigateToActiveWorkoutScreen: mockNavigateToActiveWorkoutScreen,
 }));
+
+jest.mock('@core/database', () => ({
+  database: mockDatabase,
+}));
+
+jest.mock('@features/workout-mode', () => {
+  const storeModule = jest.requireActual('@features/workout-mode/store');
+
+  return {
+    useWorkoutStore: storeModule.useWorkoutStore,
+    loadInProgressWorkoutSession: mockLoadInProgressWorkoutSession,
+  };
+});
 
 const { WorkoutTimerNotificationCoordinator } =
   require('../workout-timer-notification-coordinator') as {
@@ -73,6 +88,7 @@ describe('WorkoutTimerNotificationCoordinator', () => {
     mockAddWorkoutTimerNotificationResponseListener.mockImplementation(
       () => () => undefined,
     );
+    mockLoadInProgressWorkoutSession.mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -211,5 +227,62 @@ describe('WorkoutTimerNotificationCoordinator', () => {
 
     expect(useWorkoutStore.getState().isWorkoutCollapsed).toBe(false);
     expect(mockNavigateToActiveWorkoutScreen).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores an in-progress workout from storage on cold-start notification taps', async () => {
+    mockGetLastWorkoutTimerNotificationResponseData.mockReturnValue({
+      sessionId: 'session-1',
+    });
+    mockLoadInProgressWorkoutSession.mockReturnValue(mockSession);
+
+    render(<WorkoutTimerNotificationCoordinator />);
+
+    await waitFor(() => {
+      expect(mockLoadInProgressWorkoutSession).toHaveBeenCalledWith(
+        mockDatabase,
+        'session-1',
+      );
+    });
+    expect(useWorkoutStore.getState().isWorkoutActive).toBe(true);
+    expect(useWorkoutStore.getState().activeSessionId).toBe('session-1');
+    expect(mockNavigateToActiveWorkoutScreen).toHaveBeenCalledTimes(1);
+  });
+
+  it('reconciles notification state when an older async sync finishes late', async () => {
+    let resolveFirstSchedule: ((value: 'scheduled') => void) | null = null;
+    mockScheduleWorkoutTimerNotificationAsync
+      .mockImplementationOnce(
+        () =>
+          new Promise<'scheduled'>((resolve) => {
+            resolveFirstSchedule = resolve;
+          }),
+      )
+      .mockResolvedValue('scheduled');
+
+    useWorkoutStore.getState().startWorkout(mockSession);
+    useWorkoutStore.setState({
+      restTimerEndsAt: Date.now() + 60_000,
+    });
+
+    render(<WorkoutTimerNotificationCoordinator />);
+
+    await waitFor(() => {
+      expect(mockScheduleWorkoutTimerNotificationAsync).toHaveBeenCalledTimes(
+        1,
+      );
+    });
+
+    act(() => {
+      useWorkoutStore.getState().clearRestTimer();
+    });
+
+    await act(async () => {
+      resolveFirstSchedule?.('scheduled');
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(mockCancelAllWorkoutTimerNotificationsAsync).toHaveBeenCalled();
+    });
   });
 });

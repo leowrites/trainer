@@ -17,8 +17,12 @@ import type { JSX } from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { database } from '@core/database';
 import { navigateToActiveWorkoutScreen } from '@core/navigation';
-import { useWorkoutStore } from '@features/workout-mode/store';
+import {
+  loadInProgressWorkoutSession,
+  useWorkoutStore,
+} from '@features/workout-mode';
 import type { WorkoutTimerNotificationRequest } from './types';
 import {
   addWorkoutTimerNotificationResponseListener,
@@ -29,6 +33,7 @@ import {
 } from './workout-timer-notifications';
 
 type ActiveTimerMap = Record<string, number>;
+type WorkoutStoreState = ReturnType<typeof useWorkoutStore.getState>;
 
 function buildActiveTimerMap(
   requests: WorkoutTimerNotificationRequest[],
@@ -36,6 +41,64 @@ function buildActiveTimerMap(
   return Object.fromEntries(
     requests.map((request) => [request.key, request.triggerAt]),
   );
+}
+
+function buildTimerRequests(
+  state: Pick<
+    WorkoutStoreState,
+    | 'isWorkoutActive'
+    | 'activeSessionId'
+    | 'activeSession'
+    | 'restTimerEndsAt'
+    | 'exerciseTimerEndsAtByExerciseId'
+  >,
+): WorkoutTimerNotificationRequest[] {
+  if (!state.isWorkoutActive || !state.activeSessionId) {
+    return [];
+  }
+
+  const requests: WorkoutTimerNotificationRequest[] = [];
+  if (state.restTimerEndsAt !== null) {
+    requests.push({
+      key: 'rest',
+      title: 'Rest timer finished',
+      body: 'Time for your next set.',
+      triggerAt: state.restTimerEndsAt,
+      data: {
+        notificationType: 'workout-timer',
+        kind: 'rest',
+        sessionId: state.activeSessionId,
+      },
+    });
+  }
+
+  for (const [exerciseId, triggerAt] of Object.entries(
+    state.exerciseTimerEndsAtByExerciseId,
+  )) {
+    if (triggerAt === null) {
+      continue;
+    }
+
+    const exerciseName =
+      state.activeSession?.exercises.find(
+        (exercise) => exercise.exerciseId === exerciseId,
+      )?.exerciseName ?? 'Exercise';
+
+    requests.push({
+      key: `exercise:${exerciseId}`,
+      title: `${exerciseName} timer finished`,
+      body: 'Your timer has ended.',
+      triggerAt,
+      data: {
+        notificationType: 'workout-timer',
+        kind: 'exercise',
+        sessionId: state.activeSessionId,
+        exerciseId,
+      },
+    });
+  }
+
+  return requests;
 }
 
 export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
@@ -55,54 +118,16 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
     })),
   );
   const previousTimerMapRef = useRef<ActiveTimerMap>({});
+  const syncRunIdRef = useRef(0);
 
   const timerRequests = useMemo<WorkoutTimerNotificationRequest[]>(() => {
-    if (!isWorkoutActive || !activeSessionId) {
-      return [];
-    }
-
-    const requests: WorkoutTimerNotificationRequest[] = [];
-    if (restTimerEndsAt !== null) {
-      requests.push({
-        key: 'rest',
-        title: 'Rest timer finished',
-        body: 'Time for your next set.',
-        triggerAt: restTimerEndsAt,
-        data: {
-          notificationType: 'workout-timer',
-          kind: 'rest',
-          sessionId: activeSessionId,
-        },
-      });
-    }
-
-    for (const [exerciseId, triggerAt] of Object.entries(
+    return buildTimerRequests({
+      isWorkoutActive,
+      activeSessionId,
+      activeSession,
+      restTimerEndsAt,
       exerciseTimerEndsAtByExerciseId,
-    )) {
-      if (triggerAt === null) {
-        continue;
-      }
-
-      const exerciseName =
-        activeSession?.exercises.find(
-          (exercise) => exercise.exerciseId === exerciseId,
-        )?.exerciseName ?? 'Exercise';
-
-      requests.push({
-        key: `exercise:${exerciseId}`,
-        title: `${exerciseName} timer finished`,
-        body: 'Your timer has ended.',
-        triggerAt,
-        data: {
-          notificationType: 'workout-timer',
-          kind: 'exercise',
-          sessionId: activeSessionId,
-          exerciseId,
-        },
-      });
-    }
-
-    return requests;
+    });
   }, [
     activeSession,
     activeSessionId,
@@ -138,11 +163,20 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
     function openActiveWorkoutFromNotification(sessionId: string): void {
       const state = useWorkoutStore.getState();
       if (!state.isWorkoutActive || state.activeSessionId !== sessionId) {
-        return;
+        const restoredSession = loadInProgressWorkoutSession(
+          database,
+          sessionId,
+        );
+        if (!restoredSession) {
+          return;
+        }
+
+        state.startWorkout(restoredSession);
       }
 
-      if (state.isWorkoutCollapsed) {
-        state.expandWorkout();
+      const latestState = useWorkoutStore.getState();
+      if (latestState.isWorkoutCollapsed) {
+        latestState.expandWorkout();
       }
 
       navigateToActiveWorkoutScreen();
@@ -161,7 +195,28 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
   useEffect(() => {
     let disposed = false;
 
+    async function reconcileLatestNotifications(): Promise<void> {
+      const latestState = useWorkoutStore.getState();
+      const latestRequests = buildTimerRequests(latestState);
+      const now = Date.now();
+
+      await cancelAllWorkoutTimerNotificationsAsync();
+
+      for (const request of latestRequests) {
+        if (request.triggerAt <= now) {
+          continue;
+        }
+
+        await scheduleWorkoutTimerNotificationAsync(request);
+      }
+
+      if (!disposed) {
+        previousTimerMapRef.current = buildActiveTimerMap(latestRequests);
+      }
+    }
+
     async function syncNotifications(): Promise<void> {
+      const syncRunId = ++syncRunIdRef.current;
       const previousTimerMap = previousTimerMapRef.current;
       const currentTimerMap = buildActiveTimerMap(timerRequests);
       const now = Date.now();
@@ -177,6 +232,10 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
       for (const [key, previousTriggerAt] of Object.entries(previousTimerMap)) {
         if (!(key in currentTimerMap) && previousTriggerAt > now) {
           await cancelWorkoutTimerNotificationAsync(key);
+          if (disposed || syncRunId !== syncRunIdRef.current) {
+            await reconcileLatestNotifications();
+            return;
+          }
         }
       }
 
@@ -190,6 +249,10 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
         }
 
         await scheduleWorkoutTimerNotificationAsync(request);
+        if (disposed || syncRunId !== syncRunIdRef.current) {
+          await reconcileLatestNotifications();
+          return;
+        }
       }
 
       if (!disposed) {
