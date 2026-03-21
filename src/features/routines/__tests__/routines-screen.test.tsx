@@ -21,6 +21,10 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
+jest.mock('@shared/hooks', () => ({
+  useReducedMotionPreference: () => false,
+}));
+
 jest.mock('@react-navigation/elements', () => {
   const actual = jest.requireActual('@react-navigation/elements');
 

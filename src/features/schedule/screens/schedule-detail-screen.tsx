@@ -8,7 +8,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import type DraggableFlatListType from 'react-native-draggable-flatlist';
 import type { RenderItemParams } from 'react-native-draggable-flatlist';
 
@@ -22,11 +22,14 @@ import {
   Container,
   Heading,
   Input,
+  InteractivePressable,
   Label,
   Meta,
   Muted,
   Surface,
 } from '@shared/components';
+import { useReducedMotionPreference } from '@shared/hooks';
+import { configureInteractionLayoutAnimation } from '@shared/utils';
 import { RoutinePickerSheet } from '../components/routine-picker-sheet';
 import type { NewScheduleInput } from '../hooks/use-schedules';
 import { useSchedules } from '../hooks/use-schedules';
@@ -44,7 +47,7 @@ function DraftRoutineRow({
   onRemove: () => void;
 }): React.JSX.Element {
   return (
-    <Pressable
+    <InteractivePressable
       accessibilityRole="button"
       accessibilityLabel={`Reorder ${routine.name}`}
       className="mb-3"
@@ -64,17 +67,17 @@ function DraftRoutineRow({
             <Body className="font-medium">{routine.name}</Body>
           </View>
 
-          <Pressable
+          <InteractivePressable
             accessibilityRole="button"
             accessibilityLabel={`Remove ${routine.name}`}
             className="px-2 py-2"
             onPress={onRemove}
           >
             <Muted className="text-sm">Remove</Muted>
-          </Pressable>
+          </InteractivePressable>
         </View>
       </Surface>
-    </Pressable>
+    </InteractivePressable>
   );
 }
 
@@ -114,6 +117,7 @@ export function ScheduleDetailScreen({
   const [error, setError] = useState<string | null>(null);
   const cancelActionRef = useRef<() => void>(() => undefined);
   const saveActionRef = useRef<() => void>(() => undefined);
+  const prefersReducedMotion = useReducedMotionPreference();
 
   const handleCancel = useCallback((): void => {
     navigation.goBack();
@@ -159,24 +163,24 @@ export function ScheduleDetailScreen({
       title: '',
       headerBackVisible: false,
       headerLeft: () => (
-        <Pressable
+        <InteractivePressable
           accessibilityRole="button"
           accessibilityLabel="Cancel"
           className="px-1 py-1"
           onPress={() => cancelActionRef.current()}
         >
           <Text className="font-mono text-base text-foreground">Cancel</Text>
-        </Pressable>
+        </InteractivePressable>
       ),
       headerRight: () => (
-        <Pressable
+        <InteractivePressable
           accessibilityRole="button"
           accessibilityLabel="Save"
           className="px-1 py-1"
           onPress={() => saveActionRef.current()}
         >
           <Text className="font-mono text-base text-secondary">Save</Text>
-        </Pressable>
+        </InteractivePressable>
       ),
     });
   }, [navigation]);
@@ -270,17 +274,20 @@ export function ScheduleDetailScreen({
           autoCapitalize="words"
         />
       ) : (
-        <Pressable
+        <InteractivePressable
           accessibilityRole="button"
           accessibilityLabel="Edit schedule name"
           className="flex-row items-center gap-3"
-          onPress={() => setIsEditingName(true)}
+          onPress={() => {
+            configureInteractionLayoutAnimation(prefersReducedMotion);
+            setIsEditingName(true);
+          }}
         >
           <Heading className="font-heading text-4xl leading-[36px]">
             {draftTitle}
           </Heading>
           <Feather name="edit-2" size={18} color={tokens.textPrimary} />
-        </Pressable>
+        </InteractivePressable>
       )}
 
       <Card className="mt-4 rounded-[24px] px-5 py-5">
@@ -348,11 +355,12 @@ export function ScheduleDetailScreen({
               routine={item}
               drag={drag}
               isActive={isActive}
-              onRemove={() =>
+              onRemove={() => {
+                configureInteractionLayoutAnimation(prefersReducedMotion);
                 setSelectedRoutineIds((current) =>
                   current.filter((routineId) => routineId !== item.id),
-                )
-              }
+                );
+              }}
             />
           )}
           ListHeaderComponent={listHeader}
@@ -372,12 +380,13 @@ export function ScheduleDetailScreen({
         routines={routines}
         selectedRoutineIds={selectedRoutineIds}
         onClose={() => setIsRoutinePickerOpen(false)}
-        onAddRoutines={(routineIds) =>
+        onAddRoutines={(routineIds) => {
+          configureInteractionLayoutAnimation(prefersReducedMotion);
           setSelectedRoutineIds((current) => [
             ...current,
             ...routineIds.filter((routineId) => !current.includes(routineId)),
-          ])
-        }
+          ]);
+        }}
       />
     </Container>
   );

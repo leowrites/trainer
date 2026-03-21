@@ -28,9 +28,10 @@
  */
 
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
+import { InteractivePressable } from './interactive-pressable';
 import { Caption } from './typography';
 
 export interface CheckboxProps {
@@ -58,14 +59,24 @@ export function Checkbox({
   const { tokens } = useTheme();
 
   return (
-    <Pressable
+    <InteractivePressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled }}
       accessibilityLabel={accessibilityLabel ?? label}
       className={`mb-2 flex-row items-center rounded-[18px] border border-surface-border bg-surface-elevated px-4 py-3 ${className}`}
       onPress={disabled ? undefined : onToggle}
       disabled={disabled}
-      style={{ opacity: disabled ? 0.5 : 1 }}
+      style={({ pressed }) => [
+        {
+          opacity: disabled ? 0.5 : 1,
+          borderColor:
+            checked || (!disabled && pressed)
+              ? tokens.accentBorder
+              : tokens.bgBorder,
+          backgroundColor:
+            !disabled && pressed ? tokens.bgCard : tokens.bgElevated,
+        },
+      ]}
     >
       {/* Check box indicator */}
       <View
@@ -98,6 +109,6 @@ export function Checkbox({
           <Caption className="mt-1 font-mono"> {sublabel} </Caption>
         ) : null}
       </View>
-    </Pressable>
+    </InteractivePressable>
   );
 }

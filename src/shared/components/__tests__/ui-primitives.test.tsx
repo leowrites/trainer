@@ -9,6 +9,10 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 
+jest.mock('@shared/hooks', () => ({
+  useReducedMotionPreference: () => false,
+}));
+
 import type { ColSpan } from '../index';
 import {
   ActionRow,

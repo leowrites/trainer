@@ -1,15 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Animated,
-  PanResponder,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Animated, PanResponder, Text, TextInput, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
-import { Body } from '@shared/components';
+import { Body, InteractivePressable } from '@shared/components';
+import { useReducedMotionPreference } from '@shared/hooks';
+import { triggerInteractionFeedback } from '@shared/utils';
 import type { ActiveWorkoutSet } from '../types';
 import {
   SWIPE_ACTION_WIDTH,
@@ -38,9 +33,12 @@ export function WorkoutSetRow({
   const [repsText, setRepsText] = useState(String(setItem.reps));
   const [weightText, setWeightText] = useState(String(setItem.weight));
   const translateX = React.useRef(new Animated.Value(0)).current;
+  const completionScale = React.useRef(new Animated.Value(1)).current;
   const offsetRef = React.useRef(0);
   const dragStartOffsetRef = React.useRef(0);
+  const hasHandledCompletionChange = React.useRef(false);
   const [isDeleteActionVisible, setIsDeleteActionVisible] = useState(false);
+  const prefersReducedMotion = useReducedMotionPreference();
 
   useEffect(() => {
     setRepsText(String(setItem.reps));
@@ -49,6 +47,31 @@ export function WorkoutSetRow({
   useEffect(() => {
     setWeightText(String(setItem.weight));
   }, [setItem.weight]);
+
+  useEffect(() => {
+    if (!hasHandledCompletionChange.current) {
+      hasHandledCompletionChange.current = true;
+      return;
+    }
+
+    if (prefersReducedMotion) {
+      completionScale.setValue(1);
+      return;
+    }
+
+    Animated.sequence([
+      Animated.timing(completionScale, {
+        toValue: 1.02,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(completionScale, {
+        toValue: 1,
+        duration: 140,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [completionScale, prefersReducedMotion, setItem.isCompleted]);
 
   const handlePersistReps = useCallback((): void => {
     onUpdateReps(parseWholeNumber(repsText));
@@ -116,7 +139,7 @@ export function WorkoutSetRow({
 
   return (
     <View className="mb-2.5 overflow-hidden rounded-[16px]">
-      <Pressable
+      <InteractivePressable
         accessibilityRole="button"
         accessibilityLabel={`Delete ${exerciseName} set ${index + 1}`}
         accessibilityElementsHidden={!isDeleteActionVisible}
@@ -134,11 +157,16 @@ export function WorkoutSetRow({
         <Body className="text-sm font-semibold text-error-foreground">
           Delete
         </Body>
-      </Pressable>
+      </InteractivePressable>
 
       <Animated.View
-        className="flex-row items-center gap-2 rounded-[16px]  bg-surface-elevated px-3 py-3"
-        style={{ transform: [{ translateX }] }}
+        className="flex-row items-center gap-2 rounded-[16px] px-3 py-3"
+        style={{
+          backgroundColor: setItem.isCompleted
+            ? tokens.accentSubtle
+            : tokens.bgElevated,
+          transform: [{ translateX }, { scale: completionScale }],
+        }}
         {...panResponder.panHandlers}
       >
         <View className="h-8 w-8 items-center justify-center rounded-full bg-surface-card">
@@ -168,7 +196,7 @@ export function WorkoutSetRow({
           accessibilityLabel={`${exerciseName} set ${index + 1} weight`}
           placeholderTextColor={tokens.textMuted}
         />
-        <Pressable
+        <InteractivePressable
           accessibilityRole="button"
           accessibilityLabel={`${setItem.isCompleted ? 'Unlog' : 'Log'} ${exerciseName} set ${index + 1}`}
           className={`h-11 min-w-[58px] items-center justify-center rounded-[12px] border px-3 ${
@@ -176,7 +204,12 @@ export function WorkoutSetRow({
               ? 'border-accent bg-accent'
               : 'border-surface-border bg-surface-card'
           }`}
-          onPress={() => onToggleLogged(!setItem.isCompleted)}
+          onPress={() => {
+            triggerInteractionFeedback(
+              setItem.isCompleted ? 'set-unlog' : 'set-log',
+            );
+            onToggleLogged(!setItem.isCompleted);
+          }}
         >
           <Text
             className={`font-body text-sm font-semibold ${
@@ -185,7 +218,7 @@ export function WorkoutSetRow({
           >
             Log
           </Text>
-        </Pressable>
+        </InteractivePressable>
       </Animated.View>
     </View>
   );

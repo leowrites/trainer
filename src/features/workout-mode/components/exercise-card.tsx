@@ -1,15 +1,8 @@
 import React, { useCallback } from 'react';
-import {
-  ActionSheetIOS,
-  Alert,
-  Platform,
-  Pressable,
-  Text,
-  View,
-} from 'react-native';
+import { ActionSheetIOS, Alert, Platform, Text, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
-import { Body, Heading, Muted } from '@shared/components';
+import { Body, Heading, InteractivePressable, Muted } from '@shared/components';
 
 export function ExerciseCard({
   title,
@@ -75,15 +68,15 @@ export function ExerciseCard({
     <View className="mt-3 overflow-hidden rounded-[22px]  bg-surface-card p-4">
       <View className="relative border-b border-surface-border/80 pb-3">
         <View className="flex-row items-center justify-between gap-3">
-          <Pressable
+          <InteractivePressable
             accessibilityRole="button"
             accessibilityLabel={`View details for ${title}`}
             className="flex-1"
             onPress={() => onOpenDetails(exerciseId)}
           >
             <Heading className="text-lg leading-[20px]">{title}</Heading>
-          </Pressable>
-          <Pressable
+          </InteractivePressable>
+          <InteractivePressable
             accessibilityRole="button"
             accessibilityLabel={`Options for ${title}`}
             className="h-8 w-8 items-center justify-center rounded-[10px]  bg-surface-card"
@@ -92,11 +85,11 @@ export function ExerciseCard({
             <Text className="font-mono text-sm tracking-[-1px] text-muted">
               ...
             </Text>
-          </Pressable>
+          </InteractivePressable>
         </View>
         <View className="mt-3 flex-row items-center justify-between gap-3">
           <Muted className="flex-1 text-sm">{previousPerformanceLabel}</Muted>
-          <Pressable
+          <InteractivePressable
             accessibilityRole="button"
             accessibilityLabel={`${title} timer options`}
             accessibilityHint={`Choose the timer duration for ${title}. Current setting: ${exerciseTimerDisplayLabel}.`}
@@ -110,7 +103,7 @@ export function ExerciseCard({
             >
               {exerciseTimerDisplayLabel}
             </Body>
-          </Pressable>
+          </InteractivePressable>
         </View>
       </View>
       {children}

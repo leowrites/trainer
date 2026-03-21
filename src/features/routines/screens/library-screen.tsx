@@ -128,12 +128,19 @@ export function LibraryScreen({
     [getScheduleEntries, routines, schedules],
   );
 
-  const handleChangeSection = useCallback((nextSection: Section): void => {
-    startTransition(() => {
-      setSection(nextSection);
-      setSearchQuery('');
-    });
-  }, []);
+  const handleChangeSection = useCallback(
+    (nextSection: Section): void => {
+      if (section === nextSection) {
+        return;
+      }
+
+      startTransition(() => {
+        setSection(nextSection);
+        setSearchQuery('');
+      });
+    },
+    [section],
+  );
 
   const handleCreatePress = useCallback((): void => {
     const rootNavigation = navigation
@@ -233,7 +240,9 @@ export function LibraryScreen({
                 schedule={item}
                 routineCount={summary.routineCount}
                 onPress={() =>
-                  navigation.navigate('ScheduleDetail', { scheduleId: item.id })
+                  navigation.navigate('ScheduleDetail', {
+                    scheduleId: item.id,
+                  })
                 }
               />
             );

@@ -4,6 +4,7 @@ import { ActionSheetIOS, Alert } from 'react-native';
 
 import { useHistoryAnalytics } from '@features/analytics';
 import { useUserProfile } from '@features/health-tracking';
+import { triggerInteractionFeedback } from '@shared/utils';
 import { WorkoutActiveScreen, WorkoutScreen } from '../screens/workout-screen';
 import { useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
@@ -13,6 +14,16 @@ import { useExercises } from '@features/routines';
 
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (callback: () => void) => callback(),
+}));
+
+jest.mock('@shared/hooks', () => ({
+  useReducedMotionPreference: () => false,
+}));
+
+jest.mock('@shared/utils', () => ({
+  ...jest.requireActual('@shared/utils'),
+  configureInteractionLayoutAnimation: jest.fn(),
+  triggerInteractionFeedback: jest.fn(),
 }));
 
 jest.mock('react-native-gifted-charts', () => {
@@ -109,6 +120,7 @@ const mockUsePreviousExercisePerformance = jest.mocked(
 const mockUseExercises = jest.mocked(useExercises);
 const mockUseHistoryAnalytics = jest.mocked(useHistoryAnalytics);
 const mockUseUserProfile = jest.mocked(useUserProfile);
+const mockTriggerInteractionFeedback = jest.mocked(triggerInteractionFeedback);
 const mockShowActionSheetWithOptions = jest.spyOn(
   ActionSheetIOS,
   'showActionSheetWithOptions',
@@ -506,6 +518,7 @@ describe('WorkoutScreen', () => {
     expect(updateReps).toHaveBeenCalledWith('set-1', 10);
     expect(updateWeight).toHaveBeenCalledWith('set-1', 140.5);
     expect(toggleSetLogged).toHaveBeenCalledWith('set-1', true);
+    expect(mockTriggerInteractionFeedback).toHaveBeenCalledWith('set-log');
     expect(setExerciseTimerDuration).toHaveBeenCalledWith('exercise-1', 90);
     expect(startExerciseTimer).toHaveBeenNthCalledWith(1, 'exercise-1', 90);
     expect(startExerciseTimer).toHaveBeenNthCalledWith(2, 'exercise-1', 60);

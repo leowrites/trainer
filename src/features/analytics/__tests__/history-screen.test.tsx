@@ -11,6 +11,10 @@ jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (callback: () => void) => callback(),
 }));
 
+jest.mock('@shared/hooks', () => ({
+  useReducedMotionPreference: () => false,
+}));
+
 jest.mock('react-native-gifted-charts', () => {
   const ReactNative = require('react-native');
 

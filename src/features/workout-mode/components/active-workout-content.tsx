@@ -1,9 +1,18 @@
 import { useHeaderHeight } from '@react-navigation/elements';
 import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import type { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Body, Button, Container, Label, Muted } from '@shared/components';
+import {
+  Body,
+  Button,
+  Container,
+  InteractivePressable,
+  Label,
+  Muted,
+} from '@shared/components';
+import { useReducedMotionPreference } from '@shared/hooks';
+import { configureInteractionLayoutAnimation } from '@shared/utils';
 import { DEFAULT_EXERCISE_TIMER_SECONDS } from '../store';
 import type {
   ActiveWorkoutSession,
@@ -76,6 +85,7 @@ export function ActiveWorkoutContent({
   const headerHeight = useHeaderHeight();
   const dockOffset = Math.max(insets.bottom, 2);
   const dockHeight = 70 + dockOffset;
+  const prefersReducedMotion = useReducedMotionPreference();
 
   return (
     <Container
@@ -138,7 +148,10 @@ export function ActiveWorkoutContent({
                     exerciseName={exercise.exerciseName}
                     setItem={setItem}
                     index={index}
-                    onDelete={() => deleteSet(setItem.id)}
+                    onDelete={() => {
+                      configureInteractionLayoutAnimation(prefersReducedMotion);
+                      deleteSet(setItem.id);
+                    }}
                     onUpdateReps={(reps) => updateReps(setItem.id, reps)}
                     onUpdateWeight={(weight) =>
                       updateWeight(setItem.id, weight)
@@ -153,16 +166,19 @@ export function ActiveWorkoutContent({
                   />
                 ))}
 
-                <Pressable
+                <InteractivePressable
                   accessibilityRole="button"
                   accessibilityLabel={`Add set to ${exercise.exerciseName}`}
                   className="mt-1 self-start rounded-[12px]  bg-surface-elevated px-3 py-2"
-                  onPress={() => addSet(exercise.exerciseId)}
+                  onPress={() => {
+                    configureInteractionLayoutAnimation(prefersReducedMotion);
+                    addSet(exercise.exerciseId);
+                  }}
                 >
                   <Body className="text-sm font-semibold text-secondary">
                     Add set
                   </Body>
-                </Pressable>
+                </InteractivePressable>
               </ExerciseCard>
             ))
           ) : (
@@ -182,22 +198,22 @@ export function ActiveWorkoutContent({
           style={{ bottom: dockOffset }}
         >
           <View className="flex-row items-center gap-1.5">
-            <Pressable
+            <InteractivePressable
               accessibilityRole="button"
               accessibilityLabel="Add exercise"
               className="h-11 w-11 items-center justify-center rounded-[14px]  bg-surface-card"
               onPress={() => setShowExerciseSheet(true)}
             >
               <Text className="font-mono text-xl text-foreground">+</Text>
-            </Pressable>
-            <Pressable
+            </InteractivePressable>
+            <InteractivePressable
               accessibilityRole="button"
               accessibilityLabel="Delete workout"
               className="h-11 w-11 items-center justify-center rounded-[14px]  bg-surface-card px-3"
               onPress={onDeleteWorkout}
             >
               <Body className="text-sm font-semibold text-destructive">x</Body>
-            </Pressable>
+            </InteractivePressable>
 
             <Button
               onPress={onComplete}

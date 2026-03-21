@@ -24,9 +24,11 @@
 import React from 'react';
 import type { PressableStateCallbackType, ViewProps } from 'react-native';
 
+import { useReducedMotionPreference } from '@shared/hooks';
 import { Box } from '@shared/ui/box';
 import { Card as GluestackCard } from '@shared/ui/card';
 import { Pressable } from '@shared/ui/pressable';
+import { getPressFeedbackStyle } from '@shared/utils';
 import { Label } from './typography';
 
 export interface CardProps extends Pick<ViewProps, 'style'> {
@@ -46,11 +48,13 @@ export function Card({
   onPress,
   accessibilityLabel,
 }: CardProps): React.JSX.Element {
+  const prefersReducedMotion = useReducedMotionPreference();
+
   const renderContent = (pressed: boolean): React.JSX.Element => (
     <GluestackCard
       className={`rounded-[28px] border px-5 py-5 ${
         pressed
-          ? 'border-accent/60 bg-surface-elevated'
+          ? 'border-surface-border/80 bg-surface-elevated'
           : 'border-surface-border/80 bg-surface-card'
       } ${className}`}
       style={style}
@@ -70,12 +74,13 @@ export function Card({
   if (onPress) {
     return (
       <Pressable
-        style={({ pressed }: PressableStateCallbackType) => [
-          {
-            opacity: pressed ? 0.96 : 1,
-            transform: [{ scale: pressed ? 0.975 : 1 }],
-          },
-        ]}
+        style={({ pressed }: PressableStateCallbackType) =>
+          getPressFeedbackStyle({
+            pressed,
+            prefersReducedMotion,
+            pressedScale: 0.98,
+          })
+        }
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
