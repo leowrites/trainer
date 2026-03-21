@@ -69,6 +69,12 @@ export type { InteractivePressableProps } from './interactive-pressable';
 export { ActionRow } from './action-row';
 export type { ActionRowProps } from './action-row';
 
+export { ExerciseCard } from './exercise-card';
+export type {
+  ExerciseCardProps,
+  ExerciseCardMenuAction,
+} from './exercise-card';
+
 // ── Data visualisation ────────────────────────────────────────────────────────
 export { ProgressBar } from './progress-bar';
 export type { ProgressBarProps, ProgressBarVariant } from './progress-bar';

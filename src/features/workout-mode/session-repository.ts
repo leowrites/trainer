@@ -4,6 +4,7 @@ import type {
   Schedule,
   ScheduleEntry,
   WorkoutSession,
+  WorkoutSessionExercise,
 } from '@core/database/types';
 import { generateId } from '@core/database/utils';
 import { getNextPosition } from '@features/schedule';
@@ -18,21 +19,46 @@ import type {
   WorkoutSetRow,
 } from './types';
 
+interface WorkoutSessionExerciseRow extends Pick<
+  WorkoutSessionExercise,
+  'id' | 'session_id' | 'exercise_id' | 'position' | 'rest_seconds'
+> {}
+
 function loadExerciseRows(
   db: SQLiteDatabase,
   sessionId: string,
 ): {
   exerciseRows: ExerciseNameRow[];
+  sessionExerciseRows: WorkoutSessionExerciseRow[];
   setRows: WorkoutSetRow[];
 } {
+  const sessionExerciseRows = db.getAllSync<WorkoutSessionExerciseRow>(
+    `SELECT id, session_id, exercise_id, position, rest_seconds
+     FROM workout_session_exercises
+     WHERE session_id = ?
+     ORDER BY position ASC`,
+    [sessionId],
+  );
   const setRows = db.getAllSync<WorkoutSetRow>(
-    'SELECT id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps FROM workout_sets WHERE session_id = ? ORDER BY rowid ASC',
+    `SELECT ws.id, ws.session_id, ws.exercise_id, ws.position, ws.weight, ws.reps, ws.is_completed, ws.target_sets, ws.target_reps
+     FROM workout_sets ws
+     WHERE ws.session_id = ?
+     ORDER BY COALESCE(ws.position, 0) ASC, ws.rowid ASC`,
     [sessionId],
   );
 
-  const exerciseIds = [
+  const fallbackExerciseRows = [
     ...new Set(setRows.map((row: WorkoutSetRow) => row.exercise_id)),
-  ];
+  ].map((exerciseId, position) => ({
+    id: `fallback-${sessionId}-${exerciseId}`,
+    session_id: sessionId,
+    exercise_id: exerciseId,
+    position,
+    rest_seconds: null,
+  }));
+  const orderedSessionExerciseRows =
+    sessionExerciseRows.length > 0 ? sessionExerciseRows : fallbackExerciseRows;
+  const exerciseIds = orderedSessionExerciseRows.map((row) => row.exercise_id);
   const exerciseRows =
     exerciseIds.length > 0
       ? db.getAllSync<ExerciseNameRow>(
@@ -43,46 +69,49 @@ function loadExerciseRows(
 
   return {
     exerciseRows,
+    sessionExerciseRows: orderedSessionExerciseRows,
     setRows,
   };
 }
 
 function buildActiveWorkoutSession(
   sessionRow: WorkoutSessionRow,
+  sessionExerciseRows: WorkoutSessionExerciseRow[],
   setRows: WorkoutSetRow[],
   exerciseRows: ExerciseNameRow[],
 ): ActiveWorkoutSession {
   const exerciseNames = new Map<string, string>(
     exerciseRows.map((row: ExerciseNameRow) => [row.id, row.name]),
   );
-  const exercises: ActiveWorkoutExercise[] = [];
-  const exerciseIndex = new Map<string, number>();
+  const setRowsByExerciseId = new Map<string, ActiveWorkoutSet[]>();
 
   for (const row of setRows) {
-    let index = exerciseIndex.get(row.exercise_id);
-
-    if (index === undefined) {
-      index = exercises.length;
-      exerciseIndex.set(row.exercise_id, index);
-      exercises.push({
-        exerciseId: row.exercise_id,
-        exerciseName: exerciseNames.get(row.exercise_id) ?? 'Exercise',
-        targetSets: row.target_sets,
-        targetReps: row.target_reps,
-        sets: [],
-      });
-    }
-
-    exercises[index].sets.push({
+    const exerciseSets = setRowsByExerciseId.get(row.exercise_id) ?? [];
+    exerciseSets.push({
       id: row.id,
       exerciseId: row.exercise_id,
+      position: row.position,
       reps: row.reps,
       weight: row.weight,
       isCompleted: row.is_completed === 1,
       targetSets: row.target_sets,
       targetReps: row.target_reps,
     });
+    setRowsByExerciseId.set(row.exercise_id, exerciseSets);
   }
+
+  const exercises: ActiveWorkoutExercise[] = sessionExerciseRows.map((row) => {
+    const exerciseSets = setRowsByExerciseId.get(row.exercise_id) ?? [];
+
+    return {
+      exerciseId: row.exercise_id,
+      exerciseName: exerciseNames.get(row.exercise_id) ?? 'Exercise',
+      restSeconds: row.rest_seconds,
+      targetSets: exerciseSets[0]?.targetSets ?? null,
+      targetReps: exerciseSets[0]?.targetReps ?? null,
+      sets: exerciseSets,
+    };
+  });
 
   return {
     id: sessionRow.id,
@@ -106,9 +135,17 @@ export function loadActiveWorkoutSession(
     return null;
   }
 
-  const { exerciseRows, setRows } = loadExerciseRows(db, sessionId);
+  const { exerciseRows, sessionExerciseRows, setRows } = loadExerciseRows(
+    db,
+    sessionId,
+  );
 
-  return buildActiveWorkoutSession(sessionRow, setRows, exerciseRows);
+  return buildActiveWorkoutSession(
+    sessionRow,
+    sessionExerciseRows,
+    setRows,
+    exerciseRows,
+  );
 }
 
 export function loadInProgressWorkoutSession(
@@ -124,9 +161,17 @@ export function loadInProgressWorkoutSession(
     return null;
   }
 
-  const { exerciseRows, setRows } = loadExerciseRows(db, sessionId);
+  const { exerciseRows, sessionExerciseRows, setRows } = loadExerciseRows(
+    db,
+    sessionId,
+  );
 
-  return buildActiveWorkoutSession(sessionRow, setRows, exerciseRows);
+  return buildActiveWorkoutSession(
+    sessionRow,
+    sessionExerciseRows,
+    setRows,
+    exerciseRows,
+  );
 }
 
 export function loadLatestInProgressWorkoutSession(
@@ -140,9 +185,60 @@ export function loadLatestInProgressWorkoutSession(
     return null;
   }
 
-  const { exerciseRows, setRows } = loadExerciseRows(db, sessionRow.id);
+  const { exerciseRows, sessionExerciseRows, setRows } = loadExerciseRows(
+    db,
+    sessionRow.id,
+  );
 
-  return buildActiveWorkoutSession(sessionRow, setRows, exerciseRows);
+  return buildActiveWorkoutSession(
+    sessionRow,
+    sessionExerciseRows,
+    setRows,
+    exerciseRows,
+  );
+}
+
+export function createWorkoutSessionExerciseRecord(
+  db: SQLiteDatabase,
+  sessionId: string,
+  exerciseId: string,
+  position: number,
+  restSeconds: number | null,
+): WorkoutSessionExerciseRow {
+  const sessionExerciseId = generateId();
+  db.runSync(
+    `INSERT INTO workout_session_exercises (
+      id,
+      session_id,
+      exercise_id,
+      position,
+      rest_seconds
+    ) VALUES (?, ?, ?, ?, ?)`,
+    [sessionExerciseId, sessionId, exerciseId, position, restSeconds],
+  );
+
+  return {
+    id: sessionExerciseId,
+    session_id: sessionId,
+    exercise_id: exerciseId,
+    position,
+    rest_seconds: restSeconds,
+  };
+}
+
+function getNextWorkoutSetPosition(
+  db: SQLiteDatabase,
+  sessionId: string,
+  exerciseId: string,
+): number {
+  return (
+    (db.getFirstSync<{ max_position: number | null }>(
+      `SELECT MAX(position) AS max_position
+       FROM workout_sets
+       WHERE session_id = ? AND exercise_id = ?`,
+      [sessionId, exerciseId],
+    )?.max_position ?? -1) + 1
+  );
 }
 
 export function createWorkoutSetRecord(
@@ -155,14 +251,36 @@ export function createWorkoutSetRecord(
   targetReps: number | null,
 ): ActiveWorkoutSet {
   const setId = generateId();
+  const position = getNextWorkoutSetPosition(db, sessionId, exerciseId);
   db.runSync(
-    'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [setId, sessionId, exerciseId, weight, reps, 0, targetSets, targetReps],
+    `INSERT INTO workout_sets (
+      id,
+      session_id,
+      exercise_id,
+      position,
+      weight,
+      reps,
+      is_completed,
+      target_sets,
+      target_reps
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      setId,
+      sessionId,
+      exerciseId,
+      position,
+      weight,
+      reps,
+      0,
+      targetSets,
+      targetReps,
+    ],
   );
 
   return {
     id: setId,
     exerciseId,
+    position,
     reps,
     weight,
     isCompleted: false,
@@ -219,6 +337,24 @@ export function deleteWorkoutSetsForExercise(
   db.runSync(
     'DELETE FROM workout_sets WHERE session_id = ? AND exercise_id = ?',
     [sessionId, exerciseId],
+  );
+  db.runSync(
+    'DELETE FROM workout_session_exercises WHERE session_id = ? AND exercise_id = ?',
+    [sessionId, exerciseId],
+  );
+}
+
+export function updateWorkoutSessionExerciseRest(
+  db: SQLiteDatabase,
+  sessionId: string,
+  exerciseId: string,
+  restSeconds: number,
+): void {
+  db.runSync(
+    `UPDATE workout_session_exercises
+     SET rest_seconds = ?
+     WHERE session_id = ? AND exercise_id = ?`,
+    [restSeconds, sessionId, exerciseId],
   );
 }
 
@@ -278,6 +414,9 @@ export function deleteWorkoutSessionRecord(
   sessionId: string,
 ): void {
   db.withTransactionSync(() => {
+    db.runSync('DELETE FROM workout_session_exercises WHERE session_id = ?', [
+      sessionId,
+    ]);
     db.runSync('DELETE FROM workout_sets WHERE session_id = ?', [sessionId]);
     db.runSync('DELETE FROM workout_sessions WHERE id = ?', [sessionId]);
   });
@@ -300,7 +439,7 @@ export function loadPreviousExercisePerformanceMap(
         AND workout_sets.session_id != ?
         AND workout_sets.is_completed = 1
         AND workout_sessions.end_time IS NOT NULL
-      ORDER BY workout_sessions.end_time DESC, workout_sets.rowid DESC`,
+      ORDER BY workout_sessions.end_time DESC, COALESCE(workout_sets.position, 0) DESC, workout_sets.rowid DESC`,
     [...exerciseIds, currentSessionId],
   );
 

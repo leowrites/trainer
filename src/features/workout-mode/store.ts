@@ -5,9 +5,9 @@ import {
   MAX_REST_SECONDS,
   MIN_REST_SECONDS,
 } from '@shared/constants';
+import { DEFAULT_EXERCISE_TIMER_SECONDS } from '@shared/utils';
 import type { ActiveWorkoutSession, ActiveWorkoutSet } from './types';
-
-export const DEFAULT_EXERCISE_TIMER_SECONDS = 60;
+export { DEFAULT_EXERCISE_TIMER_SECONDS } from '@shared/utils';
 
 interface WorkoutState {
   /** Whether there is an active workout session in progress. */
@@ -105,7 +105,7 @@ export const useWorkoutStore = create<WorkoutStore>((set) => ({
       exerciseTimerDurationByExerciseId: Object.fromEntries(
         session.exercises.map((exercise) => [
           exercise.exerciseId,
-          DEFAULT_EXERCISE_TIMER_SECONDS,
+          exercise.restSeconds ?? DEFAULT_EXERCISE_TIMER_SECONDS,
         ]),
       ),
     });

@@ -24,6 +24,15 @@ export interface RoutineExercise {
   position: number;
   target_sets: number;
   target_reps: number;
+  rest_seconds?: number | null;
+}
+
+export interface RoutineExerciseSet {
+  id: string;
+  routine_exercise_id: string;
+  position: number;
+  target_reps: number;
+  planned_weight: number | null;
 }
 
 export interface Schedule {
@@ -54,12 +63,22 @@ export interface WorkoutSession {
   end_time: number | null;
   effort_level: number | null;
   fatigue_level: number | null;
+  template_applied_at?: number | null;
+}
+
+export interface WorkoutSessionExercise {
+  id: string;
+  session_id: string;
+  exercise_id: string;
+  position: number;
+  rest_seconds?: number | null;
 }
 
 export interface WorkoutSet {
   id: string;
   session_id: string;
   exercise_id: string;
+  position?: number | null;
   weight: number;
   reps: number;
   is_completed: number; // SQLite uses 0/1 for booleans

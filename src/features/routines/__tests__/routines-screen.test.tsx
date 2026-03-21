@@ -451,13 +451,22 @@ describe('RoutinesScreen', () => {
       exercises: [
         {
           exerciseId: 'exercise-2',
-          targetSets: 4,
-          targetReps: 8,
+          restSeconds: null,
+          sets: [
+            { targetReps: 8, plannedWeight: null },
+            { targetReps: 8, plannedWeight: null },
+            { targetReps: 8, plannedWeight: null },
+            { targetReps: 8, plannedWeight: null },
+          ],
         },
         {
           exerciseId: 'exercise-1',
-          targetSets: 3,
-          targetReps: 10,
+          restSeconds: null,
+          sets: [
+            { targetReps: 10, plannedWeight: null },
+            { targetReps: 10, plannedWeight: null },
+            { targetReps: 10, plannedWeight: null },
+          ],
         },
       ],
     });
@@ -580,13 +589,13 @@ describe('RoutinesScreen', () => {
       exercises: [
         {
           exerciseId: 'exercise-1',
-          targetSets: 3,
-          targetReps: 10,
+          restSeconds: null,
+          sets: [{ targetReps: 10, plannedWeight: null }],
         },
         {
           exerciseId: 'exercise-3',
-          targetSets: 3,
-          targetReps: 10,
+          restSeconds: null,
+          sets: [{ targetReps: 10, plannedWeight: null }],
         },
       ],
     });

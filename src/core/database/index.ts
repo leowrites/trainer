@@ -11,10 +11,12 @@ export type {
   Exercise,
   Routine,
   RoutineExercise,
+  RoutineExerciseSet,
   Schedule,
   ScheduleEntry,
   UserProfile,
   WorkoutSession,
+  WorkoutSessionExercise,
   WorkoutSet,
 } from './types';
 export { DatabaseProvider, useDatabase } from './provider';

@@ -9,8 +9,8 @@
  */
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useLayoutEffect, useRef } from 'react';
-import { Animated, ScrollView, View } from 'react-native';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import { Alert, Animated, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from '@core/navigation';
@@ -59,9 +59,9 @@ export function WorkoutSummaryScreen({
   const { tokens } = useTheme();
   const heroOpacity = useRef(new Animated.Value(0)).current;
   const heroTranslate = useRef(new Animated.Value(20)).current;
-  const { isLoading, summary, saveFeedback } = useWorkoutSummary(
-    route.params.sessionId,
-  );
+  const { isLoading, summary, saveFeedback, applyTemplateUpdate } =
+    useWorkoutSummary(route.params.sessionId);
+  const [dismissedTemplatePrompt, setDismissedTemplatePrompt] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -86,6 +86,36 @@ export function WorkoutSummaryScreen({
       }),
     ]).start();
   }, [heroOpacity, heroTranslate]);
+
+  React.useEffect(() => {
+    if (
+      !summary?.templateUpdate?.canApply ||
+      dismissedTemplatePrompt ||
+      !applyTemplateUpdate
+    ) {
+      return;
+    }
+
+    Alert.alert(
+      'Update routine template?',
+      `Apply this completed workout back to ${summary.templateUpdate.routineName} so future sessions start from what you actually logged?`,
+      [
+        {
+          text: 'Not now',
+          style: 'cancel',
+          onPress: () => setDismissedTemplatePrompt(true),
+        },
+        {
+          text: 'Apply',
+          onPress: () => {
+            setDismissedTemplatePrompt(true);
+            applyTemplateUpdate();
+          },
+        },
+      ],
+      { cancelable: false },
+    );
+  }, [applyTemplateUpdate, dismissedTemplatePrompt, summary?.templateUpdate]);
 
   const handleBackToHome = (): void => {
     if (navigation.canGoBack()) {

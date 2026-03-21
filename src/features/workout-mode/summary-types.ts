@@ -34,6 +34,12 @@ export interface WorkoutFeedbackOption {
   title: string;
 }
 
+export interface WorkoutTemplateUpdateViewModel {
+  routineName: string;
+  canApply: boolean;
+  appliedAtLabel: string | null;
+}
+
 export interface WorkoutSummaryViewModel {
   session: HistorySession;
   unit: WeightUnit;
@@ -47,4 +53,5 @@ export interface WorkoutSummaryViewModel {
   scheduleContext: WorkoutSummaryScheduleContext | null;
   effortLevel: number | null;
   fatigueLevel: number | null;
+  templateUpdate?: WorkoutTemplateUpdateViewModel | null;
 }

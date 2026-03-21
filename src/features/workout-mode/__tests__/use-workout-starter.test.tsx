@@ -190,11 +190,16 @@ describe('useWorkoutStarter', () => {
     const setInsertCalls = db.runSync.mock.calls.filter(([query]) =>
       (query as string).includes('INSERT INTO workout_sets'),
     );
+    const sessionExerciseInsertCalls = db.runSync.mock.calls.filter(([query]) =>
+      (query as string).includes('INSERT INTO workout_session_exercises'),
+    );
+    expect(sessionExerciseInsertCalls).toHaveLength(2);
     expect(setInsertCalls).toHaveLength(3);
     expect(setInsertCalls[0][1]).toEqual([
       expect.any(String),
       sessionId,
       'exercise-1',
+      0,
       0,
       8,
       0,
@@ -205,6 +210,7 @@ describe('useWorkoutStarter', () => {
       expect.any(String),
       sessionId,
       'exercise-1',
+      1,
       0,
       8,
       0,
@@ -215,6 +221,7 @@ describe('useWorkoutStarter', () => {
       expect.any(String),
       sessionId,
       'exercise-2',
+      0,
       0,
       10,
       0,

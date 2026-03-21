@@ -29,6 +29,11 @@ import {
   saveWorkoutFeedbackLevel,
   type WorkoutSummaryMeta,
 } from '../workout-summary-repository';
+import {
+  applyWorkoutTemplateUpdate,
+  loadWorkoutTemplateUpdateState,
+  type WorkoutTemplateUpdateState,
+} from '../workout-template-update-repository';
 
 function formatCompactNumber(value: number): string {
   return new Intl.NumberFormat('en-CA', {
@@ -100,6 +105,8 @@ export function useWorkoutSummary(sessionId: string): {
   isLoading: boolean;
   summary: WorkoutSummaryViewModel | null;
   saveFeedback: (metric: WorkoutFeedbackMetric, value: number) => void;
+  applyTemplateUpdate?: () => void;
+  isApplyingTemplateUpdate?: boolean;
 } {
   const db = useDatabase();
   const { session, isLoading: isSessionLoading } =
@@ -111,9 +118,14 @@ export function useWorkoutSummary(sessionId: string): {
   const [meta, setMeta] = useState<WorkoutSummaryMeta>(
     EMPTY_WORKOUT_SUMMARY_META,
   );
+  const [templateUpdate, setTemplateUpdate] =
+    useState<WorkoutTemplateUpdateState | null>(null);
+  const [isApplyingTemplateUpdate, setIsApplyingTemplateUpdate] =
+    useState(false);
 
   useEffect(() => {
     setMeta(loadWorkoutSummaryMeta(db, sessionId));
+    setTemplateUpdate(loadWorkoutTemplateUpdateState(db, sessionId));
   }, [db, sessionId]);
 
   const saveFeedback = useCallback(
@@ -136,6 +148,23 @@ export function useWorkoutSummary(sessionId: string): {
 
     return buildWorkoutRecordBadges(session, historySessions, unit);
   }, [historySessions, session, unit]);
+
+  const applyTemplateUpdate = useCallback((): void => {
+    if (isApplyingTemplateUpdate) {
+      return;
+    }
+
+    setIsApplyingTemplateUpdate(true);
+
+    try {
+      const nextState = applyWorkoutTemplateUpdate(db, sessionId);
+      if (nextState) {
+        setTemplateUpdate(nextState);
+      }
+    } finally {
+      setIsApplyingTemplateUpdate(false);
+    }
+  }, [db, isApplyingTemplateUpdate, sessionId]);
 
   const summary = useMemo((): WorkoutSummaryViewModel | null => {
     if (!session || session.endTime === null) {
@@ -161,12 +190,25 @@ export function useWorkoutSummary(sessionId: string): {
       scheduleContext: meta.scheduleContext,
       effortLevel: meta.effortLevel,
       fatigueLevel: meta.fatigueLevel,
+      templateUpdate:
+        templateUpdate === null
+          ? null
+          : {
+              routineName: templateUpdate.routineName,
+              canApply: templateUpdate.canApply,
+              appliedAtLabel:
+                templateUpdate.appliedAt === null
+                  ? null
+                  : formatTimeLabel(templateUpdate.appliedAt),
+            },
     };
-  }, [allSessions, meta, recordBadges, session, unit]);
+  }, [allSessions, meta, recordBadges, session, templateUpdate, unit]);
 
   return {
     isLoading: isSessionLoading || isHistoryLoading || isHistorySessionsLoading,
     summary,
     saveFeedback,
+    applyTemplateUpdate,
+    isApplyingTemplateUpdate,
   };
 }

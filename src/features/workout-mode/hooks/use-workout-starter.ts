@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';
-import type {
-  Routine,
-  RoutineExercise,
-  Schedule,
-  ScheduleEntry,
-} from '@core/database/types';
+import type { Routine, Schedule, ScheduleEntry } from '@core/database/types';
 import { generateId } from '@core/database/utils';
 import { selectNextRoutineId } from '@features/schedule';
-import { buildRoutineSnapshot } from '@features/routines';
+import {
+  buildRoutineSnapshot,
+  loadRoutineExerciseTemplates,
+} from '@features/routines';
 import type { WorkoutSnapshotInput } from '@features/routines';
 import { loadActiveWorkoutSession } from '../session-repository';
 import { useWorkoutStore } from '../store';
@@ -95,13 +93,10 @@ export function useWorkoutStarter(): {
       return;
     }
 
-    const routineExercises = db.getAllSync<RoutineExercise>(
-      'SELECT id, routine_id, exercise_id, position, target_sets, target_reps FROM routine_exercises WHERE routine_id = ?',
-      [routineId],
-    );
+    const routineExercises = loadRoutineExerciseTemplates(db, routineId);
     const exerciseCount = routineExercises.length;
     const totalSets = routineExercises.reduce(
-      (sum: number, exercise: RoutineExercise) => sum + exercise.target_sets,
+      (sum: number, exercise) => sum + exercise.sets.length,
       0,
     );
     const estimatedMinutes = Math.max(
@@ -148,19 +143,20 @@ export function useWorkoutStarter(): {
       );
       if (!routine) return;
 
-      const routineExercises = db.getAllSync<RoutineExercise>(
-        'SELECT id, routine_id, exercise_id, position, target_sets, target_reps FROM routine_exercises WHERE routine_id = ?',
-        [routineId],
-      );
+      const routineExercises = loadRoutineExerciseTemplates(db, routineId);
 
       // Build the snapshot — captures routine name + exercises at this instant.
       const snapshot: WorkoutSnapshotInput = buildRoutineSnapshot(
         routine.name,
-        routineExercises.map((re: RoutineExercise) => ({
-          exerciseId: re.exercise_id,
-          position: re.position,
-          targetSets: re.target_sets,
-          targetReps: re.target_reps,
+        routineExercises.map((exercise) => ({
+          exerciseId: exercise.exerciseId,
+          position: exercise.position,
+          restSeconds: exercise.restSeconds,
+          sets: exercise.sets.map((setEntry) => ({
+            position: setEntry.position,
+            targetReps: setEntry.targetReps,
+            plannedWeight: setEntry.plannedWeight,
+          })),
         })),
       );
 
@@ -182,18 +178,46 @@ export function useWorkoutStarter(): {
       // Eagerly create placeholder WorkoutSets from the snapshot so that
       // routine edits cannot affect this session.
       for (const exercise of snapshot.exercises) {
-        for (let i = 0; i < exercise.targetSets; i++) {
+        db.runSync(
+          `INSERT INTO workout_session_exercises (
+            id,
+            session_id,
+            exercise_id,
+            position,
+            rest_seconds
+          ) VALUES (?, ?, ?, ?, ?)`,
+          [
+            generateId(),
+            sessionId,
+            exercise.exerciseId,
+            exercise.position,
+            exercise.restSeconds ?? null,
+          ],
+        );
+
+        for (const setEntry of exercise.sets ?? []) {
           db.runSync(
-            'INSERT INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            `INSERT INTO workout_sets (
+              id,
+              session_id,
+              exercise_id,
+              position,
+              weight,
+              reps,
+              is_completed,
+              target_sets,
+              target_reps
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               generateId(),
               sessionId,
               exercise.exerciseId,
+              setEntry.position,
+              setEntry.plannedWeight ?? 0,
+              setEntry.targetReps,
               0,
-              exercise.targetReps,
-              0,
-              exercise.targetSets,
-              exercise.targetReps,
+              (exercise.sets ?? []).length,
+              setEntry.targetReps,
             ],
           );
         }

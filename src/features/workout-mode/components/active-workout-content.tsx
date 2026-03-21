@@ -7,6 +7,7 @@ import {
   Body,
   Button,
   Container,
+  ExerciseCard,
   InteractivePressable,
   Label,
   Muted,
@@ -18,7 +19,6 @@ import type {
   ActiveWorkoutSession,
   PreviousExercisePerformance,
 } from '../types';
-import { ExerciseCard } from './exercise-card';
 import { ExercisePickerBottomSheet } from './exercise-picker-bottom-sheet';
 import { WorkoutSetRow } from './workout-set-row';
 import {
@@ -109,15 +109,14 @@ export function ActiveWorkoutContent({
               <ExerciseCard
                 key={exercise.exerciseId}
                 title={exercise.exerciseName}
-                exerciseId={exercise.exerciseId}
-                previousPerformanceLabel={formatPreviousPerformance(
+                subtitle={formatPreviousPerformance(
                   previousPerformanceByExerciseId[exercise.exerciseId] ?? null,
                 )}
-                isExerciseTimerActive={
+                isMetaActive={
                   (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ?? 0) >
                   now
                 }
-                exerciseTimerDisplayLabel={
+                metaLabel={
                   (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ?? 0) >
                   now
                     ? `Timer ${formatRestCountdown(
@@ -130,11 +129,36 @@ export function ActiveWorkoutContent({
                         ] ?? DEFAULT_EXERCISE_TIMER_SECONDS,
                       )}`
                 }
-                onOpenDetails={onOpenExerciseDetails}
-                onDelete={() => removeExercise(exercise.exerciseId)}
-                onToggleExerciseTimer={() =>
+                onPressTitle={() => onOpenExerciseDetails(exercise.exerciseId)}
+                titleAccessibilityLabel={`View details for ${exercise.exerciseName}`}
+                onPressMeta={() =>
                   onOpenExerciseTimerOptions(exercise.exerciseId)
                 }
+                metaAccessibilityLabel={`${exercise.exerciseName} timer options`}
+                metaAccessibilityHint={`Choose the timer duration for ${exercise.exerciseName}. Current setting: ${
+                  (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ?? 0) >
+                  now
+                    ? `Timer ${formatRestCountdown(
+                        (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ??
+                          0) - now,
+                      )}`
+                    : `Timer ${formatTimerDuration(
+                        exerciseTimerDurationByExerciseId[
+                          exercise.exerciseId
+                        ] ?? DEFAULT_EXERCISE_TIMER_SECONDS,
+                      )}`
+                }.`}
+                menuActions={[
+                  {
+                    label: 'View Details',
+                    onPress: () => onOpenExerciseDetails(exercise.exerciseId),
+                  },
+                  {
+                    label: 'Delete Exercise',
+                    style: 'destructive',
+                    onPress: () => removeExercise(exercise.exerciseId),
+                  },
+                ]}
               >
                 <View className="flex-row items-center gap-2 px-1 pb-3 pt-1">
                   <Label className="w-8 text-center text-xs">Set</Label>

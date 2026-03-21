@@ -3,19 +3,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDatabase } from '@core/database/provider';
 import type { Routine, RoutineExercise } from '@core/database/types';
 import { generateId } from '@core/database/utils';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface RoutineExerciseInput {
-  exerciseId: string;
-  targetSets: number;
-  targetReps: number;
-}
-
-export interface NewRoutineInput {
-  name: string;
-  exercises: RoutineExerciseInput[];
-}
+import {
+  loadRoutineExerciseTemplates,
+  replaceRoutineExerciseTemplates,
+  insertRoutineExerciseTemplates,
+} from '../routine-template-repository';
+import type {
+  NewRoutineInput,
+  RoutineExerciseTemplate,
+} from '../template-types';
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +27,9 @@ export function useRoutines(): {
   hasLoaded: boolean;
   refresh: () => void;
   getRoutineExercises: (routineId: string) => RoutineExercise[];
+  getRoutineTemplateExercises?: (
+    routineId: string,
+  ) => RoutineExerciseTemplate[];
   getRoutineExerciseCounts: () => Record<string, number>;
   createRoutine: (input: NewRoutineInput) => Routine;
   updateRoutine: (id: string, input: NewRoutineInput) => void;
@@ -56,7 +55,10 @@ export function useRoutines(): {
   const getRoutineExercises = useCallback(
     (routineId: string): RoutineExercise[] => {
       return db.getAllSync<RoutineExercise>(
-        'SELECT id, routine_id, exercise_id, position, target_sets, target_reps FROM routine_exercises WHERE routine_id = ? ORDER BY position ASC',
+        `SELECT id, routine_id, exercise_id, position, target_sets, target_reps, rest_seconds
+         FROM routine_exercises
+         WHERE routine_id = ?
+         ORDER BY position ASC`,
         [routineId],
       );
     },
@@ -77,6 +79,12 @@ export function useRoutines(): {
     }, {});
   }, [db]);
 
+  const getRoutineTemplateExercises = useCallback(
+    (routineId: string): RoutineExerciseTemplate[] =>
+      loadRoutineExerciseTemplates(db, routineId),
+    [db],
+  );
+
   const createRoutine = useCallback(
     (input: NewRoutineInput): Routine => {
       const id = generateId();
@@ -85,19 +93,7 @@ export function useRoutines(): {
           'INSERT INTO routines (id, name, notes, is_deleted) VALUES (?, ?, ?, 0)',
           [id, input.name, null],
         );
-        input.exercises.forEach((entry, i) => {
-          db.runSync(
-            'INSERT INTO routine_exercises (id, routine_id, exercise_id, position, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?)',
-            [
-              generateId(),
-              id,
-              entry.exerciseId,
-              i,
-              entry.targetSets,
-              entry.targetReps,
-            ],
-          );
-        });
+        insertRoutineExerciseTemplates(db, id, input.exercises);
       });
       refresh();
       return { id, name: input.name, notes: null };
@@ -175,6 +171,16 @@ export function useRoutines(): {
           }
         });
 
+        db.runSync(
+          `DELETE FROM routine_exercise_sets
+           WHERE routine_exercise_id IN (
+             SELECT id
+             FROM routine_exercises
+             WHERE routine_id = ?
+           )`,
+          [id],
+        );
+        db.runSync('DELETE FROM routine_exercises WHERE routine_id = ?', [id]);
         db.runSync('UPDATE routines SET is_deleted = 1 WHERE id = ?', [id]);
       });
       refresh();
@@ -189,20 +195,7 @@ export function useRoutines(): {
           'UPDATE routines SET name = ? WHERE id = ? AND is_deleted = 0',
           [input.name, id],
         );
-        db.runSync('DELETE FROM routine_exercises WHERE routine_id = ?', [id]);
-        input.exercises.forEach((entry, i) => {
-          db.runSync(
-            'INSERT INTO routine_exercises (id, routine_id, exercise_id, position, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?)',
-            [
-              generateId(),
-              id,
-              entry.exerciseId,
-              i,
-              entry.targetSets,
-              entry.targetReps,
-            ],
-          );
-        });
+        replaceRoutineExerciseTemplates(db, id, input.exercises);
       });
       refresh();
     },
@@ -214,6 +207,7 @@ export function useRoutines(): {
     hasLoaded,
     refresh,
     getRoutineExercises,
+    getRoutineTemplateExercises,
     getRoutineExerciseCounts,
     createRoutine,
     updateRoutine,

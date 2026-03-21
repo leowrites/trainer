@@ -1,11 +1,12 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ActionSheetIOS, Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { RootStackParamList } from '@core/navigation';
 import { useTheme } from '@core/theme/theme-context';
+import { showExerciseTimerPicker } from '@shared/utils';
 import { useActiveWorkout } from '../hooks/use-active-workout';
 import { usePreviousExercisePerformance } from '../hooks/use-previous-exercise-performance';
 import { DEFAULT_EXERCISE_TIMER_SECONDS, useWorkoutStore } from '../store';
@@ -13,7 +14,6 @@ import { ActiveWorkoutContent } from '../components/active-workout-content';
 import { WorkoutHeaderRight } from '../components/workout-header-right';
 import { WorkoutHeaderTitle } from '../components/workout-header-title';
 import {
-  EXERCISE_TIMER_OPTIONS,
   countCompletedExercises,
   formatElapsedDuration,
   formatRestCountdown,
@@ -66,6 +66,7 @@ export function WorkoutActiveScreen({
     removeExercise,
     addSet,
     deleteSet,
+    updateExerciseRestSeconds,
     updateReps,
     updateWeight,
     toggleSetLogged,
@@ -131,6 +132,22 @@ export function WorkoutActiveScreen({
     return () => clearInterval(interval);
   }, [isWorkoutActive, isWorkoutCollapsed, navigation]);
 
+  useEffect(() => {
+    if (restTimerEndsAt !== null && restTimerEndsAt <= now) {
+      clearRestTimer();
+    }
+  }, [clearRestTimer, now, restTimerEndsAt]);
+
+  useEffect(() => {
+    for (const [exerciseId, endsAt] of Object.entries(
+      exerciseTimerEndsAtByExerciseId,
+    )) {
+      if (endsAt !== null && endsAt <= now) {
+        clearExerciseTimer(exerciseId);
+      }
+    }
+  }, [clearExerciseTimer, exerciseTimerEndsAtByExerciseId, now]);
+
   const sessionTitle = activeSession?.title ?? 'Workout';
   const durationLabel =
     startTime !== null ? formatElapsedDuration(now - startTime) : '0m';
@@ -192,70 +209,22 @@ export function WorkoutActiveScreen({
         (exercise) => exercise.exerciseId === exerciseId,
       )?.exerciseName ?? 'Exercise';
 
-    if (Platform.OS === 'ios') {
-      const options = [
-        ...EXERCISE_TIMER_OPTIONS.map(
-          (seconds) =>
-            `${seconds} sec${seconds === durationSeconds ? ' ✓' : ''}`,
-        ),
-        'Clear Timer',
-        'Cancel',
-      ];
-      const cancelButtonIndex = options.length - 1;
-      const clearButtonIndex = options.length - 2;
-
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: `${exerciseName} timer`,
-          message: 'Choose the timer duration for this exercise.',
-          options,
-          cancelButtonIndex,
-          destructiveButtonIndex: clearButtonIndex,
-          userInterfaceStyle: colorMode,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === cancelButtonIndex) {
-            return;
-          }
-
-          if (buttonIndex === clearButtonIndex) {
-            clearExerciseTimer(exerciseId);
-            return;
-          }
-
-          const nextDuration = EXERCISE_TIMER_OPTIONS[buttonIndex];
-          if (!nextDuration) {
-            return;
-          }
-
-          setExerciseTimerDuration(exerciseId, nextDuration);
-          startExerciseTimer(exerciseId, nextDuration);
-        },
-      );
-      return;
-    }
-
-    Alert.alert(
-      `${exerciseName} timer`,
-      'Choose the timer duration for this exercise.',
-      [
-        ...EXERCISE_TIMER_OPTIONS.map((seconds) => ({
-          text: `${seconds} sec`,
-          onPress: () => {
-            setExerciseTimerDuration(exerciseId, seconds);
-            startExerciseTimer(exerciseId, seconds);
-          },
-        })),
-        {
-          text: 'Clear Timer',
-          style: 'destructive' as const,
-          onPress: () => {
-            clearExerciseTimer(exerciseId);
-          },
-        },
-        { text: 'Cancel', style: 'cancel' as const },
-      ],
-    );
+    showExerciseTimerPicker({
+      title: `${exerciseName} timer`,
+      message: 'Choose the timer duration for this exercise.',
+      colorMode,
+      currentDurationSeconds: durationSeconds,
+      onSelectDuration: (nextDuration) => {
+        setExerciseTimerDuration(exerciseId, nextDuration);
+        updateExerciseRestSeconds?.(exerciseId, nextDuration);
+        startExerciseTimer(exerciseId, nextDuration);
+      },
+      onClear: () => {
+        clearExerciseTimer(exerciseId);
+      },
+      clearActionLabel: 'Clear Timer',
+      clearActionStyle: 'destructive',
+    });
   };
   const handleDeleteWorkout = (): void => {
     Alert.alert(
@@ -321,6 +290,7 @@ export function WorkoutActiveScreen({
         const durationSeconds =
           exerciseTimerDurationByExerciseId[exerciseId] ??
           DEFAULT_EXERCISE_TIMER_SECONDS;
+        updateExerciseRestSeconds?.(exerciseId, durationSeconds);
         startExerciseTimer(exerciseId, durationSeconds);
       }}
       exerciseTimerEndsAtByExerciseId={exerciseTimerEndsAtByExerciseId}

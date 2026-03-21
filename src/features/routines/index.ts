@@ -14,10 +14,18 @@ export type { ExerciseDetailScreenProps } from './screens/exercise-detail-screen
 export type { RoutinesStackParamList } from './types';
 export { useExercises } from './hooks/use-exercises';
 export { useRoutines } from './hooks/use-routines';
+export {
+  insertRoutineExerciseTemplates,
+  loadRoutineExerciseTemplates,
+  replaceRoutineExerciseTemplates,
+} from './routine-template-repository';
 export type {
   NewRoutineInput,
   RoutineExerciseInput,
-} from './hooks/use-routines';
+  RoutineExerciseTemplate,
+  RoutineExerciseTemplateSet,
+  RoutineExerciseSetInput,
+} from './template-types';
 export { buildRoutineSnapshot } from './domain/routine-snapshot';
 export type {
   RoutineExerciseData,

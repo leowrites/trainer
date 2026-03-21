@@ -4,16 +4,18 @@ import { useDatabase } from '@core/database/provider';
 import type { ActiveWorkoutSession } from '../types';
 import {
   completeWorkoutSessionRecord,
+  createWorkoutSessionExerciseRecord,
   createWorkoutSetRecord,
   deleteWorkoutSessionRecord,
   deleteWorkoutSetsForExercise,
   deleteWorkoutSetRecord,
   loadActiveWorkoutSession,
+  updateWorkoutSessionExerciseRest,
   updateWorkoutSetCompletion,
   updateWorkoutSetReps,
   updateWorkoutSetWeight,
 } from '../session-repository';
-import { useWorkoutStore } from '../store';
+import { DEFAULT_EXERCISE_TIMER_SECONDS, useWorkoutStore } from '../store';
 
 function normalizeInteger(value: number): number {
   if (!Number.isFinite(value)) {
@@ -37,6 +39,7 @@ export function useActiveWorkout(): {
   removeExercise: (exerciseId: string) => void;
   addSet: (exerciseId: string) => void;
   deleteSet: (setId: string) => void;
+  updateExerciseRestSeconds?: (exerciseId: string, restSeconds: number) => void;
   updateReps: (setId: string, reps: number) => void;
   updateWeight: (setId: string, weight: number) => void;
   toggleSetLogged: (setId: string, isCompleted: boolean) => void;
@@ -92,10 +95,18 @@ export function useActiveWorkout(): {
         null,
         null,
       );
+      createWorkoutSessionExerciseRecord(
+        db,
+        currentActiveSessionId,
+        exerciseId,
+        currentActiveSession.exercises.length,
+        DEFAULT_EXERCISE_TIMER_SECONDS,
+      );
 
       addExerciseToStore({
         exerciseId,
         exerciseName,
+        restSeconds: DEFAULT_EXERCISE_TIMER_SECONDS,
         targetSets: null,
         targetReps: null,
         sets: [newSet],
@@ -171,6 +182,22 @@ export function useActiveWorkout(): {
     [db, deleteSetFromStore],
   );
 
+  const updateExerciseRestSeconds = useCallback(
+    (exerciseId: string, restSeconds: number): void => {
+      if (!activeSessionId) {
+        return;
+      }
+
+      updateWorkoutSessionExerciseRest(
+        db,
+        activeSessionId,
+        exerciseId,
+        restSeconds,
+      );
+    },
+    [activeSessionId, db],
+  );
+
   const toggleSetLogged = useCallback(
     (setId: string, isCompleted: boolean): void => {
       updateWorkoutSetCompletion(db, setId, isCompleted);
@@ -206,6 +233,7 @@ export function useActiveWorkout(): {
     removeExercise,
     addSet,
     deleteSet,
+    updateExerciseRestSeconds,
     updateReps,
     updateWeight,
     toggleSetLogged,
