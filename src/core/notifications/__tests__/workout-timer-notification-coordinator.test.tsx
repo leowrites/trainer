@@ -11,6 +11,7 @@ const mockGetLastWorkoutTimerNotificationResponseData = jest.fn();
 const mockAddWorkoutTimerNotificationResponseListener = jest.fn();
 const mockNavigateToActiveWorkoutScreen = jest.fn();
 const mockLoadInProgressWorkoutSession = jest.fn();
+const mockLoadLatestInProgressWorkoutSession = jest.fn();
 const mockDatabase = { name: 'mock-db' };
 
 jest.mock('../workout-timer-notifications', () => ({
@@ -39,6 +40,7 @@ jest.mock('@features/workout-mode', () => {
   return {
     useWorkoutStore: storeModule.useWorkoutStore,
     loadInProgressWorkoutSession: mockLoadInProgressWorkoutSession,
+    loadLatestInProgressWorkoutSession: mockLoadLatestInProgressWorkoutSession,
   };
 });
 
@@ -89,6 +91,7 @@ describe('WorkoutTimerNotificationCoordinator', () => {
       () => () => undefined,
     );
     mockLoadInProgressWorkoutSession.mockReturnValue(null);
+    mockLoadLatestInProgressWorkoutSession.mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -227,6 +230,21 @@ describe('WorkoutTimerNotificationCoordinator', () => {
 
     expect(useWorkoutStore.getState().isWorkoutCollapsed).toBe(false);
     expect(mockNavigateToActiveWorkoutScreen).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores the latest in-progress workout on cold launch without navigating', async () => {
+    mockLoadLatestInProgressWorkoutSession.mockReturnValue(mockSession);
+
+    render(<WorkoutTimerNotificationCoordinator />);
+
+    await waitFor(() => {
+      expect(mockLoadLatestInProgressWorkoutSession).toHaveBeenCalledWith(
+        mockDatabase,
+      );
+    });
+    expect(useWorkoutStore.getState().isWorkoutActive).toBe(true);
+    expect(useWorkoutStore.getState().activeSessionId).toBe('session-1');
+    expect(mockNavigateToActiveWorkoutScreen).not.toHaveBeenCalled();
   });
 
   it('restores an in-progress workout from storage on cold-start notification taps', async () => {

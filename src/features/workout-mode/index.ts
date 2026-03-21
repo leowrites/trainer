@@ -7,7 +7,10 @@
 export { useWorkoutStore } from './store';
 export { useActiveWorkout } from './hooks/use-active-workout';
 export { useWorkoutStarter } from './hooks/use-workout-starter';
-export { loadInProgressWorkoutSession } from './session-repository';
+export {
+  loadInProgressWorkoutSession,
+  loadLatestInProgressWorkoutSession,
+} from './session-repository';
 export { WorkoutActiveScreen, WorkoutScreen } from './screens/workout-screen';
 export type {
   ActiveWorkoutExercise,

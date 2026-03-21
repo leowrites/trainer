@@ -21,6 +21,7 @@ import { database } from '@core/database';
 import { navigateToActiveWorkoutScreen } from '@core/navigation';
 import {
   loadInProgressWorkoutSession,
+  loadLatestInProgressWorkoutSession,
   useWorkoutStore,
 } from '@features/workout-mode';
 import type { WorkoutTimerNotificationRequest } from './types';
@@ -160,31 +161,47 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
   }, []);
 
   useEffect(() => {
+    function restoreInProgressWorkout(sessionId?: string): boolean {
+      const state = useWorkoutStore.getState();
+      const isMatchingActiveSession =
+        state.isWorkoutActive &&
+        (sessionId === undefined || state.activeSessionId === sessionId);
+      if (isMatchingActiveSession) {
+        return true;
+      }
+
+      const restoredSession = sessionId
+        ? loadInProgressWorkoutSession(database, sessionId)
+        : loadLatestInProgressWorkoutSession(database);
+      if (!restoredSession) {
+        return false;
+      }
+
+      state.startWorkout(restoredSession);
+      return true;
+    }
+
     function openActiveWorkoutFromNotification(sessionId: string): void {
       const state = useWorkoutStore.getState();
       if (!state.isWorkoutActive || state.activeSessionId !== sessionId) {
-        const restoredSession = loadInProgressWorkoutSession(
-          database,
-          sessionId,
-        );
-        if (!restoredSession) {
+        const wasRestored = restoreInProgressWorkout(sessionId);
+        if (!wasRestored) {
           return;
         }
-
-        state.startWorkout(restoredSession);
       }
 
       const latestState = useWorkoutStore.getState();
       if (latestState.isWorkoutCollapsed) {
         latestState.expandWorkout();
       }
-
       navigateToActiveWorkoutScreen();
     }
 
     const lastResponseData = getLastWorkoutTimerNotificationResponseData();
     if (lastResponseData) {
       openActiveWorkoutFromNotification(lastResponseData.sessionId);
+    } else {
+      restoreInProgressWorkout();
     }
 
     return addWorkoutTimerNotificationResponseListener((data) => {
