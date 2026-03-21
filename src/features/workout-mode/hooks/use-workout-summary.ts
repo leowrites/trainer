@@ -13,7 +13,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   buildDashboardMetrics,
   useHistoryAnalytics,
+  useHistorySessions,
   useHistorySessionDetail,
+  type WeightUnit,
 } from '@features/analytics';
 import { useUserProfile } from '@features/health-tracking';
 import { useDatabase } from '@core/database/provider';
@@ -25,6 +27,7 @@ import { buildWorkoutRecordBadges } from '../domain/workout-summary';
 import {
   loadWorkoutSummaryMeta,
   saveWorkoutFeedbackLevel,
+  type WorkoutSummaryMeta,
 } from '../workout-summary-repository';
 
 function formatCompactNumber(value: number): string {
@@ -87,6 +90,12 @@ function formatWeeklyProgressLabel(workoutsThisWeek: number): string {
   return `${workoutsThisWeek} workouts completed this week`;
 }
 
+const EMPTY_WORKOUT_SUMMARY_META: WorkoutSummaryMeta = {
+  effortLevel: null,
+  fatigueLevel: null,
+  scheduleContext: null,
+};
+
 export function useWorkoutSummary(sessionId: string): {
   isLoading: boolean;
   summary: WorkoutSummaryViewModel | null;
@@ -96,8 +105,12 @@ export function useWorkoutSummary(sessionId: string): {
   const { session, isLoading: isSessionLoading } =
     useHistorySessionDetail(sessionId);
   const { allSessions, isLoading: isHistoryLoading } = useHistoryAnalytics();
+  const { sessions: historySessions, isLoading: isHistorySessionsLoading } =
+    useHistorySessions();
   const { profile } = useUserProfile();
-  const [meta, setMeta] = useState(() => loadWorkoutSummaryMeta(db, sessionId));
+  const [meta, setMeta] = useState<WorkoutSummaryMeta>(
+    EMPTY_WORKOUT_SUMMARY_META,
+  );
 
   useEffect(() => {
     setMeta(loadWorkoutSummaryMeta(db, sessionId));
@@ -115,12 +128,20 @@ export function useWorkoutSummary(sessionId: string): {
     [db, sessionId],
   );
 
+  const unit: WeightUnit = profile?.preferredWeightUnit ?? 'kg';
+  const recordBadges = useMemo(() => {
+    if (!session) {
+      return [];
+    }
+
+    return buildWorkoutRecordBadges(session, historySessions, unit);
+  }, [historySessions, session, unit]);
+
   const summary = useMemo((): WorkoutSummaryViewModel | null => {
     if (!session || session.endTime === null) {
       return null;
     }
 
-    const unit = profile?.preferredWeightUnit ?? 'kg';
     const dashboardMetrics = buildDashboardMetrics(allSessions, {
       now: session.endTime,
     });
@@ -136,15 +157,15 @@ export function useWorkoutSummary(sessionId: string): {
       weeklyProgressLabel: formatWeeklyProgressLabel(
         dashboardMetrics.workoutsThisWeek,
       ),
-      recordBadges: buildWorkoutRecordBadges(session, allSessions, unit),
+      recordBadges,
       scheduleContext: meta.scheduleContext,
       effortLevel: meta.effortLevel,
       fatigueLevel: meta.fatigueLevel,
     };
-  }, [allSessions, meta, profile?.preferredWeightUnit, session]);
+  }, [allSessions, meta, recordBadges, session, unit]);
 
   return {
-    isLoading: isSessionLoading || isHistoryLoading,
+    isLoading: isSessionLoading || isHistoryLoading || isHistorySessionsLoading,
     summary,
     saveFeedback,
   };

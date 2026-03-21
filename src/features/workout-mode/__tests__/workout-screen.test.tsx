@@ -600,6 +600,73 @@ describe('WorkoutScreen', () => {
     expect(collapseWorkout).not.toHaveBeenCalled();
   });
 
+  it('allows the summary transition to bypass the exit guard after completion', () => {
+    const props = createWorkoutActiveScreenProps();
+    const collapseWorkout = jest.fn();
+    const addListener = jest.fn();
+    const completeWorkout = jest.fn().mockReturnValue('session-1');
+    props.navigation.addListener =
+      addListener as typeof props.navigation.addListener;
+
+    mockWorkoutStoreState({
+      isWorkoutActive: true,
+      isWorkoutCollapsed: false,
+      activeSession: null,
+      startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+      restTimerEndsAt: null,
+      collapseWorkout,
+      expandWorkout: jest.fn(),
+      startRestTimer: jest.fn(),
+      clearRestTimer: jest.fn(),
+    });
+    mockUseActiveWorkout.mockReturnValue({
+      activeSession: {
+        id: 'session-1',
+        title: 'Push A',
+        startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+        isFreeWorkout: false,
+        exercises: [],
+      },
+      addExercise: jest.fn(),
+      removeExercise: jest.fn(),
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      toggleSetLogged: jest.fn(),
+      completeWorkout,
+      deleteWorkout: jest.fn().mockReturnValue(true),
+    });
+
+    const workoutRender = render(<WorkoutActiveScreen {...props} />);
+    const beforeRemoveHandler = addListener.mock.calls.find(
+      ([eventName]) => eventName === 'beforeRemove',
+    )?.[1] as (event: {
+      preventDefault: jest.Mock;
+      data: { action: { type: string; payload?: unknown } };
+    }) => void;
+
+    fireEvent.press(workoutRender.getByText('Complete Workout'));
+
+    const preventDefault = jest.fn();
+    beforeRemoveHandler({
+      preventDefault,
+      data: {
+        action: {
+          type: 'REPLACE',
+          payload: { name: 'WorkoutSummary' },
+        },
+      },
+    });
+
+    expect(completeWorkout).toHaveBeenCalledTimes(1);
+    expect(props.navigation.replace).toHaveBeenCalledWith('WorkoutSummary', {
+      sessionId: 'session-1',
+    });
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(collapseWorkout).not.toHaveBeenCalled();
+  });
+
   it('allows adding ad hoc exercises during a scheduled workout', () => {
     const props = createWorkoutActiveScreenProps();
     const addExercise = jest.fn();

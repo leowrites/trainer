@@ -47,13 +47,20 @@ function getCompletedSessions(
   );
 }
 
-function getExerciseHistory(
+function buildExerciseHistoryIndex(
   sessions: HistorySession[],
-  exerciseId: string,
-): HistoryExerciseSummary[] {
-  return sessions
-    .flatMap((session) => session.exercises)
-    .filter((exercise) => exercise.exerciseId === exerciseId);
+): Map<string, HistoryExerciseSummary[]> {
+  const exerciseHistoryById = new Map<string, HistoryExerciseSummary[]>();
+
+  for (const session of sessions) {
+    for (const exercise of session.exercises) {
+      const history = exerciseHistoryById.get(exercise.exerciseId) ?? [];
+      history.push(exercise);
+      exerciseHistoryById.set(exercise.exerciseId, history);
+    }
+  }
+
+  return exerciseHistoryById;
 }
 
 function buildSessionVolumeBadge(
@@ -199,6 +206,7 @@ export function buildWorkoutRecordBadges(
   unit: WeightUnit,
 ): WorkoutRecordBadge[] {
   const completedSessions = getCompletedSessions(allSessions, session.id);
+  const exerciseHistoryById = buildExerciseHistoryIndex(completedSessions);
   const badges: WorkoutRecordBadge[] = [];
   const sessionVolumeBadge = buildSessionVolumeBadge(
     session,
@@ -211,10 +219,8 @@ export function buildWorkoutRecordBadges(
   }
 
   for (const exercise of session.exercises) {
-    const previousExercises = getExerciseHistory(
-      completedSessions,
-      exercise.exerciseId,
-    );
+    const previousExercises =
+      exerciseHistoryById.get(exercise.exerciseId) ?? [];
 
     const exerciseBadges = [
       buildEstimatedOneRepMaxBadge(exercise, previousExercises, unit),

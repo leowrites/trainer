@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
@@ -74,18 +74,29 @@ export function WorkoutActiveScreen({
   } = useActiveWorkout();
   const [showExerciseSheet, setShowExerciseSheet] = useState(false);
   const [now, setNow] = useState<number>(Date.now());
-  const [allowExit, setAllowExit] = useState(false);
+  const allowExitRef = useRef(false);
+  const workoutVisibilityRef = useRef({
+    isWorkoutActive,
+    isWorkoutCollapsed,
+  });
   const previousPerformanceByExerciseId = usePreviousExercisePerformance(
     activeSession?.id ?? null,
     activeSession?.exercises.map((exercise) => exercise.exerciseId) ?? [],
   );
 
+  workoutVisibilityRef.current = {
+    isWorkoutActive,
+    isWorkoutCollapsed,
+  };
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
+      const workoutVisibility = workoutVisibilityRef.current;
+
       if (
-        allowExit ||
-        !isWorkoutActive ||
-        isWorkoutCollapsed ||
+        allowExitRef.current ||
+        !workoutVisibility.isWorkoutActive ||
+        workoutVisibility.isWorkoutCollapsed ||
         isExerciseDetailNavigationAction(event.data.action)
       ) {
         return;
@@ -97,15 +108,13 @@ export function WorkoutActiveScreen({
     });
 
     return unsubscribe;
-  }, [
-    allowExit,
-    collapseWorkout,
-    isWorkoutActive,
-    isWorkoutCollapsed,
-    navigation,
-  ]);
+  }, [collapseWorkout, navigation]);
 
   useEffect(() => {
+    if (allowExitRef.current) {
+      return;
+    }
+
     if (!isWorkoutActive || isWorkoutCollapsed) {
       if (navigation.canGoBack()) {
         navigation.goBack();
@@ -275,7 +284,7 @@ export function WorkoutActiveScreen({
           style: 'destructive',
           onPress: () => {
             if (deleteWorkout()) {
-              setAllowExit(true);
+              allowExitRef.current = true;
               if (navigation.canGoBack()) {
                 navigation.goBack();
               } else {
@@ -299,7 +308,7 @@ export function WorkoutActiveScreen({
         const completedSessionId = completeWorkout();
 
         if (completedSessionId) {
-          setAllowExit(true);
+          allowExitRef.current = true;
           navigation.replace('WorkoutSummary', {
             sessionId: completedSessionId,
           });

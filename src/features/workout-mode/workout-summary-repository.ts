@@ -154,10 +154,10 @@ export function saveWorkoutFeedbackLevel(
   metric: WorkoutFeedbackMetric,
   value: number,
 ): void {
-  const column = metric === 'effort' ? 'effort_level' : 'fatigue_level';
+  const sql =
+    metric === 'effort'
+      ? 'UPDATE workout_sessions SET effort_level = ? WHERE id = ?'
+      : 'UPDATE workout_sessions SET fatigue_level = ? WHERE id = ?';
 
-  db.runSync(`UPDATE workout_sessions SET ${column} = ? WHERE id = ?`, [
-    clampFeedbackLevel(value),
-    sessionId,
-  ]);
+  db.runSync(sql, [clampFeedbackLevel(value), sessionId]);
 }
