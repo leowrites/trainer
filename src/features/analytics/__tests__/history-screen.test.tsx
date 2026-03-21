@@ -120,6 +120,7 @@ describe('HistoryScreen', () => {
       isLoading: false,
       isLoadingMore: false,
       hasMore: false,
+      allSessions: [],
       sessions: [],
       trendSeriesByMetric: {
         volume: [],
@@ -153,6 +154,19 @@ describe('HistoryScreen', () => {
       isLoading: false,
       isLoadingMore: false,
       hasMore: true,
+      allSessions: [
+        buildSession(),
+        buildSession({
+          id: 'session-2',
+          routineName: 'Lower A',
+          totalSets: 4,
+          totalCompletedSets: 4,
+          totalReps: 20,
+          durationMinutes: 45,
+          totalVolume: 2200,
+          exerciseCount: 2,
+        }),
+      ],
       sessions: [
         buildSession(),
         buildSession({
@@ -208,6 +222,7 @@ describe('HistoryScreen', () => {
       isLoading: false,
       isLoadingMore: false,
       hasMore: true,
+      allSessions: [buildSession()],
       sessions: [buildSession()],
       trendSeriesByMetric: buildTrendSeries(),
       loadMore,

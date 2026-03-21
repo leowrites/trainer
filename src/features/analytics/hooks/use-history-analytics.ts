@@ -28,6 +28,7 @@ export interface UseHistoryAnalyticsResult {
   isLoading: boolean;
   isLoadingMore: boolean;
   hasMore: boolean;
+  allSessions: HistorySession[];
   sessions: HistorySession[];
   trendSeriesByMetric: HistoryTrendSeriesByMetric;
   loadMore: () => void;
@@ -122,6 +123,7 @@ export function useHistoryAnalytics(
     isLoading,
     isLoadingMore,
     hasMore,
+    allSessions: trendSessions,
     sessions,
     trendSeriesByMetric,
     loadMore,

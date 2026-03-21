@@ -37,8 +37,10 @@ const HISTORY_SET_SELECT_SQL = `
     wset.target_reps
   FROM workout_sets wset
   LEFT JOIN exercises e ON e.id = wset.exercise_id
-  ORDER BY wset.session_id ASC, e.name ASC, wset.rowid ASC
 `;
+
+const HISTORY_SET_ORDER_SQL =
+  'ORDER BY wset.session_id ASC, e.name ASC, wset.rowid ASC';
 
 export const HISTORY_TREND_SQL = `
   SELECT
@@ -81,11 +83,17 @@ export interface HistorySessionRowsById {
 }
 
 function buildSetRowsSql(sessionCount: number): string {
-  return `${HISTORY_SET_SELECT_SQL.replace(
-    'ORDER BY wset.session_id ASC, e.name ASC, wset.rowid ASC',
-    `WHERE wset.session_id IN (${Array.from({ length: sessionCount }, () => '?').join(', ')})
-  ORDER BY wset.session_id ASC, e.name ASC, wset.rowid ASC`,
-  )}`;
+  return `${HISTORY_SET_SELECT_SQL}
+  WHERE wset.session_id IN (${Array.from({ length: sessionCount }, () => '?').join(', ')})
+  ${HISTORY_SET_ORDER_SQL}
+`;
+}
+
+function buildSetRowsBySessionIdSql(): string {
+  return `${HISTORY_SET_SELECT_SQL}
+  WHERE wset.session_id = ?
+  ${HISTORY_SET_ORDER_SQL}
+`;
 }
 
 export function loadHistorySessionPage(
@@ -146,13 +154,9 @@ export function loadHistorySessionById(
 
   return {
     sessionRow,
-    setRows: db.getAllSync<HistorySetRow>(
-      `${HISTORY_SET_SELECT_SQL.replace(
-        'ORDER BY wset.session_id ASC, e.name ASC, wset.rowid ASC',
-        'WHERE wset.session_id = ? ORDER BY wset.session_id ASC, e.name ASC, wset.rowid ASC',
-      )}`,
-      [sessionId],
-    ),
+    setRows: db.getAllSync<HistorySetRow>(buildSetRowsBySessionIdSql(), [
+      sessionId,
+    ]),
   };
 }
 

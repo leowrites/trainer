@@ -224,7 +224,7 @@ describe('WorkoutScreen', () => {
       isLoading: false,
       isLoadingMore: false,
       hasMore: false,
-      sessions: [
+      allSessions: [
         {
           id: 'completed-session-1',
           routineId: 'routine-0',
@@ -240,6 +240,7 @@ describe('WorkoutScreen', () => {
           exercises: [],
         },
       ],
+      sessions: [],
       trendSeriesByMetric: {
         volume: [],
         hours: [],
@@ -316,6 +317,8 @@ describe('WorkoutScreen', () => {
     expect(screen.getByText('Good morning, Alex')).toBeTruthy();
     expect(screen.getByText('Workouts This Week')).toBeTruthy();
     expect(screen.getByText('Weekly Streak')).toBeTruthy();
+    expect(screen.getByText('1 active days')).toBeTruthy();
+    expect(screen.getByText('1 week in a row')).toBeTruthy();
     expect(screen.getByText('Push A')).toBeTruthy();
     expect(screen.getByText('6 exercises • ~40 mins')).toBeTruthy();
 

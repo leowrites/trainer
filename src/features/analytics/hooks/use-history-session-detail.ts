@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';
 import { loadHistorySessionById } from '../data/history-repository';
@@ -17,8 +17,17 @@ export function useHistorySessionDetail(
   const db = useDatabase();
   const [session, setSession] = useState<HistorySession | null>(initialSession);
   const [isLoading, setIsLoading] = useState(true);
+  const initialSessionRef = useRef<HistorySession | null>(initialSession);
+
+  initialSessionRef.current = initialSession;
 
   useEffect(() => {
+    const optimisticSession =
+      initialSessionRef.current?.id === sessionId
+        ? initialSessionRef.current
+        : null;
+
+    setSession(optimisticSession);
     setIsLoading(true);
 
     const result = loadHistorySessionById(db, sessionId);
@@ -26,7 +35,7 @@ export function useHistorySessionDetail(
       result ? buildHistorySession(result.sessionRow, result.setRows) : null,
     );
     setIsLoading(false);
-  }, [db, initialSession, sessionId]);
+  }, [db, sessionId]);
 
   return {
     isLoading,

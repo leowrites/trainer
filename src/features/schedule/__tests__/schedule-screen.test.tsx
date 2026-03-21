@@ -473,7 +473,7 @@ describe('ScheduleScreen', () => {
     expect(setActiveSchedule).toHaveBeenCalledWith('schedule-1');
   });
 
-  it('does not show a delete action in schedule detail', () => {
+  it('renames the schedule detail action to archive', () => {
     mockUseSchedules.mockReturnValue(
       buildScheduleHookState({
         schedules: [
@@ -494,6 +494,7 @@ describe('ScheduleScreen', () => {
     fireEvent.press(screen.getByLabelText('Open Upper Rotation'));
 
     expect(screen.queryByText('Delete Schedule')).toBeNull();
+    expect(screen.getByText('Archive Schedule')).toBeTruthy();
   });
 
   it('waits for schedules to load before leaving an invalid detail route', () => {

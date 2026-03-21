@@ -339,7 +339,7 @@ describe('RoutinesScreen', () => {
     expect(screen.getByText('8 × 185 • 8 × 185 • 7 × 185')).toBeTruthy();
   });
 
-  it('does not show a delete action in the exercise editor', () => {
+  it('renames the exercise editor action to archive', () => {
     mockUseExercises.mockReturnValue({
       exercises: [
         {
@@ -375,6 +375,7 @@ describe('RoutinesScreen', () => {
     fireEvent.press(screen.getByText('Edit Exercise'));
 
     expect(screen.queryByText('Delete Exercise')).toBeNull();
+    expect(screen.getByText('Archive Exercise')).toBeTruthy();
   });
 
   it('opens the routine detail page and saves reordered exercises', () => {
@@ -462,7 +463,7 @@ describe('RoutinesScreen', () => {
     });
   });
 
-  it('does not show a delete action in the routine editor', () => {
+  it('renames the routine editor action to archive', () => {
     mockUseExercises.mockReturnValue({
       exercises: [
         {
@@ -509,6 +510,7 @@ describe('RoutinesScreen', () => {
     fireEvent.press(screen.getByText('Edit Routine'));
 
     expect(screen.queryByText('Delete Routine')).toBeNull();
+    expect(screen.getByText('Archive Routine')).toBeTruthy();
   });
 
   it('adds multiple exercises to a routine before saving', () => {

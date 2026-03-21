@@ -53,14 +53,14 @@ export function WorkoutHomeScreen({
     startWorkoutFromSchedule,
     startFreeWorkout,
   } = useWorkoutStarter();
-  const { sessions, refresh: refreshHistory } = useHistoryAnalytics();
+  const { allSessions, refresh: refreshHistory } = useHistoryAnalytics();
   const { profile, refresh: refreshProfile } = useUserProfile();
   const [starting, setStarting] = useState(false);
   const [dashboardNow] = useState(() => Date.now());
   const greeting = getGreeting(profile?.displayName ?? null, dashboardNow);
   const dashboardMetrics = useMemo(
-    () => buildDashboardMetrics(sessions, { now: dashboardNow }),
-    [dashboardNow, sessions],
+    () => buildDashboardMetrics(allSessions, { now: dashboardNow }),
+    [allSessions, dashboardNow],
   );
 
   const hasCurrentWorkout = isWorkoutActive && currentWorkoutTitle !== null;
