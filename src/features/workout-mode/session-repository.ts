@@ -18,6 +18,35 @@ import type {
   WorkoutSetRow,
 } from './types';
 
+function loadExerciseRows(
+  db: SQLiteDatabase,
+  sessionId: string,
+): {
+  exerciseRows: ExerciseNameRow[];
+  setRows: WorkoutSetRow[];
+} {
+  const setRows = db.getAllSync<WorkoutSetRow>(
+    'SELECT id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps FROM workout_sets WHERE session_id = ? ORDER BY rowid ASC',
+    [sessionId],
+  );
+
+  const exerciseIds = [
+    ...new Set(setRows.map((row: WorkoutSetRow) => row.exercise_id)),
+  ];
+  const exerciseRows =
+    exerciseIds.length > 0
+      ? db.getAllSync<ExerciseNameRow>(
+          `SELECT id, name FROM exercises WHERE id IN (${exerciseIds.map(() => '?').join(', ')})`,
+          exerciseIds,
+        )
+      : [];
+
+  return {
+    exerciseRows,
+    setRows,
+  };
+}
+
 function buildActiveWorkoutSession(
   sessionRow: WorkoutSessionRow,
   setRows: WorkoutSetRow[],
@@ -77,21 +106,41 @@ export function loadActiveWorkoutSession(
     return null;
   }
 
-  const setRows = db.getAllSync<WorkoutSetRow>(
-    'SELECT id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps FROM workout_sets WHERE session_id = ? ORDER BY rowid ASC',
+  const { exerciseRows, setRows } = loadExerciseRows(db, sessionId);
+
+  return buildActiveWorkoutSession(sessionRow, setRows, exerciseRows);
+}
+
+export function loadInProgressWorkoutSession(
+  db: SQLiteDatabase,
+  sessionId: string,
+): ActiveWorkoutSession | null {
+  const sessionRow = db.getFirstSync<WorkoutSessionRow>(
+    'SELECT id, snapshot_name, start_time FROM workout_sessions WHERE id = ? AND end_time IS NULL LIMIT 1',
     [sessionId],
   );
 
-  const exerciseIds = [
-    ...new Set(setRows.map((row: WorkoutSetRow) => row.exercise_id)),
-  ];
-  const exerciseRows =
-    exerciseIds.length > 0
-      ? db.getAllSync<ExerciseNameRow>(
-          `SELECT id, name FROM exercises WHERE id IN (${exerciseIds.map(() => '?').join(', ')})`,
-          exerciseIds,
-        )
-      : [];
+  if (!sessionRow) {
+    return null;
+  }
+
+  const { exerciseRows, setRows } = loadExerciseRows(db, sessionId);
+
+  return buildActiveWorkoutSession(sessionRow, setRows, exerciseRows);
+}
+
+export function loadLatestInProgressWorkoutSession(
+  db: SQLiteDatabase,
+): ActiveWorkoutSession | null {
+  const sessionRow = db.getFirstSync<WorkoutSessionRow>(
+    'SELECT id, snapshot_name, start_time FROM workout_sessions WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1',
+  );
+
+  if (!sessionRow) {
+    return null;
+  }
+
+  const { exerciseRows, setRows } = loadExerciseRows(db, sessionRow.id);
 
   return buildActiveWorkoutSession(sessionRow, setRows, exerciseRows);
 }

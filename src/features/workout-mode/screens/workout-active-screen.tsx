@@ -122,22 +122,6 @@ export function WorkoutActiveScreen({
     return () => clearInterval(interval);
   }, [isWorkoutActive, isWorkoutCollapsed, navigation]);
 
-  useEffect(() => {
-    if (restTimerEndsAt !== null && restTimerEndsAt <= now) {
-      clearRestTimer();
-    }
-  }, [clearRestTimer, now, restTimerEndsAt]);
-
-  useEffect(() => {
-    for (const [exerciseId, endsAt] of Object.entries(
-      exerciseTimerEndsAtByExerciseId,
-    )) {
-      if (endsAt !== null && endsAt <= now) {
-        clearExerciseTimer(exerciseId);
-      }
-    }
-  }, [clearExerciseTimer, exerciseTimerEndsAtByExerciseId, now]);
-
   const sessionTitle = activeSession?.title ?? 'Workout';
   const durationLabel =
     startTime !== null ? formatElapsedDuration(now - startTime) : '0m';
