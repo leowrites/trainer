@@ -245,6 +245,7 @@ export function RootNavigator(): React.JSX.Element {
           options={{
             headerShown: true,
             title: '',
+            presentation: 'modal',
           }}
         />
         <Stack.Screen
