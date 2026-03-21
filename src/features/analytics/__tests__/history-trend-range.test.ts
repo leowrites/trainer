@@ -51,4 +51,25 @@ describe('filterSessionsByTrendRange', () => {
       ),
     ).toEqual(['session-1', 'session-2', 'session-3']);
   });
+
+  it('includes workouts earlier on the cutoff day for rolling ranges', () => {
+    const cutoffNow = new Date('2026-03-21T18:00:00.000Z').getTime();
+    const cutoffDaySessions = [
+      buildSession('three-month-cutoff', '2025-12-21T09:00:00.000Z'),
+      buildSession('one-year-cutoff', '2025-03-21T09:00:00.000Z'),
+      buildSession('outside-range', '2025-12-20T23:59:59.000Z'),
+    ];
+
+    expect(
+      filterSessionsByTrendRange(cutoffDaySessions, '3m', cutoffNow).map(
+        (session) => session.id,
+      ),
+    ).toEqual(['three-month-cutoff']);
+
+    expect(
+      filterSessionsByTrendRange(cutoffDaySessions, '1y', cutoffNow).map(
+        (session) => session.id,
+      ),
+    ).toEqual(['three-month-cutoff', 'one-year-cutoff', 'outside-range']);
+  });
 });

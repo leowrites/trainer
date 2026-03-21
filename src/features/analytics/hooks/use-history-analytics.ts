@@ -18,6 +18,7 @@ export interface UseHistoryAnalyticsOptions {
 }
 
 export interface UseHistoryAnalyticsResult {
+  isLoading: boolean;
   sessions: HistorySession[];
   trendSeriesByMetric: HistoryTrendSeriesByMetric;
   refresh: () => void;
@@ -28,19 +29,23 @@ export function useHistoryAnalytics(
 ): UseHistoryAnalyticsResult {
   const { trendLimit = Number.MAX_SAFE_INTEGER, trendRange = '3m' } = options;
   const db = useDatabase();
+  const injectedNow = options.now;
   const [sessions, setSessions] = useState<HistorySession[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [now] = useState(() => options.now ?? Date.now());
 
   const refresh = useCallback((): void => {
+    setIsLoading(true);
     setRefreshKey((currentValue: number) => currentValue + 1);
   }, []);
 
   useEffect(() => {
     const { sessionRows, setRows } = loadHistoryRows(db);
     setSessions(buildHistorySessions(sessionRows, setRows));
+    setIsLoading(false);
   }, [db, refreshKey]);
 
+  const now = injectedNow ?? Date.now();
   const filteredTrendSessions = useMemo(
     () => filterSessionsByTrendRange(sessions, trendRange, now),
     [now, sessions, trendRange],
@@ -53,6 +58,7 @@ export function useHistoryAnalytics(
   );
 
   return {
+    isLoading,
     sessions,
     trendSeriesByMetric,
     refresh,

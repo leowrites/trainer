@@ -57,13 +57,13 @@ function formatMetricValue(
 function getMetricCaption(metric: HistoryTrendMetric): string {
   switch (metric) {
     case 'hours':
-      return 'Workout hours by day';
+      return 'Workout hours over time';
     case 'reps':
-      return 'Completed reps by day';
+      return 'Completed reps over time';
     case 'sets':
-      return 'Logged sets by day';
+      return 'Logged sets over time';
     default:
-      return 'Training volume by day';
+      return 'Training volume over time';
   }
 }
 

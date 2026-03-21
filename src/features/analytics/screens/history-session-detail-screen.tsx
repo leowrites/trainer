@@ -10,6 +10,7 @@ import { findHistorySessionById } from '../domain/history-session-selector';
 import { formatSessionDate } from '../formatters';
 import { useHistoryAnalytics } from '../hooks/use-history-analytics';
 import type { HistoryStackParamList } from '../navigation-types';
+import type { ProgressiveOverloadConfig } from '../types';
 
 interface HistorySessionDetailScreenProps {
   route: RouteProp<HistoryStackParamList, 'HistorySessionDetail'>;
@@ -17,15 +18,20 @@ interface HistorySessionDetailScreenProps {
     HistoryStackParamList,
     'HistorySessionDetail'
   >;
+  progressionConfig?: ProgressiveOverloadConfig;
 }
 
 export function HistorySessionDetailScreen({
   route,
+  progressionConfig = DEFAULT_PROGRESSION_CONFIG,
 }: HistorySessionDetailScreenProps): React.JSX.Element {
-  const { sessions } = useHistoryAnalytics();
+  const { isLoading, sessions } = useHistoryAnalytics();
   const session = useMemo(
-    () => findHistorySessionById(sessions, route.params.sessionId),
-    [route.params.sessionId, sessions],
+    () =>
+      findHistorySessionById(sessions, route.params.sessionId) ??
+      route.params.session ??
+      null,
+    [route.params.session, route.params.sessionId, sessions],
   );
 
   return (
@@ -47,9 +53,16 @@ export function HistorySessionDetailScreen({
 
             <HistorySessionDetailContent
               session={session}
-              progressionConfig={DEFAULT_PROGRESSION_CONFIG}
+              progressionConfig={progressionConfig}
             />
           </>
+        ) : isLoading ? (
+          <Card className="rounded-[24px] px-5 py-5">
+            <Body className="font-medium">Loading session</Body>
+            <Muted className="mt-2">
+              Fetching workout details for this history entry.
+            </Muted>
+          </Card>
         ) : (
           <Card className="rounded-[24px] px-5 py-5">
             <Body className="font-medium">Session unavailable</Body>

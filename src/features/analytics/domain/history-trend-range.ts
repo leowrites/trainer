@@ -1,15 +1,21 @@
 import type { HistorySession, HistoryTrendRange } from '../types';
 
+function startOfDay(timestamp: number): number {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
 function subtractMonths(timestamp: number, months: number): number {
   const date = new Date(timestamp);
   date.setMonth(date.getMonth() - months);
-  return date.getTime();
+  return startOfDay(date.getTime());
 }
 
 function subtractYears(timestamp: number, years: number): number {
   const date = new Date(timestamp);
   date.setFullYear(date.getFullYear() - years);
-  return date.getTime();
+  return startOfDay(date.getTime());
 }
 
 function resolveTrendRangeStart(

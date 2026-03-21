@@ -89,6 +89,7 @@ export function HistoryScreen({
                 onPress={() =>
                   navigation?.navigate('HistorySessionDetail', {
                     sessionId: session.id,
+                    session,
                   })
                 }
               />

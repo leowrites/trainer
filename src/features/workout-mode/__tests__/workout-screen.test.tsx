@@ -209,6 +209,7 @@ describe('WorkoutScreen', () => {
       deleteExercise: jest.fn(),
     });
     mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
       sessions: [
         {
           id: 'completed-session-1',

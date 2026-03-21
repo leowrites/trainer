@@ -1,3 +1,5 @@
+import type { HistorySession } from './types';
+
 /**
  * History navigation types
  *
@@ -5,5 +7,8 @@
  */
 export type HistoryStackParamList = {
   HistoryOverview: undefined;
-  HistorySessionDetail: { sessionId: string };
+  HistorySessionDetail: {
+    sessionId: string;
+    session?: HistorySession;
+  };
 };

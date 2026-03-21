@@ -70,6 +70,7 @@ describe('HistorySessionDetailScreen', () => {
 
   it('renders the selected session details and progression recommendations', () => {
     mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
       sessions: [buildSession()],
       trendSeriesByMetric: {
         volume: [],
@@ -96,8 +97,70 @@ describe('HistorySessionDetailScreen', () => {
     expect(screen.getByText('Progression Next Time')).toBeTruthy();
   });
 
+  it('uses the caller progression config for volume and recommendations', () => {
+    mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
+      sessions: [buildSession()],
+      trendSeriesByMetric: {
+        volume: [],
+        hours: [],
+        reps: [],
+        sets: [],
+      },
+      refresh: jest.fn(),
+    });
+
+    render(
+      <HistorySessionDetailScreen
+        navigation={jest.fn() as never}
+        progressionConfig={{
+          unit: 'lb',
+          weightIncrement: 2.5,
+          precision: 1,
+        }}
+        route={{
+          key: 'HistorySessionDetail-key',
+          name: 'HistorySessionDetail',
+          params: { sessionId: 'session-1' },
+        }}
+      />,
+    );
+
+    expect(screen.getAllByText('3,000 lb').length).toBeGreaterThan(0);
+    expect(screen.getByText('+2.5 lb')).toBeTruthy();
+  });
+
+  it('shows a loading state before the history query resolves', () => {
+    mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: true,
+      sessions: [],
+      trendSeriesByMetric: {
+        volume: [],
+        hours: [],
+        reps: [],
+        sets: [],
+      },
+      refresh: jest.fn(),
+    });
+
+    render(
+      <HistorySessionDetailScreen
+        navigation={jest.fn() as never}
+        route={{
+          key: 'HistorySessionDetail-key',
+          name: 'HistorySessionDetail',
+          params: { sessionId: 'missing-session' },
+        }}
+      />,
+    );
+
+    expect(screen.getByText('Loading session')).toBeTruthy();
+    expect(screen.queryByText('Session unavailable')).toBeNull();
+  });
+
   it('shows fallback UI for an invalid session id', () => {
     mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
       sessions: [buildSession()],
       trendSeriesByMetric: {
         volume: [],
@@ -120,5 +183,35 @@ describe('HistorySessionDetailScreen', () => {
     );
 
     expect(screen.getByText('Session unavailable')).toBeTruthy();
+  });
+
+  it('renders the route session while the query is still loading', () => {
+    const session = buildSession();
+
+    mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: true,
+      sessions: [],
+      trendSeriesByMetric: {
+        volume: [],
+        hours: [],
+        reps: [],
+        sets: [],
+      },
+      refresh: jest.fn(),
+    });
+
+    render(
+      <HistorySessionDetailScreen
+        navigation={jest.fn() as never}
+        route={{
+          key: 'HistorySessionDetail-key',
+          name: 'HistorySessionDetail',
+          params: { sessionId: session.id, session },
+        }}
+      />,
+    );
+
+    expect(screen.getAllByText('Upper A').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Loading session')).toBeNull();
   });
 });

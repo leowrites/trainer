@@ -112,6 +112,7 @@ describe('HistoryScreen', () => {
   it('renders empty analytics and history states without the latest session card', () => {
     const refresh = jest.fn();
     mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
       sessions: [],
       trendSeriesByMetric: {
         volume: [],
@@ -141,6 +142,7 @@ describe('HistoryScreen', () => {
     >;
 
     mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
       sessions: [
         buildSession(),
         buildSession({
@@ -169,17 +171,22 @@ describe('HistoryScreen', () => {
 
     expect(screen.getByText('1.2 hr')).toBeTruthy();
     expect(
-      screen.getByText('Workout hours by day • Last 3 months'),
+      screen.getByText('Workout hours over time • Last 3 months'),
     ).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Show Last Year'));
 
-    expect(screen.getByText('Workout hours by day • Last year')).toBeTruthy();
+    expect(
+      screen.getByText('Workout hours over time • Last year'),
+    ).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Open Lower A'));
 
-    expect(navigation.navigate).toHaveBeenCalledWith('HistorySessionDetail', {
-      sessionId: 'session-2',
-    });
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'HistorySessionDetail',
+      expect.objectContaining({
+        sessionId: 'session-2',
+      }),
+    );
   });
 });
