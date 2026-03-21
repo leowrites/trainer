@@ -296,13 +296,13 @@ export function WorkoutActiveScreen({
       volume={volume}
       restLabel={restLabel}
       onComplete={() => {
-        if (completeWorkout()) {
+        const completedSessionId = completeWorkout();
+
+        if (completedSessionId) {
           setAllowExit(true);
-          if (navigation.canGoBack()) {
-            navigation.goBack();
-          } else {
-            navigation.navigate('Tabs', { screen: 'Workout' });
-          }
+          navigation.replace('WorkoutSummary', {
+            sessionId: completedSessionId,
+          });
         }
       }}
       onDeleteWorkout={handleDeleteWorkout}

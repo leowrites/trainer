@@ -52,6 +52,8 @@ export interface WorkoutSession {
   snapshot_name: string | null;
   start_time: number;
   end_time: number | null;
+  effort_level: number | null;
+  fatigue_level: number | null;
 }
 
 export interface WorkoutSet {

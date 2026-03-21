@@ -40,7 +40,7 @@ export function useActiveWorkout(): {
   updateReps: (setId: string, reps: number) => void;
   updateWeight: (setId: string, weight: number) => void;
   toggleSetLogged: (setId: string, isCompleted: boolean) => void;
-  completeWorkout: () => boolean;
+  completeWorkout: () => string | null;
   deleteWorkout: () => boolean;
 } {
   const db = useDatabase();
@@ -179,14 +179,15 @@ export function useActiveWorkout(): {
     [db, updateSet],
   );
 
-  const completeWorkout = useCallback((): boolean => {
+  const completeWorkout = useCallback((): string | null => {
     if (!activeSessionId) {
-      return false;
+      return null;
     }
 
     completeWorkoutSessionRecord(db, activeSessionId, Date.now());
+    const completedSessionId = activeSessionId;
     endWorkout();
-    return true;
+    return completedSessionId;
   }, [activeSessionId, db, endWorkout]);
 
   const deleteWorkout = useCallback((): boolean => {

@@ -119,6 +119,24 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    version: 8,
+    description:
+      'Persist post-workout effort and fatigue scores on workout sessions.',
+    up: (db) => {
+      if (!columnExists(db, 'workout_sessions', 'effort_level')) {
+        db.execSync(
+          'ALTER TABLE workout_sessions ADD COLUMN effort_level INTEGER;',
+        );
+      }
+
+      if (!columnExists(db, 'workout_sessions', 'fatigue_level')) {
+        db.execSync(
+          'ALTER TABLE workout_sessions ADD COLUMN fatigue_level INTEGER;',
+        );
+      }
+    },
+  },
 ];
 
 function setUserVersion(db: SQLiteDatabase, version: number): void {

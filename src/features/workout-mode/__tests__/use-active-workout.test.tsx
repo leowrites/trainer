@@ -262,7 +262,7 @@ describe('useActiveWorkout', () => {
     const { result } = renderHook(() => useActiveWorkout(), { wrapper });
 
     act(() => {
-      expect(result.current.completeWorkout()).toBe(true);
+      expect(result.current.completeWorkout()).toBe('session-1');
     });
 
     expect(db.runSync).toHaveBeenCalledWith(

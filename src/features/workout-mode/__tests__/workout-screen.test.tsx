@@ -157,6 +157,7 @@ function createWorkoutActiveScreenProps(): WorkoutActiveScreenProps {
       canGoBack: jest.fn(() => true),
       dispatch: jest.fn(),
       goBack: jest.fn(),
+      replace: jest.fn(),
       setOptions: jest.fn(),
       isFocused: jest.fn(() => true),
     },
@@ -271,7 +272,7 @@ describe('WorkoutScreen', () => {
       updateReps: jest.fn(),
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
-      completeWorkout: jest.fn().mockReturnValue(true),
+      completeWorkout: jest.fn().mockReturnValue('completed-session-1'),
       deleteWorkout: jest.fn().mockReturnValue(true),
     });
     mockUsePreviousExercisePerformance.mockReturnValue({});
@@ -386,7 +387,7 @@ describe('WorkoutScreen', () => {
   it('renders the active workout session and forwards set editing actions', () => {
     const props = createWorkoutActiveScreenProps();
     const navigate = props.navigation.navigate as jest.Mock;
-    const goBack = props.navigation.goBack as jest.Mock;
+    const replace = props.navigation.replace as jest.Mock;
     const addExercise = jest.fn();
     const removeExercise = jest.fn();
     const addSet = jest.fn();
@@ -394,7 +395,7 @@ describe('WorkoutScreen', () => {
     const updateReps = jest.fn();
     const updateWeight = jest.fn();
     const toggleSetLogged = jest.fn();
-    const completeWorkout = jest.fn().mockReturnValue(true);
+    const completeWorkout = jest.fn().mockReturnValue('session-1');
     const deleteWorkout = jest.fn().mockReturnValue(true);
     const startExerciseTimer = jest.fn();
     const setExerciseTimerDuration = jest.fn();
@@ -532,7 +533,9 @@ describe('WorkoutScreen', () => {
     expect(deleteSet).toHaveBeenCalledWith('set-1');
     expect(removeExercise).toHaveBeenCalledWith('exercise-1');
     expect(completeWorkout).toHaveBeenCalledTimes(1);
-    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith('WorkoutSummary', {
+      sessionId: 'session-1',
+    });
     expect(navigate).not.toHaveBeenCalledWith('Tabs', { screen: 'Workout' });
   });
 
@@ -569,7 +572,7 @@ describe('WorkoutScreen', () => {
       updateReps: jest.fn(),
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
-      completeWorkout: jest.fn().mockReturnValue(true),
+      completeWorkout: jest.fn().mockReturnValue('session-1'),
       deleteWorkout: jest.fn().mockReturnValue(true),
     });
 
@@ -676,7 +679,7 @@ describe('WorkoutScreen', () => {
       updateReps: jest.fn(),
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
-      completeWorkout: jest.fn().mockReturnValue(true),
+      completeWorkout: jest.fn().mockReturnValue('session-1'),
       deleteWorkout: jest.fn().mockReturnValue(true),
     });
 
@@ -751,7 +754,7 @@ describe('WorkoutScreen', () => {
       updateReps: jest.fn(),
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
-      completeWorkout: jest.fn().mockReturnValue(true),
+      completeWorkout: jest.fn().mockReturnValue('session-1'),
       deleteWorkout: jest.fn().mockReturnValue(true),
     });
 
@@ -795,7 +798,7 @@ describe('WorkoutScreen', () => {
       updateReps: jest.fn(),
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
-      completeWorkout: jest.fn().mockReturnValue(true),
+      completeWorkout: jest.fn().mockReturnValue('session-1'),
       deleteWorkout: jest.fn().mockReturnValue(true),
     });
 
@@ -854,7 +857,7 @@ describe('WorkoutScreen', () => {
       updateReps: jest.fn(),
       updateWeight: jest.fn(),
       toggleSetLogged: jest.fn(),
-      completeWorkout: jest.fn().mockReturnValue(true),
+      completeWorkout: jest.fn().mockReturnValue('session-1'),
       deleteWorkout,
     });
 

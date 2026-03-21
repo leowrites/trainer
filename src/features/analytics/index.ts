@@ -39,5 +39,6 @@ export type {
   ProgressiveOverloadConfig,
   ProgressiveOverloadRecommendation,
   TrendPoint,
+  WeightUnit,
 } from './types';
 export type { HistoryStackParamList } from './navigation-types';

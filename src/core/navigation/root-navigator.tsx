@@ -30,7 +30,11 @@ import {
   RoutinesScreen,
   type RoutinesStackParamList,
 } from '@features/routines';
-import { WorkoutActiveScreen, WorkoutScreen } from '@features/workout-mode';
+import {
+  WorkoutActiveScreen,
+  WorkoutScreen,
+  WorkoutSummaryScreen,
+} from '@features/workout-mode';
 import { useWorkoutStore } from '@features/workout-mode/store';
 import { useTheme } from '@core/theme/theme-context';
 
@@ -46,6 +50,7 @@ export type RootTabParamList = {
 export type RootStackParamList = {
   Tabs: NavigatorScreenParams<RootTabParamList>;
   ActiveWorkout: undefined;
+  WorkoutSummary: { sessionId: string };
   ExerciseDetail: { exerciseId: string };
   ExerciseEditor: { exerciseId?: string };
   RoutineDetail: { routineId: string };
@@ -249,6 +254,15 @@ export function RootNavigator(): React.JSX.Element {
         <Stack.Screen
           name="ActiveWorkout"
           component={WorkoutActiveScreen}
+          options={{
+            headerShown: true,
+            title: '',
+            presentation: 'modal',
+          }}
+        />
+        <Stack.Screen
+          name="WorkoutSummary"
+          component={WorkoutSummaryScreen}
           options={{
             headerShown: true,
             title: '',
