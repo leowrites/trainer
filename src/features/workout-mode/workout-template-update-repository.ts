@@ -45,6 +45,29 @@ export interface WorkoutTemplateUpdateState {
   appliedAt: number | null;
 }
 
+function mergeExerciseRows(
+  exerciseRows: WorkoutTemplateUpdateExerciseRow[],
+  fallbackExerciseRows: WorkoutTemplateUpdateExerciseRow[],
+): WorkoutTemplateUpdateExerciseRow[] {
+  if (exerciseRows.length === 0) {
+    return fallbackExerciseRows;
+  }
+
+  const rowsByExerciseId = new Map(
+    exerciseRows.map((row) => [row.exercise_id, row]),
+  );
+
+  for (const fallbackRow of fallbackExerciseRows) {
+    if (!rowsByExerciseId.has(fallbackRow.exercise_id)) {
+      rowsByExerciseId.set(fallbackRow.exercise_id, fallbackRow);
+    }
+  }
+
+  return [...rowsByExerciseId.values()].sort(
+    (left, right) => left.position - right.position,
+  );
+}
+
 function buildFallbackExerciseRows(
   db: WorkoutTemplateDatabase,
   sessionId: string,
@@ -103,21 +126,23 @@ function buildRoutineExerciseInputs(
   exerciseRows: WorkoutTemplateUpdateExerciseRow[],
   setRows: WorkoutTemplateUpdateSetRow[],
 ): RoutineExerciseInput[] {
-  return exerciseRows.map((exerciseRow) => ({
-    exerciseId: exerciseRow.exercise_id,
-    restSeconds: exerciseRow.rest_seconds,
-    sets: setRows
-      .filter((setRow) => setRow.exercise_id === exerciseRow.exercise_id)
-      .sort(
-        (left, right) =>
-          (left.position ?? Number.MAX_SAFE_INTEGER) -
-          (right.position ?? Number.MAX_SAFE_INTEGER),
-      )
-      .map((setRow) => ({
-        targetReps: setRow.reps,
-        plannedWeight: setRow.weight,
-      })),
-  }));
+  return exerciseRows
+    .map((exerciseRow) => ({
+      exerciseId: exerciseRow.exercise_id,
+      restSeconds: exerciseRow.rest_seconds,
+      sets: setRows
+        .filter((setRow) => setRow.exercise_id === exerciseRow.exercise_id)
+        .sort(
+          (left, right) =>
+            (left.position ?? Number.MAX_SAFE_INTEGER) -
+            (right.position ?? Number.MAX_SAFE_INTEGER),
+        )
+        .map((setRow) => ({
+          targetReps: setRow.reps,
+          plannedWeight: setRow.weight,
+        })),
+    }))
+    .filter((exerciseRow) => exerciseRow.sets && exerciseRow.sets.length > 0);
 }
 
 export function applyWorkoutTemplateUpdate(
@@ -146,10 +171,10 @@ export function applyWorkoutTemplateUpdate(
        ORDER BY position ASC`,
       [sessionId],
     ) ?? [];
-  const orderedExercises =
-    exerciseRows.length > 0
-      ? exerciseRows
-      : buildFallbackExerciseRows(db, sessionId);
+  const orderedExercises = mergeExerciseRows(
+    exerciseRows,
+    buildFallbackExerciseRows(db, sessionId),
+  );
   const setRows = db.getAllSync<WorkoutTemplateUpdateSetRow>(
     `SELECT exercise_id, position, reps, weight
      FROM workout_sets

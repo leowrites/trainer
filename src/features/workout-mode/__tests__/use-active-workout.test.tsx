@@ -165,6 +165,50 @@ describe('useActiveWorkout', () => {
     expect(useWorkoutStore.getState().activeSession?.exercises).toHaveLength(1);
   });
 
+  it('uses the next persisted exercise position when re-adding after removals', () => {
+    const db = createMockDb();
+    db.getFirstSync.mockImplementation((query: string) => {
+      if (query.includes('MAX(position) AS max_position')) {
+        return { max_position: 2 };
+      }
+
+      return null;
+    });
+    const wrapper = createDatabaseWrapper(db);
+    useWorkoutStore.setState({
+      isWorkoutActive: true,
+      activeSessionId: 'session-2',
+      startTime: activeSession.startTime,
+      activeSession: {
+        ...activeSession,
+        id: 'session-2',
+        exercises: [
+          activeSession.exercises[0],
+          {
+            exerciseId: 'exercise-3',
+            exerciseName: 'Shoulder Press',
+            restSeconds: 90,
+            targetSets: 3,
+            targetReps: 10,
+            sets: [],
+          },
+        ],
+      },
+    });
+
+    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
+
+    act(() => {
+      result.current.addExercise('exercise-4', 'Cable Row');
+    });
+
+    expect(db.withTransactionSync).toHaveBeenCalled();
+    expect(db.runSync).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO workout_session_exercises'),
+      ['new-set-1', 'session-2', 'exercise-4', 3, 60],
+    );
+  });
+
   it('removes planned routine exercises during an active workout', () => {
     const db = createMockDb();
     const wrapper = createDatabaseWrapper(db);

@@ -37,8 +37,13 @@ function normalizeInputSets(
     return exercise.sets;
   }
 
-  return Array.from({ length: Math.max(0, exercise.targetSets ?? 0) }, () => ({
-    targetReps: exercise.targetReps ?? 0,
+  const normalizedTargetSets =
+    typeof exercise.targetSets === 'number' && exercise.targetSets > 0
+      ? exercise.targetSets
+      : 1;
+
+  return Array.from({ length: normalizedTargetSets }, () => ({
+    targetReps: exercise.targetReps ?? 1,
     plannedWeight: null,
   }));
 }

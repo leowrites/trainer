@@ -9,6 +9,7 @@
 
 import { generateId } from '@core/database';
 import type { RoutineExercise } from '@core/database/types';
+import { DEFAULT_EXERCISE_TIMER_SECONDS } from '@shared/utils';
 import type {
   NewRoutineInput,
   RoutineExerciseTemplate,
@@ -151,7 +152,10 @@ export function buildRoutineInput(
       restSeconds:
         entry.restSeconds.trim() === ''
           ? null
-          : parsePositiveWholeNumber(entry.restSeconds, 60),
+          : parsePositiveWholeNumber(
+              entry.restSeconds,
+              DEFAULT_EXERCISE_TIMER_SECONDS,
+            ),
       sets: entry.sets.map((setEntry) => ({
         targetReps: parsePositiveWholeNumber(setEntry.targetReps, 1),
         plannedWeight: parseOptionalWeight(setEntry.plannedWeight),

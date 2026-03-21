@@ -7,8 +7,9 @@ import {
   createWorkoutSessionExerciseRecord,
   createWorkoutSetRecord,
   deleteWorkoutSessionRecord,
-  deleteWorkoutSetsForExercise,
+  deleteWorkoutExerciseRecords,
   deleteWorkoutSetRecord,
+  getNextWorkoutSessionExercisePosition,
   loadActiveWorkoutSession,
   updateWorkoutSessionExerciseRest,
   updateWorkoutSetCompletion,
@@ -86,22 +87,34 @@ export function useActiveWorkout(): {
         return;
       }
 
-      const newSet = createWorkoutSetRecord(
-        db,
-        currentActiveSessionId,
-        exerciseId,
-        0,
-        0,
-        null,
-        null,
-      );
-      createWorkoutSessionExerciseRecord(
-        db,
-        currentActiveSessionId,
-        exerciseId,
+      const nextExercisePosition = Math.max(
         currentActiveSession.exercises.length,
-        DEFAULT_EXERCISE_TIMER_SECONDS,
+        getNextWorkoutSessionExercisePosition(db, currentActiveSessionId),
       );
+      let newSet: ReturnType<typeof createWorkoutSetRecord> | null = null;
+
+      db.withTransactionSync(() => {
+        newSet = createWorkoutSetRecord(
+          db,
+          currentActiveSessionId,
+          exerciseId,
+          0,
+          0,
+          null,
+          null,
+        );
+        createWorkoutSessionExerciseRecord(
+          db,
+          currentActiveSessionId,
+          exerciseId,
+          nextExercisePosition,
+          DEFAULT_EXERCISE_TIMER_SECONDS,
+        );
+      });
+
+      if (!newSet) {
+        return;
+      }
 
       addExerciseToStore({
         exerciseId,
@@ -125,7 +138,7 @@ export function useActiveWorkout(): {
         return;
       }
 
-      deleteWorkoutSetsForExercise(db, currentActiveSessionId, exerciseId);
+      deleteWorkoutExerciseRecords(db, currentActiveSessionId, exerciseId);
       removeExerciseFromStore(exerciseId);
     },
     [db, removeExerciseFromStore],

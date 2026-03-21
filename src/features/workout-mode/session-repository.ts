@@ -24,6 +24,44 @@ interface WorkoutSessionExerciseRow extends Pick<
   'id' | 'session_id' | 'exercise_id' | 'position' | 'rest_seconds'
 > {}
 
+function buildFallbackSessionExerciseRows(
+  setRows: WorkoutSetRow[],
+  sessionId: string,
+): WorkoutSessionExerciseRow[] {
+  return [...new Set(setRows.map((row: WorkoutSetRow) => row.exercise_id))].map(
+    (exerciseId, position) => ({
+      id: `fallback-${sessionId}-${exerciseId}`,
+      session_id: sessionId,
+      exercise_id: exerciseId,
+      position,
+      rest_seconds: null,
+    }),
+  );
+}
+
+function mergeSessionExerciseRows(
+  sessionExerciseRows: WorkoutSessionExerciseRow[],
+  fallbackExerciseRows: WorkoutSessionExerciseRow[],
+): WorkoutSessionExerciseRow[] {
+  if (sessionExerciseRows.length === 0) {
+    return fallbackExerciseRows;
+  }
+
+  const rowsByExerciseId = new Map(
+    sessionExerciseRows.map((row) => [row.exercise_id, row]),
+  );
+
+  for (const fallbackRow of fallbackExerciseRows) {
+    if (!rowsByExerciseId.has(fallbackRow.exercise_id)) {
+      rowsByExerciseId.set(fallbackRow.exercise_id, fallbackRow);
+    }
+  }
+
+  return [...rowsByExerciseId.values()].sort(
+    (left, right) => left.position - right.position,
+  );
+}
+
 function loadExerciseRows(
   db: SQLiteDatabase,
   sessionId: string,
@@ -46,18 +84,14 @@ function loadExerciseRows(
      ORDER BY COALESCE(ws.position, 0) ASC, ws.rowid ASC`,
     [sessionId],
   );
-
-  const fallbackExerciseRows = [
-    ...new Set(setRows.map((row: WorkoutSetRow) => row.exercise_id)),
-  ].map((exerciseId, position) => ({
-    id: `fallback-${sessionId}-${exerciseId}`,
-    session_id: sessionId,
-    exercise_id: exerciseId,
-    position,
-    rest_seconds: null,
-  }));
-  const orderedSessionExerciseRows =
-    sessionExerciseRows.length > 0 ? sessionExerciseRows : fallbackExerciseRows;
+  const fallbackExerciseRows = buildFallbackSessionExerciseRows(
+    setRows,
+    sessionId,
+  );
+  const orderedSessionExerciseRows = mergeSessionExerciseRows(
+    sessionExerciseRows,
+    fallbackExerciseRows,
+  );
   const exerciseIds = orderedSessionExerciseRows.map((row) => row.exercise_id);
   const exerciseRows =
     exerciseIds.length > 0
@@ -226,6 +260,20 @@ export function createWorkoutSessionExerciseRecord(
   };
 }
 
+export function getNextWorkoutSessionExercisePosition(
+  db: SQLiteDatabase,
+  sessionId: string,
+): number {
+  return (
+    (db.getFirstSync<{ max_position: number | null }>(
+      `SELECT MAX(position) AS max_position
+       FROM workout_session_exercises
+       WHERE session_id = ?`,
+      [sessionId],
+    )?.max_position ?? -1) + 1
+  );
+}
+
 function getNextWorkoutSetPosition(
   db: SQLiteDatabase,
   sessionId: string,
@@ -329,7 +377,7 @@ export function deleteWorkoutSetRecord(
   db.runSync('DELETE FROM workout_sets WHERE id = ?', [setId]);
 }
 
-export function deleteWorkoutSetsForExercise(
+export function deleteWorkoutExerciseRecords(
   db: SQLiteDatabase,
   sessionId: string,
   exerciseId: string,
