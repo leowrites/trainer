@@ -2,6 +2,9 @@ import { render } from '@testing-library/react-native';
 import React from 'react';
 
 const mockStackScreen = jest.fn();
+const mockBottomTabScreen = jest.fn();
+const mockNativeTabScreen = jest.fn();
+const MockHistoryNavigator = (): null => null;
 
 jest.mock('@react-navigation/native-stack', () => {
   return {
@@ -19,7 +22,10 @@ jest.mock('@react-navigation/bottom-tabs', () => {
   return {
     createBottomTabNavigator: () => ({
       Navigator: ({ children }: { children?: unknown }) => children ?? null,
-      Screen: () => null,
+      Screen: (props: unknown) => {
+        mockBottomTabScreen(props);
+        return null;
+      },
     }),
   };
 });
@@ -28,7 +34,10 @@ jest.mock('@react-navigation/bottom-tabs/unstable', () => {
   return {
     createNativeBottomTabNavigator: () => ({
       Navigator: ({ children }: { children?: unknown }) => children ?? null,
-      Screen: () => null,
+      Screen: (props: unknown) => {
+        mockNativeTabScreen(props);
+        return null;
+      },
     }),
   };
 });
@@ -49,7 +58,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 jest.mock('@features/analytics', () => ({
-  HistoryScreen: () => null,
+  HistoryNavigator: MockHistoryNavigator,
 }));
 
 jest.mock('@features/health-tracking', () => ({
@@ -100,6 +109,7 @@ import { RootNavigator } from '../root-navigator';
 
 type ScreenProps = {
   name: string;
+  component?: unknown;
   options?: {
     presentation?: string;
     headerShown?: boolean;
@@ -119,9 +129,26 @@ function getScreen(name: string): ScreenProps {
   return screen;
 }
 
+function getTabScreen(name: string): ScreenProps {
+  const screen = [
+    ...mockBottomTabScreen.mock.calls,
+    ...mockNativeTabScreen.mock.calls,
+  ]
+    .map(([props]) => props as ScreenProps)
+    .find((props) => props.name === name);
+
+  if (!screen) {
+    throw new Error(`Expected tab screen ${name} to be registered`);
+  }
+
+  return screen;
+}
+
 describe('RootNavigator', () => {
   beforeEach(() => {
     mockStackScreen.mockClear();
+    mockBottomTabScreen.mockClear();
+    mockNativeTabScreen.mockClear();
   });
 
   it('registers exercise and routine detail and editor routes as modal screens', () => {
@@ -147,5 +174,18 @@ describe('RootNavigator', () => {
       title: '',
       presentation: 'modal',
     });
+  });
+
+  it('mounts the history tab with the dedicated history navigator', () => {
+    render(<RootNavigator />);
+
+    const tabsScreen = getScreen('Tabs');
+    const TabNavigatorComponent = tabsScreen.component as React.ComponentType<{
+      navigation: unknown;
+    }>;
+
+    render(<TabNavigatorComponent navigation={{ navigate: jest.fn() }} />);
+
+    expect(getTabScreen('History').name).toBe('History');
   });
 });

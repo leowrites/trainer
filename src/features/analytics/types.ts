@@ -50,6 +50,7 @@ export interface HistorySession {
   durationMinutes: number | null;
   totalSets: number;
   totalCompletedSets: number;
+  totalReps: number;
   totalVolume: number;
   exerciseCount: number;
   exercises: HistoryExerciseSummary[];
@@ -62,6 +63,15 @@ export interface TrendPoint {
   sessionCount: number;
   startTime: number;
 }
+
+export type HistoryTrendMetric = 'volume' | 'hours' | 'reps' | 'sets';
+export type HistoryTrendRange = '3m' | '1y' | 'all';
+export type HistoryTrendGranularity = 'day' | 'month' | 'year';
+
+export type HistoryTrendSeriesByMetric = Record<
+  HistoryTrendMetric,
+  TrendPoint[]
+>;
 
 export interface DashboardMetrics {
   workoutsThisWeek: number;

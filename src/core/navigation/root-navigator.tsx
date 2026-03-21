@@ -17,7 +17,10 @@ import React from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
-import { HistoryScreen } from '@features/analytics';
+import {
+  HistoryNavigator,
+  type HistoryStackParamList,
+} from '@features/analytics';
 import { ProfileScreen } from '@features/health-tracking';
 import {
   ExerciseDetailScreen,
@@ -36,7 +39,7 @@ import { useTheme } from '@core/theme/theme-context';
 export type RootTabParamList = {
   Workout: undefined;
   Routines: NavigatorScreenParams<RoutinesStackParamList>;
-  History: undefined;
+  History: NavigatorScreenParams<HistoryStackParamList>;
   Profile: undefined;
 };
 
@@ -132,7 +135,11 @@ function IosTabs(): React.JSX.Element {
         component={RoutinesScreen}
         options={{ headerShown: false }}
       />
-      <NativeTab.Screen name="History" component={HistoryScreen} />
+      <NativeTab.Screen
+        name="History"
+        component={HistoryNavigator}
+        options={{ headerShown: false }}
+      />
       <NativeTab.Screen name="Profile" component={ProfileScreen} />
     </NativeTab.Navigator>
   );
@@ -164,7 +171,7 @@ function AndroidTabs(): React.JSX.Element {
     >
       <BottomTab.Screen name="Workout" component={WorkoutScreen} />
       <BottomTab.Screen name="Routines" component={RoutinesScreen} />
-      <BottomTab.Screen name="History" component={HistoryScreen} />
+      <BottomTab.Screen name="History" component={HistoryNavigator} />
       <BottomTab.Screen name="Profile" component={ProfileScreen} />
     </BottomTab.Navigator>
   );

@@ -15,6 +15,16 @@ jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (callback: () => void) => callback(),
 }));
 
+jest.mock('react-native-gifted-charts', () => {
+  const ReactNative = require('react-native');
+
+  return {
+    LineChart: ({ data }: { data: Array<unknown> }) => (
+      <ReactNative.Text>LineChart {data.length}</ReactNative.Text>
+    ),
+  };
+});
+
 jest.mock('@react-navigation/elements', () => ({
   useHeaderHeight: () => 96,
 }));
@@ -57,8 +67,9 @@ jest.mock('@features/routines', () => ({
 
 jest.mock('@features/analytics', () => ({
   useHistoryAnalytics: jest.fn(),
-  buildDashboardMetrics: jest.requireActual('@features/analytics')
-    .buildDashboardMetrics,
+  buildDashboardMetrics: jest.requireActual(
+    '../../analytics/domain/dashboard-metrics',
+  ).buildDashboardMetrics,
 }));
 
 jest.mock('@features/health-tracking', () => ({
@@ -131,6 +142,7 @@ function createWorkoutActiveScreenProps(): WorkoutActiveScreenProps {
     navigation: {
       navigate: jest.fn(),
       addListener: jest.fn(() => jest.fn()),
+      canGoBack: jest.fn(() => true),
       dispatch: jest.fn(),
       goBack: jest.fn(),
       setOptions: jest.fn(),
@@ -197,6 +209,7 @@ describe('WorkoutScreen', () => {
       deleteExercise: jest.fn(),
     });
     mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
       sessions: [
         {
           id: 'completed-session-1',
@@ -207,13 +220,18 @@ describe('WorkoutScreen', () => {
           durationMinutes: 48,
           totalSets: 12,
           totalCompletedSets: 12,
+          totalReps: 96,
           totalVolume: 5240,
           exerciseCount: 5,
           exercises: [],
         },
       ],
-      volumeTrend: [],
-      hoursTrend: [],
+      trendSeriesByMetric: {
+        volume: [],
+        hours: [],
+        reps: [],
+        sets: [],
+      },
       refresh: jest.fn(),
     });
     mockUseUserProfile.mockReturnValue({
@@ -350,6 +368,7 @@ describe('WorkoutScreen', () => {
   it('renders the active workout session and forwards set editing actions', () => {
     const props = createWorkoutActiveScreenProps();
     const navigate = props.navigation.navigate as jest.Mock;
+    const goBack = props.navigation.goBack as jest.Mock;
     const addExercise = jest.fn();
     const removeExercise = jest.fn();
     const addSet = jest.fn();
@@ -494,6 +513,8 @@ describe('WorkoutScreen', () => {
     expect(deleteSet).toHaveBeenCalledWith('set-1');
     expect(removeExercise).toHaveBeenCalledWith('exercise-1');
     expect(completeWorkout).toHaveBeenCalledTimes(1);
+    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(navigate).not.toHaveBeenCalledWith('Tabs', { screen: 'Workout' });
   });
 
   it('does not collapse the workout when drilling into exercise detail', () => {
@@ -772,6 +793,8 @@ describe('WorkoutScreen', () => {
   it('deletes the current workout after confirmation', () => {
     const props = createWorkoutActiveScreenProps();
     const deleteWorkout = jest.fn().mockReturnValue(true);
+    const goBack = props.navigation.goBack as jest.Mock;
+    const navigate = props.navigation.navigate as jest.Mock;
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(
       (
         _title?: string,
@@ -822,6 +845,8 @@ describe('WorkoutScreen', () => {
 
     expect(alertSpy).toHaveBeenCalled();
     expect(deleteWorkout).toHaveBeenCalledTimes(1);
+    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(navigate).not.toHaveBeenCalledWith('Tabs', { screen: 'Workout' });
     alertSpy.mockRestore();
   });
 });

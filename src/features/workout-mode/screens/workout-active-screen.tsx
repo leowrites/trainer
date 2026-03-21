@@ -107,7 +107,11 @@ export function WorkoutActiveScreen({
 
   useEffect(() => {
     if (!isWorkoutActive || isWorkoutCollapsed) {
-      navigation.navigate('Tabs', { screen: 'Workout' });
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('Tabs', { screen: 'Workout' });
+      }
       return;
     }
 
@@ -272,7 +276,11 @@ export function WorkoutActiveScreen({
           onPress: () => {
             if (deleteWorkout()) {
               setAllowExit(true);
-              navigation.navigate('Tabs', { screen: 'Workout' });
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Tabs', { screen: 'Workout' });
+              }
             }
           },
         },
@@ -290,7 +298,11 @@ export function WorkoutActiveScreen({
       onComplete={() => {
         if (completeWorkout()) {
           setAllowExit(true);
-          navigation.navigate('Tabs', { screen: 'Workout' });
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            navigation.navigate('Tabs', { screen: 'Workout' });
+          }
         }
       }}
       onDeleteWorkout={handleDeleteWorkout}
