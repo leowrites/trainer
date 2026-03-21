@@ -15,39 +15,108 @@
  * - provide animation primitives directly
  */
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { AccessibilityInfo } from 'react-native';
 
+type ReduceMotionListener = () => void;
+
+let prefersReducedMotionSnapshot = false;
+let hasLoadedInitialPreference = false;
+let isLoadingInitialPreference = false;
+let hasRegisteredChangeListener = false;
+let nativeSubscription: { remove: () => void } | undefined;
+let initialLoadToken = 0;
+
+const listeners = new Set<ReduceMotionListener>();
+
+function notifyListeners(): void {
+  listeners.forEach((listener) => {
+    listener();
+  });
+}
+
+function updateReducedMotionPreference(isEnabled: boolean): void {
+  prefersReducedMotionSnapshot = isEnabled;
+  hasLoadedInitialPreference = true;
+  notifyListeners();
+}
+
+function loadInitialPreference(): void {
+  if (hasLoadedInitialPreference || isLoadingInitialPreference) {
+    return;
+  }
+
+  isLoadingInitialPreference = true;
+  const loadToken = initialLoadToken + 1;
+  initialLoadToken = loadToken;
+
+  AccessibilityInfo.isReduceMotionEnabled()
+    .then((isEnabled) => {
+      if (loadToken !== initialLoadToken) {
+        return;
+      }
+
+      updateReducedMotionPreference(isEnabled);
+    })
+    .catch(() => {
+      if (loadToken !== initialLoadToken) {
+        return;
+      }
+
+      updateReducedMotionPreference(false);
+    })
+    .finally(() => {
+      if (loadToken === initialLoadToken) {
+        isLoadingInitialPreference = false;
+      }
+    });
+}
+
+function ensureReducedMotionSubscription(): void {
+  loadInitialPreference();
+
+  if (hasRegisteredChangeListener) {
+    return;
+  }
+
+  nativeSubscription =
+    AccessibilityInfo.addEventListener('reduceMotionChanged', (isEnabled) => {
+      updateReducedMotionPreference(isEnabled);
+    }) ?? undefined;
+  hasRegisteredChangeListener = true;
+}
+
+function teardownReducedMotionSubscription(): void {
+  if (listeners.size > 0) {
+    return;
+  }
+
+  nativeSubscription?.remove();
+  nativeSubscription = undefined;
+  hasRegisteredChangeListener = false;
+  hasLoadedInitialPreference = false;
+  isLoadingInitialPreference = false;
+  initialLoadToken += 1;
+}
+
+function subscribeToReducedMotion(listener: ReduceMotionListener): () => void {
+  ensureReducedMotionSubscription();
+  listeners.add(listener);
+
+  return () => {
+    listeners.delete(listener);
+    teardownReducedMotionSubscription();
+  };
+}
+
+function getReducedMotionSnapshot(): boolean {
+  return prefersReducedMotionSnapshot;
+}
+
 export function useReducedMotionPreference(): boolean {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((isEnabled) => {
-        if (isMounted) {
-          setPrefersReducedMotion(isEnabled);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setPrefersReducedMotion(false);
-        }
-      });
-
-    const subscription = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      (isEnabled) => {
-        setPrefersReducedMotion(isEnabled);
-      },
-    );
-
-    return () => {
-      isMounted = false;
-      subscription.remove();
-    };
-  }, []);
-
-  return prefersReducedMotion;
+  return useSyncExternalStore(
+    subscribeToReducedMotion,
+    getReducedMotionSnapshot,
+    getReducedMotionSnapshot,
+  );
 }

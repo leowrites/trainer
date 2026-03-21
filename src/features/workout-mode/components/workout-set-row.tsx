@@ -4,10 +4,7 @@ import { Animated, PanResponder, Text, TextInput, View } from 'react-native';
 import { useTheme } from '@core/theme/theme-context';
 import { Body, InteractivePressable } from '@shared/components';
 import { useReducedMotionPreference } from '@shared/hooks';
-import {
-  configureInteractionLayoutAnimation,
-  triggerInteractionFeedback,
-} from '@shared/utils';
+import { triggerInteractionFeedback } from '@shared/utils';
 import type { ActiveWorkoutSet } from '../types';
 import {
   SWIPE_ACTION_WIDTH,
@@ -153,7 +150,6 @@ export function WorkoutSetRow({
         className="absolute bottom-0 right-0 top-0 items-center justify-center rounded-[16px] bg-error"
         style={{ width: SWIPE_ACTION_WIDTH }}
         onPress={() => {
-          configureInteractionLayoutAnimation(prefersReducedMotion);
           closeSwipe();
           onDelete();
         }}

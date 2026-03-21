@@ -31,8 +31,6 @@ import React from 'react';
 import { Text, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
-import { useReducedMotionPreference } from '@shared/hooks';
-import { getPressFeedbackStyle } from '@shared/utils';
 import { InteractivePressable } from './interactive-pressable';
 import { Caption } from './typography';
 
@@ -59,7 +57,6 @@ export function Checkbox({
   accessibilityLabel,
 }: CheckboxProps): React.JSX.Element {
   const { tokens } = useTheme();
-  const prefersReducedMotion = useReducedMotionPreference();
 
   return (
     <InteractivePressable
@@ -70,16 +67,14 @@ export function Checkbox({
       onPress={disabled ? undefined : onToggle}
       disabled={disabled}
       style={({ pressed }) => [
-        getPressFeedbackStyle({
-          pressed: !disabled && pressed,
-          prefersReducedMotion,
-          pressedScale: 0.985,
-        }),
         {
           opacity: disabled ? 0.5 : 1,
           borderColor:
-            checked || pressed ? tokens.accentBorder : tokens.bgBorder,
-          backgroundColor: pressed ? tokens.bgCard : tokens.bgElevated,
+            checked || (!disabled && pressed)
+              ? tokens.accentBorder
+              : tokens.bgBorder,
+          backgroundColor:
+            !disabled && pressed ? tokens.bgCard : tokens.bgElevated,
         },
       ]}
     >

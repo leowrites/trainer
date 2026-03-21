@@ -36,13 +36,21 @@ export function getPressFeedbackStyle({
   pressedOpacity = 0.96,
   pressedScale = 0.985,
 }: PressFeedbackOptions): ViewStyle {
+  if (!pressed) {
+    return {};
+  }
+
   return {
-    opacity: pressed ? pressedOpacity : 1,
-    transform: [
-      {
-        scale: pressed && !prefersReducedMotion ? pressedScale : 1,
-      },
-    ],
+    opacity: pressedOpacity,
+    ...(prefersReducedMotion
+      ? {}
+      : {
+          transform: [
+            {
+              scale: pressedScale,
+            },
+          ],
+        }),
   };
 }
 
