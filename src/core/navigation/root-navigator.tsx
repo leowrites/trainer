@@ -6,6 +6,7 @@ import {
 } from '@react-navigation/bottom-tabs/unstable';
 import {
   DefaultTheme,
+  createNavigationContainerRef,
   type NavigatorScreenParams,
   NavigationContainer,
 } from '@react-navigation/native';
@@ -56,6 +57,17 @@ export type RootStackParamList = {
   RoutineDetail: { routineId: string };
   RoutineEditor: { routineId?: string };
 };
+
+export const rootNavigationRef =
+  createNavigationContainerRef<RootStackParamList>();
+
+export function navigateToActiveWorkoutScreen(): void {
+  if (!rootNavigationRef.isReady()) {
+    return;
+  }
+
+  rootNavigationRef.navigate('ActiveWorkout');
+}
 
 // ─── Navigator ─────────────────────────────────────────────────────────────────
 
@@ -242,7 +254,7 @@ export function RootNavigator(): React.JSX.Element {
   };
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer ref={rootNavigationRef} theme={navigationTheme}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,

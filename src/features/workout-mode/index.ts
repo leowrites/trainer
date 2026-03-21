@@ -8,6 +8,10 @@ export { useWorkoutStore } from './store';
 export { useActiveWorkout } from './hooks/use-active-workout';
 export { useWorkoutStarter } from './hooks/use-workout-starter';
 export {
+  loadInProgressWorkoutSession,
+  loadLatestInProgressWorkoutSession,
+} from './session-repository';
+export {
   WorkoutActiveScreen,
   WorkoutScreen,
   WorkoutSummaryScreen,
