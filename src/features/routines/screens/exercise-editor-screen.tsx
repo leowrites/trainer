@@ -2,13 +2,14 @@ import { useFocusEffect, type RouteProp } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text } from 'react-native';
+import { Alert, ScrollView, Text } from 'react-native';
 
 import {
   Body,
   Button,
   Container,
   Input,
+  InteractivePressable,
   Label,
   Muted,
 } from '@shared/components';
@@ -129,24 +130,24 @@ export function ExerciseEditorScreen({
       title: '',
       headerBackVisible: false,
       headerLeft: () => (
-        <Pressable
+        <InteractivePressable
           accessibilityRole="button"
           accessibilityLabel="Cancel"
           className="px-1 py-1"
           onPress={() => cancelActionRef.current()}
         >
           <Text className="font-mono text-base text-foreground">Cancel</Text>
-        </Pressable>
+        </InteractivePressable>
       ),
       headerRight: () => (
-        <Pressable
+        <InteractivePressable
           accessibilityRole="button"
           accessibilityLabel="Save"
           className="px-1 py-1"
           onPress={() => saveActionRef.current()}
         >
           <Text className="font-mono text-base text-secondary">Save</Text>
-        </Pressable>
+        </InteractivePressable>
       ),
     });
   }, [navigation]);

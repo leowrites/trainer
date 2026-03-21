@@ -1,7 +1,13 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Body, Button, Input, Label } from '@shared/components';
+import {
+  Body,
+  Button,
+  Input,
+  InteractivePressable,
+  Label,
+} from '@shared/components';
 import type { RoutineExerciseDraft } from '../types';
 
 export function RoutineExerciseEditor({
@@ -22,7 +28,7 @@ export function RoutineExerciseEditor({
   onChangeTargetReps: (value: string) => void;
 }): React.JSX.Element {
   return (
-    <Pressable
+    <InteractivePressable
       className="mb-3"
       accessibilityRole="button"
       accessibilityLabel={`Reorder ${exerciseName}`}
@@ -67,6 +73,6 @@ export function RoutineExerciseEditor({
           Remove Exercise
         </Button>
       </View>
-    </Pressable>
+    </InteractivePressable>
   );
 }

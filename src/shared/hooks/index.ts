@@ -4,4 +4,4 @@
  * Custom React hooks that are not tied to a specific feature.
  * e.g., useDebounce, useColorScheme, useAppState.
  */
-export {};
+export { useReducedMotionPreference } from './use-reduced-motion-preference';

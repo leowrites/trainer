@@ -63,6 +63,9 @@ export type { BadgeProps, BadgeVariant } from './badge';
 export { Button } from './button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './button';
 
+export { InteractivePressable } from './interactive-pressable';
+export type { InteractivePressableProps } from './interactive-pressable';
+
 export { ActionRow } from './action-row';
 export type { ActionRowProps } from './action-row';
 

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Pressable, Text } from 'react-native';
+import { Text } from 'react-native';
 
-import { Muted } from '@shared/components';
+import { InteractivePressable, Muted } from '@shared/components';
 
 export function ExercisePickerRow({
   exerciseName,
@@ -13,7 +13,7 @@ export function ExercisePickerRow({
   onPress: () => void;
 }): React.JSX.Element {
   return (
-    <Pressable
+    <InteractivePressable
       accessibilityRole="button"
       accessibilityLabel={`Add ${exerciseName}`}
       className="p-3"
@@ -23,6 +23,6 @@ export function ExercisePickerRow({
       <Muted className="mt-0.5 text-2xs uppercase tracking-[1px]">
         {muscleGroup}
       </Muted>
-    </Pressable>
+    </InteractivePressable>
   );
 }

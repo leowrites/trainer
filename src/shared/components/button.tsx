@@ -37,11 +37,13 @@
 
 import React from 'react';
 
+import { useReducedMotionPreference } from '@shared/hooks';
 import {
   Button as GluestackButton,
   ButtonSpinner,
   ButtonText,
 } from '@shared/ui/button';
+import { getPressFeedbackStyle } from '@shared/utils';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -99,6 +101,7 @@ export function Button({
   const isInteractive = !disabled && !loading;
   const { action, gluestackVariant } = resolveVariantProps(variant);
   const textClassName = resolveTextClass(variant);
+  const prefersReducedMotion = useReducedMotionPreference();
 
   return (
     <GluestackButton
@@ -111,6 +114,13 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !isInteractive }}
+      style={({ pressed }) =>
+        getPressFeedbackStyle({
+          pressed: isInteractive && pressed,
+          prefersReducedMotion,
+          pressedScale: 0.985,
+        })
+      }
     >
       {loading ? (
         <ButtonSpinner accessibilityLabel="Loading" />

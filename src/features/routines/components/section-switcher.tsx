@@ -1,7 +1,7 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Label, Muted } from '@shared/components';
+import { InteractivePressable, Label, Muted } from '@shared/components';
 import type { Section } from '../types';
 
 export function SectionSwitcher({
@@ -29,7 +29,7 @@ export function SectionSwitcher({
         ).map(([item, count]) => {
           const active = section === item;
           return (
-            <Pressable
+            <InteractivePressable
               key={item}
               accessibilityRole="button"
               accessibilityLabel={item}
@@ -43,7 +43,7 @@ export function SectionSwitcher({
                 {item}
               </Label>
               <Muted className="mt-1 text-xs">{count} total</Muted>
-            </Pressable>
+            </InteractivePressable>
           );
         })}
       </View>

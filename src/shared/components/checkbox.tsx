@@ -28,9 +28,12 @@
  */
 
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
+import { useReducedMotionPreference } from '@shared/hooks';
+import { getPressFeedbackStyle } from '@shared/utils';
+import { InteractivePressable } from './interactive-pressable';
 import { Caption } from './typography';
 
 export interface CheckboxProps {
@@ -56,16 +59,29 @@ export function Checkbox({
   accessibilityLabel,
 }: CheckboxProps): React.JSX.Element {
   const { tokens } = useTheme();
+  const prefersReducedMotion = useReducedMotionPreference();
 
   return (
-    <Pressable
+    <InteractivePressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled }}
       accessibilityLabel={accessibilityLabel ?? label}
       className={`mb-2 flex-row items-center rounded-[18px] border border-surface-border bg-surface-elevated px-4 py-3 ${className}`}
       onPress={disabled ? undefined : onToggle}
       disabled={disabled}
-      style={{ opacity: disabled ? 0.5 : 1 }}
+      style={({ pressed }) => [
+        getPressFeedbackStyle({
+          pressed: !disabled && pressed,
+          prefersReducedMotion,
+          pressedScale: 0.985,
+        }),
+        {
+          opacity: disabled ? 0.5 : 1,
+          borderColor:
+            checked || pressed ? tokens.accentBorder : tokens.bgBorder,
+          backgroundColor: pressed ? tokens.bgCard : tokens.bgElevated,
+        },
+      ]}
     >
       {/* Check box indicator */}
       <View
@@ -98,6 +114,6 @@ export function Checkbox({
           <Caption className="mt-1 font-mono"> {sublabel} </Caption>
         ) : null}
       </View>
-    </Pressable>
+    </InteractivePressable>
   );
 }

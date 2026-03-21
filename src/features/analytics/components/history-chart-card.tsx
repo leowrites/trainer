@@ -1,15 +1,18 @@
 import { LineChart, type lineDataItem } from 'react-native-gifted-charts';
 import React, { useMemo } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
-import { Body, Card, Heading, Label, Muted } from '@shared/components';
+import {
+  Body,
+  Card,
+  Heading,
+  InteractivePressable,
+  Label,
+  Muted,
+} from '@shared/components';
+import { useReducedMotionPreference } from '@shared/hooks';
+import { configureInteractionLayoutAnimation } from '@shared/utils';
 import { formatCompactNumber } from '../formatters';
 import type {
   HistoryTrendMetric,
@@ -102,6 +105,7 @@ export function HistoryChartCard({
   unit: WeightUnit;
 }): React.JSX.Element {
   const { tokens } = useTheme();
+  const prefersReducedMotion = useReducedMotionPreference();
   const { width: windowWidth } = useWindowDimensions();
   const points = trendSeriesByMetric[activeMetric];
   const chartData = useMemo(() => buildChartData(points), [points]);
@@ -133,20 +137,23 @@ export function HistoryChartCard({
           const selected = option.key === activeMetric;
 
           return (
-            <Pressable
+            <InteractivePressable
               key={option.key}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               accessibilityLabel={`Show ${option.label}`}
-              onPress={() => onChangeMetric(option.key)}
-              style={{
-                borderRadius: 999,
+              className="min-h-10 justify-center rounded-full border border-surface-border bg-surface-elevated px-4 py-2"
+              hitSlop={4}
+              onPress={() => {
+                configureInteractionLayoutAnimation(prefersReducedMotion);
+                onChangeMetric(option.key);
+              }}
+              style={({ pressed }) => ({
                 borderWidth: 1,
                 borderColor: selected ? tokens.accent : tokens.bgBorder,
-                backgroundColor: selected ? tokens.bgCard : tokens.bgBase,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-              }}
+                backgroundColor:
+                  selected || pressed ? tokens.bgCard : tokens.bgElevated,
+              })}
             >
               <Text
                 style={{
@@ -157,7 +164,7 @@ export function HistoryChartCard({
               >
                 {option.label}
               </Text>
-            </Pressable>
+            </InteractivePressable>
           );
         })}
       </ScrollView>
@@ -171,20 +178,23 @@ export function HistoryChartCard({
           const selected = option.key === activeRange;
 
           return (
-            <Pressable
+            <InteractivePressable
               key={option.key}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               accessibilityLabel={`Show ${option.label}`}
-              onPress={() => onChangeRange(option.key)}
-              style={{
-                borderRadius: 999,
+              className="min-h-10 justify-center rounded-full border border-surface-border bg-surface-elevated px-4 py-2"
+              hitSlop={4}
+              onPress={() => {
+                configureInteractionLayoutAnimation(prefersReducedMotion);
+                onChangeRange(option.key);
+              }}
+              style={({ pressed }) => ({
                 borderWidth: 1,
                 borderColor: selected ? tokens.secondary : tokens.bgBorder,
-                backgroundColor: selected ? tokens.bgCard : tokens.bgBase,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-              }}
+                backgroundColor:
+                  selected || pressed ? tokens.bgCard : tokens.bgElevated,
+              })}
             >
               <Text
                 style={{
@@ -195,7 +205,7 @@ export function HistoryChartCard({
               >
                 {option.label}
               </Text>
-            </Pressable>
+            </InteractivePressable>
           );
         })}
       </ScrollView>

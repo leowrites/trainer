@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import type DraggableFlatListType from 'react-native-draggable-flatlist';
 import type { RenderItemParams } from 'react-native-draggable-flatlist';
 
@@ -17,9 +17,12 @@ import {
   Container,
   Heading,
   Input,
+  InteractivePressable,
   Label,
   Muted,
 } from '@shared/components';
+import { useReducedMotionPreference } from '@shared/hooks';
+import { configureInteractionLayoutAnimation } from '@shared/utils';
 import { ExercisePickerSheet } from '../components/exercise-picker-sheet';
 import { RoutineExerciseEditor } from '../components/routine-exercise-editor';
 import { useExercises } from '../hooks/use-exercises';
@@ -67,6 +70,7 @@ export function RoutineEditorScreen({
   );
   const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const prefersReducedMotion = useReducedMotionPreference();
 
   const cancelActionRef = useRef<() => void>(() => undefined);
   const saveActionRef = useRef<() => void>(() => undefined);
@@ -154,24 +158,24 @@ export function RoutineEditorScreen({
       title: '',
       headerBackVisible: false,
       headerLeft: () => (
-        <Pressable
+        <InteractivePressable
           accessibilityRole="button"
           accessibilityLabel="Cancel"
           className="px-1 py-1"
           onPress={() => cancelActionRef.current()}
         >
           <Text className="font-mono text-base text-foreground">Cancel</Text>
-        </Pressable>
+        </InteractivePressable>
       ),
       headerRight: () => (
-        <Pressable
+        <InteractivePressable
           accessibilityRole="button"
           accessibilityLabel="Save"
           className="px-1 py-1"
           onPress={() => saveActionRef.current()}
         >
           <Text className="font-mono text-base text-secondary">Save</Text>
-        </Pressable>
+        </InteractivePressable>
       ),
     });
   }, [navigation]);
@@ -187,30 +191,38 @@ export function RoutineEditorScreen({
     [],
   );
 
-  const handleRemoveDraft = useCallback((exerciseId: string): void => {
-    setExerciseDrafts((current) =>
-      current.filter((entry) => entry.exerciseId !== exerciseId),
-    );
-  }, []);
-
-  const handleAddExercises = useCallback((exerciseIds: string[]): void => {
-    setExerciseDrafts((current) => {
-      const currentExerciseIds = new Set(
-        current.map((entry) => entry.exerciseId),
+  const handleRemoveDraft = useCallback(
+    (exerciseId: string): void => {
+      configureInteractionLayoutAnimation(prefersReducedMotion);
+      setExerciseDrafts((current) =>
+        current.filter((entry) => entry.exerciseId !== exerciseId),
       );
+    },
+    [prefersReducedMotion],
+  );
 
-      return [
-        ...current,
-        ...exerciseIds
-          .filter((exerciseId) => !currentExerciseIds.has(exerciseId))
-          .map((exerciseId) => ({
-            exerciseId,
-            targetSets: DEFAULT_TARGET_SETS,
-            targetReps: DEFAULT_TARGET_REPS,
-          })),
-      ];
-    });
-  }, []);
+  const handleAddExercises = useCallback(
+    (exerciseIds: string[]): void => {
+      configureInteractionLayoutAnimation(prefersReducedMotion);
+      setExerciseDrafts((current) => {
+        const currentExerciseIds = new Set(
+          current.map((entry) => entry.exerciseId),
+        );
+
+        return [
+          ...current,
+          ...exerciseIds
+            .filter((exerciseId) => !currentExerciseIds.has(exerciseId))
+            .map((exerciseId) => ({
+              exerciseId,
+              targetSets: DEFAULT_TARGET_SETS,
+              targetReps: DEFAULT_TARGET_REPS,
+            })),
+        ];
+      });
+    },
+    [prefersReducedMotion],
+  );
 
   const listHeader = (
     <View>
