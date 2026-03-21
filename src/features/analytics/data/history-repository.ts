@@ -82,6 +82,11 @@ export interface HistorySessionRowsById {
   setRows: HistorySetRow[];
 }
 
+export interface AllHistorySessionRows {
+  sessionRows: HistorySessionRow[];
+  setRows: HistorySetRow[];
+}
+
 function buildSetRowsSql(sessionCount: number): string {
   return `${HISTORY_SET_SELECT_SQL}
   WHERE wset.session_id IN (${Array.from({ length: sessionCount }, () => '?').join(', ')})
@@ -164,4 +169,26 @@ export function loadHistoryTrendRows(
   db: AnalyticsReader,
 ): HistoryTrendSessionRow[] {
   return db.getAllSync<HistoryTrendSessionRow>(HISTORY_TREND_SQL);
+}
+
+export function loadAllHistorySessions(
+  db: AnalyticsReader,
+): AllHistorySessionRows {
+  const sessionRows = db.getAllSync<HistorySessionRow>(
+    HISTORY_SESSION_SELECT_SQL,
+  );
+
+  if (sessionRows.length === 0) {
+    return {
+      sessionRows: [],
+      setRows: [],
+    };
+  }
+
+  return {
+    sessionRows,
+    setRows: db.getAllSync<HistorySetRow>(
+      `${HISTORY_SET_SELECT_SQL}\n  ${HISTORY_SET_ORDER_SQL}`,
+    ),
+  };
 }

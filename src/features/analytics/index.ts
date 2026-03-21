@@ -8,6 +8,7 @@ export { HistoryNavigator } from './screens/history-navigator';
 export { HistoryScreen } from './screens/history-screen';
 export { HistorySessionDetailScreen } from './screens/history-session-detail-screen';
 export { useHistoryAnalytics } from './hooks/use-history-analytics';
+export { useHistorySessions } from './hooks/use-history-sessions';
 export { useHistorySessionDetail } from './hooks/use-history-session-detail';
 export { buildDashboardMetrics } from './domain/dashboard-metrics';
 export {
@@ -39,5 +40,6 @@ export type {
   ProgressiveOverloadConfig,
   ProgressiveOverloadRecommendation,
   TrendPoint,
+  WeightUnit,
 } from './types';
 export type { HistoryStackParamList } from './navigation-types';

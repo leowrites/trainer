@@ -11,9 +11,18 @@ export {
   loadInProgressWorkoutSession,
   loadLatestInProgressWorkoutSession,
 } from './session-repository';
-export { WorkoutActiveScreen, WorkoutScreen } from './screens/workout-screen';
+export {
+  WorkoutActiveScreen,
+  WorkoutScreen,
+  WorkoutSummaryScreen,
+} from './screens/workout-screen';
 export type {
   ActiveWorkoutExercise,
   ActiveWorkoutSession,
   ActiveWorkoutSet,
 } from './types';
+export type {
+  WorkoutFeedbackMetric,
+  WorkoutRecordBadge,
+  WorkoutSummaryViewModel,
+} from './summary-types';
