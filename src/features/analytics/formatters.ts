@@ -33,6 +33,15 @@ export function formatShortDate(timestamp: number): string {
   return `${MONTHS_SHORT[date.getMonth()]} ${date.getDate()}`;
 }
 
+export function formatMonthLabel(timestamp: number): string {
+  const date = new Date(timestamp);
+  return `${MONTHS_SHORT[date.getMonth()]} '${String(date.getFullYear()).slice(-2)}`;
+}
+
+export function formatYearLabel(timestamp: number): string {
+  return String(new Date(timestamp).getFullYear());
+}
+
 export function formatSessionDate(timestamp: number): string {
   const date = new Date(timestamp);
   return `${MONTHS_SHORT[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
@@ -81,8 +90,6 @@ export function formatSessionSummary(session: HistorySession): string {
       ? '1 exercise'
       : `${session.exerciseCount} exercises`;
   const setLabel =
-    session.totalSets === 1
-      ? `${session.totalCompletedSets}/1 set`
-      : `${session.totalCompletedSets}/${session.totalSets} sets`;
+    session.totalSets === 1 ? '1 set' : `${session.totalSets} sets`;
   return `${exerciseLabel} • ${setLabel}`;
 }

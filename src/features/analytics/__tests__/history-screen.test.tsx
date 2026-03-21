@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React from 'react';
 
+import type { HistoryStackParamList } from '../navigation-types';
 import { HistoryScreen } from '../screens/history-screen';
 import { useHistoryAnalytics } from '../hooks/use-history-analytics';
 import type { HistorySession, TrendPoint } from '../types';
@@ -8,6 +10,16 @@ import type { HistorySession, TrendPoint } from '../types';
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (callback: () => void) => callback(),
 }));
+
+jest.mock('react-native-gifted-charts', () => {
+  const ReactNative = require('react-native');
+
+  return {
+    LineChart: ({ data }: { data: Array<unknown> }) => (
+      <ReactNative.Text>LineChart {data.length}</ReactNative.Text>
+    ),
+  };
+});
 
 jest.mock('../hooks/use-history-analytics', () => ({
   useHistoryAnalytics: jest.fn(),
@@ -25,6 +37,7 @@ function buildSession(overrides: Partial<HistorySession> = {}): HistorySession {
     durationMinutes: 70,
     totalSets: 3,
     totalCompletedSets: 3,
+    totalReps: 30,
     totalVolume: 3000,
     exerciseCount: 1,
     exercises: [
@@ -77,17 +90,35 @@ function buildTrendPoint(overrides: Partial<TrendPoint> = {}): TrendPoint {
   };
 }
 
+function buildTrendSeries(): {
+  volume: TrendPoint[];
+  hours: TrendPoint[];
+  reps: TrendPoint[];
+  sets: TrendPoint[];
+} {
+  return {
+    volume: [buildTrendPoint()],
+    hours: [buildTrendPoint({ key: '2026-03-10-hours', value: 1.2 })],
+    reps: [buildTrendPoint({ key: '2026-03-10-reps', value: 30 })],
+    sets: [buildTrendPoint({ key: '2026-03-10-sets', value: 3 })],
+  };
+}
+
 describe('HistoryScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders empty analytics and history states', () => {
+  it('renders empty analytics and history states without the latest session card', () => {
     const refresh = jest.fn();
     mockUseHistoryAnalytics.mockReturnValue({
       sessions: [],
-      volumeTrend: [],
-      hoursTrend: [],
+      trendSeriesByMetric: {
+        volume: [],
+        hours: [],
+        reps: [],
+        sets: [],
+      },
       refresh,
     });
 
@@ -95,101 +126,60 @@ describe('HistoryScreen', () => {
 
     expect(refresh).not.toHaveBeenCalled();
     expect(screen.getByText('History')).toBeTruthy();
-    expect(screen.getByText('No sessions recorded yet.')).toBeTruthy();
+    expect(screen.queryByText('Latest Session')).toBeNull();
     expect(screen.getByText('No workout history yet')).toBeTruthy();
-    expect(
-      screen.getByText(
-        'Complete a workout to start tracking volume over time.',
-      ),
-    ).toBeTruthy();
+    expect(screen.getByText('No data yet')).toBeTruthy();
   });
 
-  it('renders session detail, analytics cards, and progression recommendations', () => {
+  it('toggles chart metrics and navigates to session detail from a card press', () => {
     const refresh = jest.fn();
+    const navigation = {
+      navigate: jest.fn(),
+    } as unknown as NativeStackNavigationProp<
+      HistoryStackParamList,
+      'HistoryOverview'
+    >;
+
     mockUseHistoryAnalytics.mockReturnValue({
       sessions: [
         buildSession(),
         buildSession({
           id: 'session-2',
           routineName: 'Lower A',
-          startTime: new Date('2026-03-08T15:00:00.000Z').getTime(),
-          endTime: new Date('2026-03-08T15:45:00.000Z').getTime(),
+          totalSets: 4,
+          totalCompletedSets: 4,
+          totalReps: 20,
           durationMinutes: 45,
           totalVolume: 2200,
-          exercises: [
-            {
-              exerciseId: 'exercise-2',
-              exerciseName: 'Squat',
-              targetSets: 3,
-              targetReps: 5,
-              sets: [
-                {
-                  id: 'set-4',
-                  exerciseId: 'exercise-2',
-                  reps: 5,
-                  weight: 120,
-                  isCompleted: true,
-                },
-                {
-                  id: 'set-5',
-                  exerciseId: 'exercise-2',
-                  reps: 5,
-                  weight: 120,
-                  isCompleted: true,
-                },
-                {
-                  id: 'set-6',
-                  exerciseId: 'exercise-2',
-                  reps: 5,
-                  weight: 120,
-                  isCompleted: true,
-                },
-              ],
-              totalSets: 3,
-              completedSets: 3,
-              totalReps: 15,
-              totalVolume: 1800,
-            },
-          ],
+          exerciseCount: 2,
         }),
       ],
-      volumeTrend: [buildTrendPoint()],
-      hoursTrend: [buildTrendPoint({ key: '2026-03-10-hours', value: 1.2 })],
+      trendSeriesByMetric: buildTrendSeries(),
       refresh,
     });
 
-    render(
-      <HistoryScreen
-        progressionConfig={{ weightIncrement: 2.5, unit: 'kg', precision: 1 }}
-      />,
-    );
+    render(<HistoryScreen navigation={navigation} />);
 
-    expect(screen.getByText('Volume Over Time')).toBeTruthy();
-    expect(screen.getByText('Hours Over Time')).toBeTruthy();
-    expect(screen.getAllByText('Upper A').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Bench Press').length).toBeGreaterThan(0);
-    expect(screen.getByText('Progression Next Time')).toBeTruthy();
-    expect(screen.getByText('+2.5 kg')).toBeTruthy();
+    expect(screen.getAllByText('3,000 kg').length).toBeGreaterThan(0);
+    expect(screen.getByText('LineChart 1')).toBeTruthy();
+    expect(screen.getByText('3 sets')).toBeTruthy();
+    expect(screen.queryByText('Latest Session')).toBeNull();
 
-    fireEvent.press(screen.getByLabelText('Expand Lower A'));
+    fireEvent.press(screen.getByLabelText('Show Hours'));
 
-    expect(screen.getAllByText('Squat').length).toBeGreaterThan(0);
-  });
+    expect(screen.getByText('1.2 hr')).toBeTruthy();
+    expect(
+      screen.getByText('Workout hours by day • Last 3 months'),
+    ).toBeTruthy();
 
-  it('allows all sessions to be collapsed after the initial auto-expand', () => {
-    mockUseHistoryAnalytics.mockReturnValue({
-      sessions: [buildSession()],
-      volumeTrend: [buildTrendPoint()],
-      hoursTrend: [buildTrendPoint({ key: '2026-03-10-hours', value: 1.2 })],
-      refresh: jest.fn(),
+    fireEvent.press(screen.getByLabelText('Show Last Year'));
+
+    expect(screen.getByText('Workout hours by day • Last year')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Open Lower A'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('HistorySessionDetail', {
+      sessionId: 'session-2',
     });
-
-    render(<HistoryScreen />);
-
-    const collapseButton = screen.getByLabelText('Collapse Upper A');
-    fireEvent.press(collapseButton);
-
-    expect(screen.queryByText('Progression Next Time')).toBeNull();
-    expect(screen.getByLabelText('Expand Upper A')).toBeTruthy();
   });
 });

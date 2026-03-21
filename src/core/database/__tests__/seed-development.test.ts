@@ -204,4 +204,14 @@ describe('seedDevelopmentDatabase', () => {
       db.getAllSync.mock.invocationCallOrder[0],
     );
   });
+
+  it('includes workout history spanning multiple calendar years for chart QA', () => {
+    const seededYears = new Set(
+      developmentSeedData.workoutSessions.map((session) =>
+        new Date(session.startTime).getUTCFullYear(),
+      ),
+    );
+
+    expect(seededYears.size).toBeGreaterThanOrEqual(3);
+  });
 });

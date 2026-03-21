@@ -19,6 +19,7 @@ function buildSession({
     durationMinutes: endTime === null ? null : 45,
     totalSets: 3,
     totalCompletedSets: endTime === null ? 0 : 3,
+    totalReps: endTime === null ? 0 : 24,
     totalVolume: 1200,
     exerciseCount: 2,
     exercises: [],

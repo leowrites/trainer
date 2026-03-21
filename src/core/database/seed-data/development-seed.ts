@@ -1,5 +1,5 @@
 const DAY = 24 * 60 * 60 * 1000;
-const SEED_ANCHOR_TIME = Date.UTC(2025, 2, 10, 12, 0, 0);
+const SEED_ANCHOR_TIME = Date.UTC(2026, 2, 10, 12, 0, 0);
 
 export interface DevelopmentRoutineExerciseSeed {
   id: string;
@@ -73,6 +73,550 @@ export interface DevelopmentSeedData {
   bodyWeightEntries: DevelopmentBodyWeightEntrySeed[];
   userProfile: DevelopmentUserProfileSeed;
 }
+
+interface DevelopmentWorkoutSetTemplate {
+  suffix: string;
+  exerciseName: string;
+  weight: number;
+  reps: number;
+  isCompleted: number;
+  targetSets: number | null;
+  targetReps: number | null;
+}
+
+interface DevelopmentWorkoutSessionTemplate {
+  id: string;
+  routineId: string | null;
+  scheduleId: string | null;
+  snapshotName: string | null;
+  startOffsetDays: number;
+  durationMinutes: number;
+  sets: DevelopmentWorkoutSetTemplate[];
+}
+
+function buildWorkoutSessionSeed(
+  template: DevelopmentWorkoutSessionTemplate,
+): DevelopmentWorkoutSessionSeed {
+  const startTime = SEED_ANCHOR_TIME - template.startOffsetDays * DAY;
+
+  return {
+    id: template.id,
+    routineId: template.routineId,
+    scheduleId: template.scheduleId,
+    snapshotName: template.snapshotName,
+    startTime,
+    endTime: startTime + template.durationMinutes * 60 * 1000,
+    sets: template.sets.map(
+      (set): DevelopmentWorkoutSetSeed => ({
+        id: `${template.id}-${set.suffix}`,
+        exerciseName: set.exerciseName,
+        weight: set.weight,
+        reps: set.reps,
+        isCompleted: set.isCompleted,
+        targetSets: set.targetSets,
+        targetReps: set.targetReps,
+      }),
+    ),
+  };
+}
+
+const extendedHistoricalWorkoutSessions: DevelopmentWorkoutSessionSeed[] = [
+  buildWorkoutSessionSeed({
+    id: 'dev-session-push-a-2024-spring',
+    routineId: 'dev-routine-push-a',
+    scheduleId: 'dev-schedule-strength-rotation',
+    snapshotName: 'Push A',
+    startOffsetDays: 690,
+    durationMinutes: 55,
+    sets: [
+      {
+        suffix: 'bench-1',
+        exerciseName: 'Barbell Bench Press',
+        weight: 115,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'bench-2',
+        exerciseName: 'Barbell Bench Press',
+        weight: 120,
+        reps: 7,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'incline-1',
+        exerciseName: 'Incline Dumbbell Bench Press',
+        weight: 40,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+      {
+        suffix: 'press-1',
+        exerciseName: 'Overhead Press',
+        weight: 75,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'triceps-1',
+        exerciseName: 'Tricep Pushdown',
+        weight: 45,
+        reps: 12,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 12,
+      },
+    ],
+  }),
+  buildWorkoutSessionSeed({
+    id: 'dev-session-pull-a-2024-summer',
+    routineId: 'dev-routine-pull-a',
+    scheduleId: 'dev-schedule-strength-rotation',
+    snapshotName: 'Pull A',
+    startOffsetDays: 655,
+    durationMinutes: 57,
+    sets: [
+      {
+        suffix: 'row-1',
+        exerciseName: 'Barbell Row',
+        weight: 135,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'row-2',
+        exerciseName: 'Barbell Row',
+        weight: 145,
+        reps: 7,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'pulldown-1',
+        exerciseName: 'Lat Pulldown',
+        weight: 115,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+      {
+        suffix: 'facepull-1',
+        exerciseName: 'Face Pull',
+        weight: 35,
+        reps: 15,
+        isCompleted: 1,
+        targetSets: 2,
+        targetReps: 15,
+      },
+      {
+        suffix: 'curl-1',
+        exerciseName: 'Hammer Curl',
+        weight: 20,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+    ],
+  }),
+  buildWorkoutSessionSeed({
+    id: 'dev-session-lower-a-2024-summer',
+    routineId: 'dev-routine-lower-a',
+    scheduleId: 'dev-schedule-strength-rotation',
+    snapshotName: 'Lower A',
+    startOffsetDays: 620,
+    durationMinutes: 62,
+    sets: [
+      {
+        suffix: 'squat-1',
+        exerciseName: 'Barbell Back Squat',
+        weight: 205,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'squat-2',
+        exerciseName: 'Barbell Back Squat',
+        weight: 215,
+        reps: 6,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'rdl-1',
+        exerciseName: 'Romanian Deadlift',
+        weight: 165,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+      {
+        suffix: 'legpress-1',
+        exerciseName: 'Leg Press',
+        weight: 280,
+        reps: 12,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 12,
+      },
+      {
+        suffix: 'calf-1',
+        exerciseName: 'Standing Calf Raise',
+        weight: 115,
+        reps: 15,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 15,
+      },
+    ],
+  }),
+  buildWorkoutSessionSeed({
+    id: 'dev-session-push-a-2024-fall',
+    routineId: 'dev-routine-push-a',
+    scheduleId: 'dev-schedule-strength-rotation',
+    snapshotName: 'Push A',
+    startOffsetDays: 500,
+    durationMinutes: 56,
+    sets: [
+      {
+        suffix: 'bench-1',
+        exerciseName: 'Barbell Bench Press',
+        weight: 125,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'bench-2',
+        exerciseName: 'Barbell Bench Press',
+        weight: 130,
+        reps: 7,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'incline-1',
+        exerciseName: 'Incline Dumbbell Bench Press',
+        weight: 45,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+      {
+        suffix: 'press-1',
+        exerciseName: 'Overhead Press',
+        weight: 80,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'triceps-1',
+        exerciseName: 'Tricep Pushdown',
+        weight: 50,
+        reps: 12,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 12,
+      },
+    ],
+  }),
+  buildWorkoutSessionSeed({
+    id: 'dev-session-pull-a-2025-winter',
+    routineId: 'dev-routine-pull-a',
+    scheduleId: 'dev-schedule-strength-rotation',
+    snapshotName: 'Pull A',
+    startOffsetDays: 430,
+    durationMinutes: 59,
+    sets: [
+      {
+        suffix: 'row-1',
+        exerciseName: 'Barbell Row',
+        weight: 145,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'row-2',
+        exerciseName: 'Barbell Row',
+        weight: 155,
+        reps: 7,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'pulldown-1',
+        exerciseName: 'Lat Pulldown',
+        weight: 125,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+      {
+        suffix: 'facepull-1',
+        exerciseName: 'Face Pull',
+        weight: 40,
+        reps: 15,
+        isCompleted: 1,
+        targetSets: 2,
+        targetReps: 15,
+      },
+      {
+        suffix: 'curl-1',
+        exerciseName: 'Hammer Curl',
+        weight: 25,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+    ],
+  }),
+  buildWorkoutSessionSeed({
+    id: 'dev-session-lower-a-2025-spring',
+    routineId: 'dev-routine-lower-a',
+    scheduleId: 'dev-schedule-strength-rotation',
+    snapshotName: 'Lower A',
+    startOffsetDays: 360,
+    durationMinutes: 64,
+    sets: [
+      {
+        suffix: 'squat-1',
+        exerciseName: 'Barbell Back Squat',
+        weight: 215,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'squat-2',
+        exerciseName: 'Barbell Back Squat',
+        weight: 225,
+        reps: 6,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'rdl-1',
+        exerciseName: 'Romanian Deadlift',
+        weight: 175,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+      {
+        suffix: 'legpress-1',
+        exerciseName: 'Leg Press',
+        weight: 320,
+        reps: 12,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 12,
+      },
+      {
+        suffix: 'calf-1',
+        exerciseName: 'Standing Calf Raise',
+        weight: 125,
+        reps: 15,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 15,
+      },
+    ],
+  }),
+  buildWorkoutSessionSeed({
+    id: 'dev-session-push-a-2025-summer',
+    routineId: 'dev-routine-push-a',
+    scheduleId: 'dev-schedule-strength-rotation',
+    snapshotName: 'Push A',
+    startOffsetDays: 250,
+    durationMinutes: 57,
+    sets: [
+      {
+        suffix: 'bench-1',
+        exerciseName: 'Barbell Bench Press',
+        weight: 130,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'bench-2',
+        exerciseName: 'Barbell Bench Press',
+        weight: 135,
+        reps: 7,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'incline-1',
+        exerciseName: 'Incline Dumbbell Bench Press',
+        weight: 45,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+      {
+        suffix: 'press-1',
+        exerciseName: 'Overhead Press',
+        weight: 85,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'triceps-1',
+        exerciseName: 'Tricep Pushdown',
+        weight: 55,
+        reps: 12,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 12,
+      },
+    ],
+  }),
+  buildWorkoutSessionSeed({
+    id: 'dev-session-pull-a-2025-fall',
+    routineId: 'dev-routine-pull-a',
+    scheduleId: 'dev-schedule-strength-rotation',
+    snapshotName: 'Pull A',
+    startOffsetDays: 160,
+    durationMinutes: 60,
+    sets: [
+      {
+        suffix: 'row-1',
+        exerciseName: 'Barbell Row',
+        weight: 150,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'row-2',
+        exerciseName: 'Barbell Row',
+        weight: 160,
+        reps: 7,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'pulldown-1',
+        exerciseName: 'Lat Pulldown',
+        weight: 130,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+      {
+        suffix: 'facepull-1',
+        exerciseName: 'Face Pull',
+        weight: 45,
+        reps: 15,
+        isCompleted: 1,
+        targetSets: 2,
+        targetReps: 15,
+      },
+      {
+        suffix: 'curl-1',
+        exerciseName: 'Hammer Curl',
+        weight: 25,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+    ],
+  }),
+  buildWorkoutSessionSeed({
+    id: 'dev-session-lower-a-2025-winter',
+    routineId: 'dev-routine-lower-a',
+    scheduleId: 'dev-schedule-strength-rotation',
+    snapshotName: 'Lower A',
+    startOffsetDays: 80,
+    durationMinutes: 65,
+    sets: [
+      {
+        suffix: 'squat-1',
+        exerciseName: 'Barbell Back Squat',
+        weight: 220,
+        reps: 8,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'squat-2',
+        exerciseName: 'Barbell Back Squat',
+        weight: 230,
+        reps: 6,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 8,
+      },
+      {
+        suffix: 'rdl-1',
+        exerciseName: 'Romanian Deadlift',
+        weight: 180,
+        reps: 10,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 10,
+      },
+      {
+        suffix: 'legpress-1',
+        exerciseName: 'Leg Press',
+        weight: 340,
+        reps: 12,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 12,
+      },
+      {
+        suffix: 'calf-1',
+        exerciseName: 'Standing Calf Raise',
+        weight: 130,
+        reps: 15,
+        isCompleted: 1,
+        targetSets: 3,
+        targetReps: 15,
+      },
+    ],
+  }),
+];
 
 export const developmentSeedData: DevelopmentSeedData = {
   userProfile: {
@@ -238,6 +782,7 @@ export const developmentSeedData: DevelopmentSeedData = {
     },
   ],
   workoutSessions: [
+    ...extendedHistoricalWorkoutSessions,
     {
       id: 'dev-session-push-a',
       routineId: 'dev-routine-push-a',

@@ -107,6 +107,11 @@ export function buildHistorySessions(
           sum + exercise.completedSets,
         0,
       ),
+      totalReps: exercises.reduce(
+        (sum: number, exercise: HistoryExerciseSummary) =>
+          sum + exercise.totalReps,
+        0,
+      ),
       totalVolume: exercises.reduce(
         (sum: number, exercise: HistoryExerciseSummary) =>
           sum + exercise.totalVolume,
