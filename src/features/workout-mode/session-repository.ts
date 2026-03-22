@@ -348,8 +348,11 @@ export function createWorkoutSetRecord(
       reps,
       is_completed,
       target_sets,
-      target_reps
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      target_reps,
+      target_reps_min,
+      target_reps_max,
+      set_role
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       setId,
       sessionId,
@@ -360,21 +363,11 @@ export function createWorkoutSetRecord(
       0,
       targetSets,
       targetReps,
+      targetRepsMin,
+      targetRepsMax,
+      setRole,
     ],
   );
-
-  if (
-    targetRepsMin !== targetReps ||
-    targetRepsMax !== targetReps ||
-    setRole !== 'optional'
-  ) {
-    db.runSync(
-      `UPDATE workout_sets
-       SET target_reps_min = ?, target_reps_max = ?, set_role = ?
-       WHERE id = ?`,
-      [targetRepsMin, targetRepsMax, setRole, setId],
-    );
-  }
 
   return {
     id: setId,

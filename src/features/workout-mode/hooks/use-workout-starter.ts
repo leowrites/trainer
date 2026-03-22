@@ -236,8 +236,11 @@ export function useWorkoutStarter(): {
               reps,
               is_completed,
               target_sets,
-              target_reps
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              target_reps,
+              target_reps_min,
+              target_reps_max,
+              set_role
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               setId,
               sessionId,
@@ -248,25 +251,11 @@ export function useWorkoutStarter(): {
               0,
               (exercise.sets ?? []).length,
               setEntry.targetRepsMin,
+              setEntry.targetRepsMin,
+              setEntry.targetRepsMax,
+              defaultSetRole,
             ],
           );
-
-          if (
-            setEntry.targetRepsMax !== setEntry.targetRepsMin ||
-            defaultSetRole !== 'optional'
-          ) {
-            db.runSync(
-              `UPDATE workout_sets
-               SET target_reps_min = ?, target_reps_max = ?, set_role = ?
-               WHERE id = ?`,
-              [
-                setEntry.targetRepsMin,
-                setEntry.targetRepsMax,
-                defaultSetRole,
-                setId,
-              ],
-            );
-          }
         }
       }
     });

@@ -27,14 +27,12 @@ export function recommendProgressions(
       candidate.targetRepsMin ??
       candidate.targetReps ??
       null;
-    const hasExplicitUpperBound =
-      candidate.targetRepsMax !== undefined ||
-      (candidate.targetRepsMin !== undefined &&
-        candidate.targetRepsMax !== undefined);
-
     if (targetRepsMin === null || targetRepsMin <= 0) {
       return [];
     }
+
+    const hasExplicitUpperBound =
+      targetRepsMax !== null && targetRepsMax > targetRepsMin;
 
     const totalRequiredSets = candidate.targetSets ?? candidate.sets.length;
 
@@ -55,7 +53,6 @@ export function recommendProgressions(
         (set) =>
           set.reps < targetRepsMin ||
           (hasExplicitUpperBound &&
-            targetRepsMax !== null &&
             set.reps > targetRepsMax),
       )
     ) {

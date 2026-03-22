@@ -239,13 +239,13 @@ export function buildRoutineInput(
             ),
       progressionPolicy: entry.progressionPolicy,
       targetRir: parseOptionalNumber(entry.targetRir),
-      sets: entry.sets.map((setEntry) => ({
+      sets: entry.sets.map((setEntry, index) => ({
         ...normalizeRange(setEntry.targetRepsMin, setEntry.targetRepsMax),
         plannedWeight: parseOptionalWeight(setEntry.plannedWeight),
         setRole: normalizeSetRole(
           entry.progressionPolicy,
           setEntry.setRole,
-          entry.sets.indexOf(setEntry),
+          index,
         ),
       })),
     })),

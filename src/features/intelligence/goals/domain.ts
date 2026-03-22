@@ -2,7 +2,7 @@
  * Goal evaluation helpers.
  *
  * CALLING SPEC:
- * - `buildGoalProgressSummaries(goals, exposuresByExerciseId, capabilities, sessions)`
+ * - `buildGoalProgressSummaries(goals, exposuresByExerciseId, capabilitiesByExerciseId)`
  *   evaluates typed training goals into user-facing summaries.
  * - `sanitizeTrainingGoalInput(input)` normalizes nullable fields before writes.
  * - Side effects: none.
