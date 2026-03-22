@@ -63,7 +63,7 @@ export function formatPreviousPerformance(
     return 'No previous logged set';
   }
 
-  return `Previous ${performance.reps} x ${performance.weight}`;
+  return `Last: ${performance.reps} x ${performance.weight}`;
 }
 
 export function countCompletedExercises(

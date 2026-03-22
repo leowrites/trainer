@@ -49,6 +49,7 @@ export interface PreviousExercisePerformance {
 }
 
 export interface FocusedWorkoutGuidance {
+  targetLabel: string;
   text: string;
   tone: 'positive' | 'neutral' | 'warning';
   quality: {

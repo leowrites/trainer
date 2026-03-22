@@ -28,6 +28,14 @@ interface BuildFocusedWorkoutViewModelInput {
   previousPerformance: PreviousExercisePerformance | null;
 }
 
+function buildTargetLabel(
+  weight: number,
+  repsMin: number | null,
+  repsMax: number | null,
+): string {
+  return `${weight} lbs x ${formatRepRange(repsMin, repsMax)}`;
+}
+
 function formatRepRange(min: number | null, max: number | null): string {
   if (min === null && max === null) {
     return 'Log reps';
@@ -62,11 +70,17 @@ function buildPreviousSetSummary(
 function buildGuidance(
   selectedReps: number,
   selectedRir: number | null,
+  targetWeight: number,
   targetRepsMin: number | null,
   targetRepsMax: number | null,
   previousPerformance: PreviousExercisePerformance | null,
 ): FocusedWorkoutGuidance {
   const reasons: FocusedWorkoutGuidance['quality']['reasons'] = [];
+  const targetLabel = buildTargetLabel(
+    targetWeight,
+    targetRepsMin,
+    targetRepsMax,
+  );
 
   if (previousPerformance === null) {
     reasons.push('too_few_exposures');
@@ -79,6 +93,7 @@ function buildGuidance(
   if (targetRepsMin !== null && targetRepsMax !== null) {
     if (selectedReps < targetRepsMin) {
       return {
+        targetLabel,
         text: `Aim for ${targetRepsMin}-${targetRepsMax}`,
         tone: 'neutral',
         quality: {
@@ -90,6 +105,7 @@ function buildGuidance(
 
     if (selectedReps > targetRepsMax) {
       return {
+        targetLabel,
         text: 'Strong set',
         tone: 'positive',
         quality: {
@@ -101,6 +117,7 @@ function buildGuidance(
 
     if (selectedReps === targetRepsMax) {
       return {
+        targetLabel,
         text: 'On target',
         tone: 'positive',
         quality: {
@@ -111,6 +128,7 @@ function buildGuidance(
     }
 
     return {
+      targetLabel,
       text: `Push for ${targetRepsMax}`,
       tone: 'neutral',
       quality: {
@@ -121,6 +139,7 @@ function buildGuidance(
   }
 
   return {
+    targetLabel,
     text: 'Log the set',
     tone: 'neutral',
     quality: {
@@ -234,6 +253,7 @@ export function buildFocusedWorkoutViewModel({
     setItem.targetRepsMin ??
     setItem.targetReps ??
     null;
+  const targetWeight = setItem.targetWeight ?? setItem.weight;
 
   return {
     location,
@@ -244,7 +264,7 @@ export function buildFocusedWorkoutViewModel({
     totalSetsForExercise: exercise.sets.length,
     totalRemainingSets,
     target: {
-      weight: setItem.targetWeight ?? setItem.weight,
+      weight: targetWeight,
       repsLabel: formatRepRange(repsMin, repsMax),
       repsMin,
       repsMax,
@@ -266,6 +286,7 @@ export function buildFocusedWorkoutViewModel({
     guidance: buildGuidance(
       selectedReps,
       selectedRir,
+      targetWeight,
       repsMin,
       repsMax,
       previousPerformance,

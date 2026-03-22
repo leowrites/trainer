@@ -10,7 +10,6 @@ import {
   Heading,
   InteractivePressable,
   Label,
-  Meta,
   Muted,
   Surface,
 } from '@shared/components';
@@ -29,6 +28,10 @@ import type {
   PreviousExercisePerformance,
 } from '../types';
 import { ExercisePickerBottomSheet } from './exercise-picker-bottom-sheet';
+import {
+  WorkoutValuePickerRow,
+  type WorkoutValueField,
+} from './workout-value-picker-row';
 import {
   formatPreviousPerformance,
   formatRestCountdown,
@@ -74,22 +77,24 @@ function clampNumber(value: number, minimum = 0): number {
   return Math.max(minimum, value);
 }
 
-function buildRepOptions(
-  selectedReps: number,
-  repsMin: number | null,
-  repsMax: number | null,
+function buildWheelOptions(
+  selectedValue: number,
+  maximum: number,
+  step: number,
 ): number[] {
-  const windowSize = 4;
-  const lowerBound = 0;
-  const hasExplicitUpperBound =
-    repsMax !== null && repsMin !== null && repsMax > repsMin;
-  const upperBound = hasExplicitUpperBound
-    ? repsMax
-    : Math.max(selectedReps + 2, repsMin ?? 0);
-  const maxStart = Math.max(lowerBound, upperBound - (windowSize - 1));
-  const start = Math.max(lowerBound, Math.min(selectedReps - 1, maxStart));
+  const options = Array.from(
+    { length: Math.floor(maximum / step) + 1 },
+    (_, index) => index * step,
+  );
 
-  return Array.from({ length: windowSize }, (_, index) => start + index);
+  if (
+    selectedValue < 0 ||
+    (selectedValue <= maximum && options.includes(selectedValue))
+  ) {
+    return options;
+  }
+
+  return [...options, selectedValue].sort((left, right) => left - right);
 }
 
 function buildRirOptions(): Array<number | null> {
@@ -207,6 +212,9 @@ export function ActiveWorkoutContent({
   const prefersReducedMotion = useReducedMotionPreference();
   const heroScale = React.useRef(new Animated.Value(1)).current;
   const [showOverview, setShowOverview] = useState(false);
+  const [pickerField, setPickerField] = useState<WorkoutValueField | null>(
+    null,
+  );
   const [location, setLocation] = useState<FocusedWorkoutLocation>(() =>
     findInitialFocusedLocation(activeSession),
   );
@@ -244,12 +252,28 @@ export function ActiveWorkoutContent({
     setSelectedRir(setItem.actualRir ?? null);
   }, [activeSession, location]);
 
+  useEffect(() => {
+    setPickerField(null);
+  }, [location.exerciseIndex, location.setIndex]);
+
+  useEffect(() => {
+    if (!showOverview) {
+      return;
+    }
+
+    setPickerField(null);
+  }, [showOverview]);
+
   const handleMoveFocus = (nextLocation: FocusedWorkoutLocation): void => {
     setLocation(nextLocation);
     setShowOverview(false);
+    setPickerField(null);
   };
 
-  const handleAdjustReps = (nextReps: number): void => {
+  const handleAdjustReps = (
+    nextReps: number,
+    options?: { feedback?: boolean },
+  ): void => {
     if (viewModel === null) {
       return;
     }
@@ -257,10 +281,16 @@ export function ActiveWorkoutContent({
     const normalizedReps = clampNumber(nextReps);
     setSelectedReps(normalizedReps);
     updateReps(viewModel.setId, normalizedReps);
-    triggerInteractionFeedback('set-adjust');
+
+    if (options?.feedback !== false) {
+      triggerInteractionFeedback('set-adjust');
+    }
   };
 
-  const handleAdjustWeight = (nextWeight: number): void => {
+  const handleAdjustWeight = (
+    nextWeight: number,
+    options?: { feedback?: boolean },
+  ): void => {
     if (viewModel === null) {
       return;
     }
@@ -268,7 +298,10 @@ export function ActiveWorkoutContent({
     const normalizedWeight = clampNumber(nextWeight);
     setSelectedWeight(normalizedWeight);
     updateWeight(viewModel.setId, normalizedWeight);
-    triggerInteractionFeedback('set-adjust');
+
+    if (options?.feedback !== false) {
+      triggerInteractionFeedback('set-adjust');
+    }
   };
 
   const handleAdjustRir = (nextRir: number | null): void => {
@@ -286,6 +319,7 @@ export function ActiveWorkoutContent({
       return;
     }
 
+    setPickerField(null);
     updateReps(viewModel.setId, selectedReps);
     updateWeight(viewModel.setId, selectedWeight);
     updateActualRir?.(viewModel.setId, selectedRir);
@@ -361,14 +395,15 @@ export function ActiveWorkoutContent({
             exerciseTimerDurationByExerciseId[viewModel.exerciseId] ??
               DEFAULT_EXERCISE_TIMER_SECONDS,
           );
-  const repOptions =
-    viewModel === null
-      ? []
-      : buildRepOptions(
-          selectedReps,
-          viewModel.target.repsMin,
-          viewModel.target.repsMax,
-        );
+
+  const weightOptions = useMemo(
+    () => buildWheelOptions(selectedWeight, 500, 5),
+    [selectedWeight],
+  );
+  const repOptions = useMemo(
+    () => buildWheelOptions(selectedReps, 30, 1),
+    [selectedReps],
+  );
 
   if (!hasFocusableSet) {
     return (
@@ -492,7 +527,6 @@ export function ActiveWorkoutContent({
           <View className="gap-3">
             <View className="flex-row items-center justify-between gap-3">
               <View className="flex-1">
-                <Label>Exercise</Label>
                 <Heading className="mt-2 text-3xl">
                   {viewModel.exerciseName}
                 </Heading>
@@ -513,11 +547,65 @@ export function ActiveWorkoutContent({
               </Button>
             </View>
 
-            <Surface className="rounded-[28px] py-3">
-              <View className="flex-row items-center justify-between gap-3">
-                <Label>Previous</Label>
-                <Meta>{`Timer ${restTimerLabel}`}</Meta>
-              </View>
+            <Animated.View
+              style={{ transform: [{ scale: heroScale }] }}
+              className="overflow-hidden py-10"
+            >
+              <View className="absolute inset-0" />
+              <Label className="text-accent text-xl">Current Set</Label>
+              {pickerField === null ? (
+                <View className="mt-3 flex-row items-end gap-3">
+                  <InteractivePressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit weight"
+                    className="rounded-[20px] px-2 py-1"
+                    onPress={() => setPickerField('weight')}
+                  >
+                    <Heading className="text-7xl text-foreground">
+                      {selectedWeight} lbs
+                    </Heading>
+                  </InteractivePressable>
+                  <Heading className="pb-2 text-5xl text-muted">x</Heading>
+                  <InteractivePressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit reps"
+                    className="rounded-[20px] px-2 py-1"
+                    onPress={() => setPickerField('reps')}
+                  >
+                    <Heading className="text-7xl text-foreground">
+                      {selectedReps}
+                    </Heading>
+                  </InteractivePressable>
+                </View>
+              ) : (
+                <View className="mt-4">
+                  <WorkoutValuePickerRow
+                    field={pickerField}
+                    options={
+                      pickerField === 'weight' ? weightOptions : repOptions
+                    }
+                    weightValue={selectedWeight}
+                    repsValue={selectedReps}
+                    selectedValue={
+                      pickerField === 'weight' ? selectedWeight : selectedReps
+                    }
+                    onFieldChange={(nextField) =>
+                      setPickerField((currentField) =>
+                        currentField === nextField ? null : nextField,
+                      )
+                    }
+                    onChange={(nextValue) => {
+                      if (pickerField === 'weight') {
+                        handleAdjustWeight(nextValue, { feedback: false });
+                        return;
+                      }
+
+                      handleAdjustReps(nextValue, { feedback: false });
+                    }}
+                  />
+                </View>
+              )}
+
               <Body className="mt-3 font-semibold">
                 {viewModel.previousSetSummary ??
                   formatPreviousPerformance(
@@ -525,86 +613,7 @@ export function ActiveWorkoutContent({
                       null,
                   )}
               </Body>
-            </Surface>
-
-            <Animated.View
-              style={{ transform: [{ scale: heroScale }] }}
-              className="overflow-hidden py-3"
-            >
-              <View className="absolute inset-0" />
-              <Label className="text-accent">Target</Label>
-              <Heading className="mt-3 text-8xl text-foreground">
-                {viewModel.target.weight} lbs
-              </Heading>
-              <Body className="mt-2 text-4xl text-foreground">
-                {viewModel.target.repsLabel} reps
-              </Body>
             </Animated.View>
-
-            <Surface className="rounded-[24px] py-5">
-              <View className="flex-row items-center justify-between gap-3">
-                <Heading className="text-2xl">Weight</Heading>
-              </View>
-              <View className="mt-4 flex-row items-center gap-3">
-                <StepButton
-                  label="−"
-                  accessibilityLabel="Decrease weight"
-                  onPress={() => handleAdjustWeight(selectedWeight - 5)}
-                />
-                <Surface className="flex-1 items-center rounded-[16px] py-4">
-                  <Heading className="text-3xl">{selectedWeight} lbs</Heading>
-                </Surface>
-                <StepButton
-                  label="+"
-                  accessibilityLabel="Increase weight"
-                  onPress={() => handleAdjustWeight(selectedWeight + 5)}
-                />
-              </View>
-            </Surface>
-
-            <Surface className="rounded-[24px] py-5">
-              <View className="flex-row items-center justify-between gap-3">
-                <Heading className="text-2xl">Reps</Heading>
-                <Body className="font-semibold">{selectedReps}</Body>
-              </View>
-              <View className="mt-4 flex-row items-center gap-3">
-                <StepButton
-                  label="−"
-                  accessibilityLabel="Decrease reps"
-                  onPress={() => handleAdjustReps(selectedReps - 1)}
-                />
-                <View className="flex-1 flex-row gap-2">
-                  {repOptions.map((value) => (
-                    <InteractivePressable
-                      key={value}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Set reps to ${value}`}
-                      className={`flex-1 items-center rounded-[16px] px-3 py-4 ${
-                        selectedReps === value
-                          ? 'bg-accent'
-                          : 'bg-surface-elevated'
-                      }`}
-                      onPress={() => handleAdjustReps(value)}
-                    >
-                      <Body
-                        className={`font-semibold ${
-                          selectedReps === value
-                            ? 'text-accent-foreground'
-                            : 'text-foreground'
-                        }`}
-                      >
-                        {value}
-                      </Body>
-                    </InteractivePressable>
-                  ))}
-                </View>
-                <StepButton
-                  label="+"
-                  accessibilityLabel="Increase reps"
-                  onPress={() => handleAdjustReps(selectedReps + 1)}
-                />
-              </View>
-            </Surface>
 
             <Surface className="rounded-[24px] py-5">
               <View className="flex-row items-center justify-between gap-3">
@@ -643,6 +652,7 @@ export function ActiveWorkoutContent({
 
             <Surface className="py-4">
               <Label>Guidance</Label>
+              <Muted className="mt-2">{`Target: ${viewModel.guidance.targetLabel}`}</Muted>
               <Heading className="mt-3 text-2xl">
                 {viewModel.guidance.text}
               </Heading>
@@ -673,7 +683,7 @@ export function ActiveWorkoutContent({
                   onOpenExerciseTimerOptions(viewModel.exerciseId);
                 }}
               >
-                {restLabel ? `Rest ${restLabel}` : 'Timer'}
+                {restLabel ? `Rest ${restLabel}` : `Timer ${restTimerLabel}`}
               </Button>
               <Button
                 size="sm"
