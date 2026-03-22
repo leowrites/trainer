@@ -344,7 +344,6 @@ export function ActiveWorkoutContent({
       location,
       previousPerformanceByExerciseId,
       selectedReps,
-      selectedWeight,
       selectedRir,
     ],
   );
@@ -535,7 +534,7 @@ export function ActiveWorkoutContent({
               <View className="absolute inset-0" />
               <Label className="text-accent">Target</Label>
               <Heading className="mt-3 text-8xl text-foreground">
-                {selectedWeight} lbs
+                {viewModel.target.weight} lbs
               </Heading>
               <Body className="mt-2 text-4xl text-foreground">
                 {viewModel.target.repsLabel} reps

@@ -11,6 +11,7 @@ export interface ActiveWorkoutSet {
   position?: number | null;
   reps: number;
   weight: number;
+  targetWeight?: number;
   isCompleted: boolean;
   targetSets: number | null;
   targetReps?: number | null;

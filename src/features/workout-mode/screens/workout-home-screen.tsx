@@ -2,11 +2,10 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { type CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { RootStackParamList, RootTabParamList } from '@core/navigation';
-import { useTheme } from '@core/theme/theme-context';
 import {
   buildDashboardMetrics,
   type HistorySession,
@@ -20,6 +19,7 @@ import {
   Body,
   Button,
   Container,
+  DayTile,
   DisplayHeading,
   Heading,
   InteractivePressable,
@@ -94,7 +94,6 @@ function buildWeekCalendarDays(
 export function WorkoutHomeScreen({
   navigation,
 }: WorkoutHomeScreenProps): React.JSX.Element {
-  const { tokens } = useTheme();
   const {
     currentWorkoutTitle,
     currentExerciseCount,
@@ -257,41 +256,21 @@ export function WorkoutHomeScreen({
 
             <View className="mt-2 flex-row justify-between gap-1.5">
               {weekCalendarDays.map((day) => (
-                <View
+                <DayTile
                   key={day.key}
                   accessibilityLabel={`${day.dayLabel} ${day.dateLabel}${day.hasWorkout ? ', workout completed' : ''}${day.isToday ? ', today' : ''}`}
-                  className="flex-1 items-center rounded-[12px] px-1 py-2"
-                  style={{
-                    backgroundColor: day.hasWorkout
-                      ? tokens.accent
+                  className="flex-1"
+                  outlined={day.isToday}
+                  primaryLabel={day.dayLabel}
+                  secondaryLabel={day.dateLabel}
+                  tone={
+                    day.hasWorkout
+                      ? 'accent'
                       : day.isToday
-                        ? tokens.bgElevated
-                        : 'transparent',
-                    borderWidth: day.isToday ? 1 : 0,
-                    borderColor: day.isToday ? tokens.bgBorder : 'transparent',
-                  }}
-                >
-                  <Text
-                    className="font-body text-2xs"
-                    style={{
-                      color: day.hasWorkout
-                        ? tokens.accentForeground
-                        : tokens.textMuted,
-                    }}
-                  >
-                    {day.dayLabel}
-                  </Text>
-                  <Text
-                    className="mt-1 font-heading text-base"
-                    style={{
-                      color: day.hasWorkout
-                        ? tokens.accentForeground
-                        : tokens.textPrimary,
-                    }}
-                  >
-                    {day.dateLabel}
-                  </Text>
-                </View>
+                        ? 'subtle'
+                        : 'default'
+                  }
+                />
               ))}
             </View>
             <View className="flex-row gap-2.5">

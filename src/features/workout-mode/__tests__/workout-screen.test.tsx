@@ -498,9 +498,16 @@ describe('WorkoutScreen', () => {
     expect(titleElement.props.completedExerciseCount).toBe(0);
     expect(titleElement.props.totalExerciseCount).toBe(1);
     expect(rightElement.props.durationLabel).toBe('1m');
+    expect(workoutRender.getAllByText('135 lbs')).toHaveLength(2);
 
     fireEvent.press(workoutRender.getByLabelText('Increase weight'));
     fireEvent.press(workoutRender.getByLabelText('Set reps to 10'));
+
+    expect(workoutRender.getAllByText('135 lbs')).toHaveLength(1);
+    expect(workoutRender.getByText('140 lbs')).toBeTruthy();
+    expect(workoutRender.getByText('8 reps')).toBeTruthy();
+    expect(workoutRender.getByLabelText('Set reps to 10')).toBeTruthy();
+
     fireEvent.press(workoutRender.getByText('Timer'));
     fireEvent.press(workoutRender.getByText('Overview'));
     fireEvent.press(workoutRender.getByText('Detail'));

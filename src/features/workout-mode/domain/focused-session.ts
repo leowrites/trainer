@@ -244,7 +244,7 @@ export function buildFocusedWorkoutViewModel({
     totalSetsForExercise: exercise.sets.length,
     totalRemainingSets,
     target: {
-      weight: setItem.weight,
+      weight: setItem.targetWeight ?? setItem.weight,
       repsLabel: formatRepRange(repsMin, repsMax),
       repsMin,
       repsMax,
