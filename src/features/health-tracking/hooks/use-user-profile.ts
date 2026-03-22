@@ -1,3 +1,16 @@
+/**
+ * User-profile query and mutation hook.
+ *
+ * CALLING SPEC:
+ *   const profile = useUserProfile()
+ *
+ * Inputs:
+ *   - None.
+ * Outputs:
+ *   - Local user profile settings and save action.
+ * Side effects:
+ *   - Reads and writes SQLite.
+ */
 import { useCallback, useEffect, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';

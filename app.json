@@ -14,7 +14,14 @@
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
-      "bundleIdentifier": "com.leoliu.forge.dev"
+      "bundleIdentifier": "com.leoliu.forge.dev",
+      "entitlements": {
+        "com.apple.developer.healthkit": true
+      },
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Trainer reads your Health data to sync body weight and daily step totals.",
+        "NSHealthUpdateUsageDescription": "Trainer does not write Health data."
+      }
     },
     "android": {
       "userInterfaceStyle": "automatic",

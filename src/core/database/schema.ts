@@ -6,7 +6,7 @@
  * changes. Forward-only migration steps belong in migrations.ts.
  */
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS exercises (
@@ -129,15 +129,42 @@ export const CREATE_TABLES_SQL = `
     ON workout_sets (exercise_id);
 
   CREATE TABLE IF NOT EXISTS body_weight_entries (
-    id        TEXT PRIMARY KEY NOT NULL,
-    weight    REAL NOT NULL,
-    unit      TEXT NOT NULL DEFAULT 'kg',
-    logged_at INTEGER NOT NULL,
-    notes     TEXT
+    id               TEXT PRIMARY KEY NOT NULL,
+    weight           REAL NOT NULL,
+    unit             TEXT NOT NULL DEFAULT 'kg',
+    logged_at        INTEGER NOT NULL,
+    notes            TEXT,
+    source           TEXT NOT NULL DEFAULT 'manual',
+    source_record_id TEXT,
+    source_app       TEXT,
+    imported_at      INTEGER
   );
 
   CREATE INDEX IF NOT EXISTS idx_body_weight_entries_logged_at
     ON body_weight_entries (logged_at);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_body_weight_entries_source_record
+    ON body_weight_entries (source, source_record_id);
+
+  CREATE TABLE IF NOT EXISTS daily_step_entries (
+    id               TEXT PRIMARY KEY NOT NULL,
+    day_key          TEXT NOT NULL,
+    step_count       INTEGER NOT NULL,
+    source           TEXT NOT NULL DEFAULT 'apple_health',
+    source_record_id TEXT,
+    imported_at      INTEGER
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_step_entries_day_source
+    ON daily_step_entries (day_key, source);
+
+  CREATE TABLE IF NOT EXISTS health_sync_state (
+    provider                TEXT PRIMARY KEY NOT NULL,
+    last_body_weight_sync_at INTEGER,
+    last_steps_sync_at      INTEGER,
+    last_status             TEXT NOT NULL DEFAULT 'idle',
+    last_error              TEXT,
+    updated_at              INTEGER NOT NULL
+  );
 
   CREATE TABLE IF NOT EXISTS user_profile (
     id                    TEXT PRIMARY KEY NOT NULL,

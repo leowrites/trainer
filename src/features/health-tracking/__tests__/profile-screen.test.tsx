@@ -2,7 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 
 import { buildLoggedAtTimestamp } from '../domain/body-weight';
+import { useAppleHealth } from '../hooks/use-apple-health';
 import { useBodyWeightEntries } from '../hooks/use-body-weight-entries';
+import { useDailyStepEntries } from '../hooks/use-daily-step-entries';
 import { useUserProfile } from '../hooks/use-user-profile';
 import { ProfileScreen } from '../screens/profile-screen';
 
@@ -14,11 +16,21 @@ jest.mock('../hooks/use-body-weight-entries', () => ({
   useBodyWeightEntries: jest.fn(),
 }));
 
+jest.mock('../hooks/use-daily-step-entries', () => ({
+  useDailyStepEntries: jest.fn(),
+}));
+
+jest.mock('../hooks/use-apple-health', () => ({
+  useAppleHealth: jest.fn(),
+}));
+
 jest.mock('../hooks/use-user-profile', () => ({
   useUserProfile: jest.fn(),
 }));
 
 const mockUseBodyWeightEntries = jest.mocked(useBodyWeightEntries);
+const mockUseDailyStepEntries = jest.mocked(useDailyStepEntries);
+const mockUseAppleHealth = jest.mocked(useAppleHealth);
 const mockUseUserProfile = jest.mocked(useUserProfile);
 
 describe('ProfileScreen', () => {
@@ -35,6 +47,30 @@ describe('ProfileScreen', () => {
       error: null,
       refresh: jest.fn(),
       saveProfile: jest.fn(),
+    });
+    mockUseDailyStepEntries.mockReturnValue({
+      entries: [],
+      error: null,
+      refresh: jest.fn(),
+    });
+    mockUseAppleHealth.mockReturnValue({
+      isSupported: true,
+      isAvailable: true,
+      authorization: {
+        bodyWeight: 'not_determined',
+        steps: 'not_determined',
+      },
+      syncState: null,
+      loading: false,
+      requestingAccess: false,
+      importing: false,
+      error: null,
+      refresh: jest.fn(),
+      requestAccess: jest.fn().mockResolvedValue({
+        bodyWeight: 'authorized',
+        steps: 'authorized',
+      }),
+      importLatest: jest.fn().mockResolvedValue(null),
     });
   });
 
@@ -129,6 +165,10 @@ describe('ProfileScreen', () => {
           unit: 'kg',
           loggedAt: buildLoggedAtTimestamp('2026-03-16', '08:00') ?? 0,
           notes: 'Fasted',
+          source: 'manual',
+          sourceRecordId: null,
+          sourceApp: null,
+          importedAt: null,
         },
       ],
       error: null,
@@ -169,6 +209,10 @@ describe('ProfileScreen', () => {
           unit: 'kg',
           loggedAt: buildLoggedAtTimestamp('2026-03-16', '08:00') ?? 0,
           notes: null,
+          source: 'manual',
+          sourceRecordId: null,
+          sourceApp: null,
+          importedAt: null,
         },
       ],
       error: null,
@@ -224,6 +268,10 @@ describe('ProfileScreen', () => {
           unit: 'kg',
           loggedAt: buildLoggedAtTimestamp('2026-03-16', '08:00') ?? 0,
           notes: null,
+          source: 'manual',
+          sourceRecordId: null,
+          sourceApp: null,
+          importedAt: null,
         },
       ],
       error: null,
@@ -242,5 +290,72 @@ describe('ProfileScreen', () => {
     expect(
       screen.getByText('Unable to delete this body-weight entry.'),
     ).toBeTruthy();
+  });
+
+  it('requests Apple Health access when the connect button is pressed', () => {
+    const requestAccess = jest.fn().mockResolvedValue({
+      bodyWeight: 'authorized',
+      steps: 'authorized',
+    });
+
+    mockUseAppleHealth.mockReturnValue({
+      isSupported: true,
+      isAvailable: true,
+      authorization: {
+        bodyWeight: 'not_determined',
+        steps: 'not_determined',
+      },
+      syncState: null,
+      loading: false,
+      requestingAccess: false,
+      importing: false,
+      error: null,
+      refresh: jest.fn(),
+      requestAccess,
+      importLatest: jest.fn().mockResolvedValue(null),
+    });
+    mockUseBodyWeightEntries.mockReturnValue({
+      entries: [],
+      error: null,
+      refresh: jest.fn(),
+      createEntry: jest.fn(),
+      updateEntry: jest.fn(),
+      deleteEntry: jest.fn(),
+    });
+
+    render(<ProfileScreen />);
+
+    fireEvent.press(screen.getByText('Connect Apple Health'));
+
+    expect(requestAccess).toHaveBeenCalled();
+  });
+
+  it('renders imported Apple Health entries as read-only', () => {
+    mockUseBodyWeightEntries.mockReturnValue({
+      entries: [
+        {
+          id: 'weight-imported',
+          weight: 81.5,
+          unit: 'kg',
+          loggedAt: buildLoggedAtTimestamp('2026-03-18', '06:30') ?? 0,
+          notes: null,
+          source: 'apple_health',
+          sourceRecordId: 'hk-1',
+          sourceApp: 'Health',
+          importedAt: buildLoggedAtTimestamp('2026-03-18', '06:45') ?? 0,
+        },
+      ],
+      error: null,
+      refresh: jest.fn(),
+      createEntry: jest.fn(),
+      updateEntry: jest.fn(),
+      deleteEntry: jest.fn(),
+    });
+
+    render(<ProfileScreen />);
+
+    expect(screen.getByText('Apple Health')).toBeTruthy();
+    expect(screen.queryByText('Delete')).toBeNull();
+    expect(screen.queryByText('Edit')).toBeNull();
   });
 });
