@@ -37,7 +37,7 @@ export const palette = {
   error: '#F45B5B',
   errorDark: '#FF6B6B',
 
-  bg: '#F7F6F2',
+  bg: '#ffffff',
   bgAlt: '#F2F1EC',
   surface: '#FFFFFF',
   surface2: '#FBFAF7',
