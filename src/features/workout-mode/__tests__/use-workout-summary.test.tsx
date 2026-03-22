@@ -188,4 +188,38 @@ describe('useWorkoutSummary', () => {
     );
     expect(result.current.summary?.recordBadges).toEqual(initialRecordBadges);
   });
+
+  it('passes negative signals through to the summary view model', () => {
+    mockUseSessionIntelligence.mockReturnValue({
+      recordBadges: [],
+      negativeSignals: [
+        {
+          id: 'miss-exercise-1',
+          label: 'Target Miss',
+          detail:
+            'Bench Press missed its programmed rep floor on eligible work sets.',
+          tone: 'error',
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+        },
+      ],
+      prescriptions: [],
+      classifications: [],
+      goalDeltas: [],
+    });
+
+    const { result } = renderHook(() => useWorkoutSummary('current'));
+
+    expect(result.current.summary?.negativeSignals).toEqual([
+      {
+        id: 'miss-exercise-1',
+        label: 'Target Miss',
+        detail:
+          'Bench Press missed its programmed rep floor on eligible work sets.',
+        tone: 'error',
+        exerciseId: 'exercise-1',
+        exerciseName: 'Bench Press',
+      },
+    ]);
+  });
 });

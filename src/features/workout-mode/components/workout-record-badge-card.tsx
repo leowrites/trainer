@@ -10,7 +10,7 @@
 import React from 'react';
 import { View } from 'react-native';
 
-import { Badge, Body, Caption, Card } from '@shared/components';
+import { Badge, Body, Caption, Surface } from '@shared/components';
 import type { WorkoutRecordBadge } from '../summary-types';
 
 export function WorkoutRecordBadgeCard({
@@ -19,7 +19,7 @@ export function WorkoutRecordBadgeCard({
   badge: WorkoutRecordBadge;
 }): React.JSX.Element {
   return (
-    <Card className="min-w-40 flex-1 rounded-3xl bg-surface-elevated px-4 py-4">
+    <Surface className="min-w-40 flex-1 rounded-3xl border border-surface-border bg-surface-elevated px-4 py-4">
       <Badge variant={badge.tone}>{badge.label}</Badge>
       <Body className="mt-4 font-medium">{badge.detail}</Body>
       {badge.exerciseName ? (
@@ -27,6 +27,6 @@ export function WorkoutRecordBadgeCard({
       ) : (
         <View className="mt-2 h-4" />
       )}
-    </Card>
+    </Surface>
   );
 }
