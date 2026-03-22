@@ -2,6 +2,8 @@
  * Plain TypeScript interfaces for every database entity.
  */
 
+export type HealthDataSource = 'manual' | 'apple_health';
+
 export interface Exercise {
   id: string;
   name: string;
@@ -104,6 +106,19 @@ export interface BodyWeightEntry {
   unit: 'kg' | 'lb';
   logged_at: number;
   notes: string | null;
+  source: HealthDataSource;
+  source_record_id: string | null;
+  source_app: string | null;
+  imported_at: number | null;
+}
+
+export interface DailyStepEntry {
+  id: string;
+  day_key: string;
+  step_count: number;
+  source: HealthDataSource;
+  source_record_id: string | null;
+  imported_at: number | null;
 }
 
 export interface UserProfile {
@@ -128,5 +143,14 @@ export interface TrainingGoal {
   end_time: number | null;
   status: 'active' | 'completed' | 'archived';
   created_at: number;
+  updated_at: number;
+}
+
+export interface HealthSyncState {
+  provider: 'apple_health';
+  last_body_weight_sync_at: number | null;
+  last_steps_sync_at: number | null;
+  last_status: 'idle' | 'success' | 'error';
+  last_error: string | null;
   updated_at: number;
 }

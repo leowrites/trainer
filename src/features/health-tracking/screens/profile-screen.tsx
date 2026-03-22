@@ -1,10 +1,25 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+/**
+ * Profile screen.
+ *
+ * CALLING SPEC:
+ *   <ProfileScreen />
+ *
+ * Inputs:
+ *   - None.
+ * Outputs:
+ *   - Local profile settings, Apple Health import controls, step summaries,
+ *     and mixed-source body-weight history.
+ * Side effects:
+ *   - Reads and writes SQLite via feature hooks and triggers Apple Health import actions.
+ */
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform, ScrollView, View } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
 
 import {
   ActionRow,
+  Badge,
   Body,
   Button,
   Card,
@@ -16,20 +31,63 @@ import {
   StatRow,
 } from '@shared/components';
 import {
+  canImportAppleHealth,
+  type AppleHealthAuthorizationSnapshot,
+} from '../domain/apple-health';
+import {
   BODY_WEIGHT_UNITS,
   bodyWeightEntryToFormState,
   buildLoggedAtTimestamp,
   createBodyWeightFormState,
   formatBodyWeightValue,
   formatLoggedAtLabel,
+  isManualBodyWeightEntry,
   type BodyWeightEntry,
   type BodyWeightFormState,
   type BodyWeightUnit,
 } from '../domain/body-weight';
+import { useAppleHealth } from '../hooks/use-apple-health';
 import { useBodyWeightEntries } from '../hooks/use-body-weight-entries';
+import { useDailyStepEntries } from '../hooks/use-daily-step-entries';
 import { useUserProfile } from '../hooks/use-user-profile';
 import { BodyWeightEntryCard } from '../components/body-weight-entry-card';
 import { BodyWeightForm } from '../components/body-weight-form';
+
+function formatImportTimestamp(timestamp: number | null | undefined): string {
+  if (!timestamp) {
+    return 'No imports yet.';
+  }
+
+  return `Last import: ${formatLoggedAtLabel(timestamp)}`;
+}
+
+function formatStepCount(stepCount: number): string {
+  return stepCount.toLocaleString();
+}
+
+function getAuthorizationSummary(
+  authorization: AppleHealthAuthorizationSnapshot,
+): string {
+  if (
+    authorization.bodyWeight === 'unavailable' ||
+    authorization.steps === 'unavailable'
+  ) {
+    return 'Apple Health is unavailable on this device.';
+  }
+
+  if (
+    authorization.bodyWeight === 'denied' ||
+    authorization.steps === 'denied'
+  ) {
+    return 'Apple Health access is denied. Re-enable body weight and steps in the Apple Health permissions sheet.';
+  }
+
+  if (canImportAppleHealth(authorization)) {
+    return 'Trainer can read Apple Health body weight and daily steps.';
+  }
+
+  return 'Connect Apple Health to import body weight and daily steps into local storage.';
+}
 
 export function ProfileScreen(): React.JSX.Element {
   const {
@@ -38,8 +96,32 @@ export function ProfileScreen(): React.JSX.Element {
     refresh: refreshProfile,
     saveProfile,
   } = useUserProfile();
-  const { entries, error, refresh, createEntry, updateEntry, deleteEntry } =
-    useBodyWeightEntries();
+  const {
+    entries,
+    error: bodyWeightError,
+    refresh: refreshBodyWeight,
+    createEntry,
+    updateEntry,
+    deleteEntry,
+  } = useBodyWeightEntries();
+  const {
+    entries: dailyStepEntries,
+    error: dailyStepError,
+    refresh: refreshDailySteps,
+  } = useDailyStepEntries();
+  const {
+    isSupported: isAppleHealthSupported,
+    isAvailable: isAppleHealthAvailable,
+    authorization,
+    syncState,
+    loading: appleHealthLoading,
+    requestingAccess,
+    importing,
+    error: appleHealthError,
+    refresh: refreshAppleHealth,
+    requestAccess,
+    importLatest,
+  } = useAppleHealth();
   const [profileName, setProfileName] = useState('');
   const [preferredWeightUnit, setPreferredWeightUnit] =
     useState<BodyWeightUnit>('kg');
@@ -57,8 +139,15 @@ export function ProfileScreen(): React.JSX.Element {
   useFocusEffect(
     useCallback(() => {
       refreshProfile();
-      refresh();
-    }, [refresh, refreshProfile]),
+      refreshBodyWeight();
+      refreshDailySteps();
+      refreshAppleHealth();
+    }, [
+      refreshAppleHealth,
+      refreshBodyWeight,
+      refreshDailySteps,
+      refreshProfile,
+    ]),
   );
 
   const resetForm = useCallback((): void => {
@@ -99,6 +188,10 @@ export function ProfileScreen(): React.JSX.Element {
   }, []);
 
   const handleEdit = useCallback((entry: BodyWeightEntry): void => {
+    if (!isManualBodyWeightEntry(entry)) {
+      return;
+    }
+
     setEditingEntry(entry);
     setForm(bodyWeightEntryToFormState(entry));
     setFormError(null);
@@ -184,10 +277,50 @@ export function ProfileScreen(): React.JSX.Element {
     setProfileFormError(null);
   }, [profile?.displayName, profile?.preferredWeightUnit]);
 
+  const handleConnectAppleHealth = useCallback(async (): Promise<void> => {
+    try {
+      await requestAccess();
+    } catch {
+      // Hook state already captures the user-facing error.
+    }
+  }, [requestAccess]);
+
+  const handleImportAppleHealth = useCallback(async (): Promise<void> => {
+    const result = await importLatest();
+
+    if (result) {
+      refreshBodyWeight();
+      refreshDailySteps();
+    }
+  }, [importLatest, refreshBodyWeight, refreshDailySteps]);
+
   const latestEntry = entries[0] ?? null;
-  const statusMessages = [profileError, error].filter(
-    (message): message is string => message !== null,
-  );
+  const latestStepEntry = dailyStepEntries[0] ?? null;
+  const statusMessages = [
+    profileError,
+    bodyWeightError,
+    dailyStepError,
+    appleHealthError,
+  ].filter((message): message is string => message !== null);
+
+  const appleHealthBadgeVariant = useMemo(() => {
+    if (!isAppleHealthSupported || !isAppleHealthAvailable) {
+      return 'muted' as const;
+    }
+
+    if (
+      authorization.bodyWeight === 'denied' ||
+      authorization.steps === 'denied'
+    ) {
+      return 'warning' as const;
+    }
+
+    if (canImportAppleHealth(authorization)) {
+      return 'accent' as const;
+    }
+
+    return 'muted' as const;
+  }, [authorization, isAppleHealthAvailable, isAppleHealthSupported]);
 
   return (
     <Container className="px-0 pb-0" edges={['left', 'right']}>
@@ -200,8 +333,8 @@ export function ProfileScreen(): React.JSX.Element {
           <View accessibilityRole="header" className="gap-2">
             <Heading className="text-4xl leading-[36px]">Profile</Heading>
             <Muted className="text-sm leading-[19px]">
-              Log body weight offline and keep a practical review history on
-              this device.
+              Keep local profile defaults, import Apple Health data on iPhone,
+              and review body-weight history offline on this device.
             </Muted>
           </View>
         </View>
@@ -234,8 +367,8 @@ export function ProfileScreen(): React.JSX.Element {
             </View>
 
             <Muted className="mt-3 text-sm leading-[17px]">
-              Home greetings and future analytics surfaces will use these local
-              profile defaults.
+              Home greetings and analytics surfaces will use these local profile
+              defaults.
             </Muted>
 
             {profileFormError ? (
@@ -253,6 +386,105 @@ export function ProfileScreen(): React.JSX.Element {
         </View>
 
         <View className="pb-4">
+          <Card label="Apple Health" className="rounded-[24px] px-5 py-5">
+            <View className="gap-4">
+              <View className="flex-row items-center justify-between gap-3">
+                <View className="flex-1">
+                  <Label>Connection</Label>
+                  <Body className="mt-1">
+                    {getAuthorizationSummary(authorization)}
+                  </Body>
+                </View>
+                <Badge variant={appleHealthBadgeVariant}>
+                  {isAppleHealthSupported && isAppleHealthAvailable
+                    ? canImportAppleHealth(authorization)
+                      ? 'Connected'
+                      : authorization.bodyWeight === 'denied' ||
+                          authorization.steps === 'denied'
+                        ? 'Blocked'
+                        : 'Not Connected'
+                    : Platform.OS === 'ios'
+                      ? 'Unavailable'
+                      : 'iPhone Only'}
+                </Badge>
+              </View>
+
+              <Muted className="text-sm leading-[17px]">
+                Trainer reads body weight and daily steps only. Imported data is
+                copied into local storage so it remains available offline.
+              </Muted>
+
+              <Muted className="text-sm leading-[17px]">
+                {syncState?.lastStatus === 'error' && syncState.lastError
+                  ? syncState.lastError
+                  : formatImportTimestamp(syncState?.updatedAt)}
+              </Muted>
+
+              {isAppleHealthSupported && isAppleHealthAvailable ? (
+                canImportAppleHealth(authorization) ? (
+                  <Button
+                    onPress={() => {
+                      void handleImportAppleHealth();
+                    }}
+                    loading={importing}
+                    disabled={appleHealthLoading || importing}
+                  >
+                    Import latest data
+                  </Button>
+                ) : (
+                  <Button
+                    onPress={() => {
+                      void handleConnectAppleHealth();
+                    }}
+                    loading={requestingAccess}
+                    disabled={appleHealthLoading || requestingAccess}
+                  >
+                    Connect Apple Health
+                  </Button>
+                )
+              ) : isAppleHealthSupported ? (
+                <Body>Apple Health is not available on this device.</Body>
+              ) : (
+                <Body>Apple Health import is available on iPhone only.</Body>
+              )}
+            </View>
+          </Card>
+        </View>
+
+        <View className="pb-4">
+          <Card label="Daily Steps" className="rounded-[24px] px-5 py-5">
+            {latestStepEntry ? (
+              <View className="gap-4">
+                <StatRow
+                  value={formatStepCount(latestStepEntry.stepCount)}
+                  unit="steps"
+                  sub={`${latestStepEntry.dayKey} | ${dailyStepEntries.length} imported days shown`}
+                />
+                <View className="gap-2">
+                  {dailyStepEntries.map((entry) => (
+                    <View
+                      key={entry.id}
+                      className="flex-row items-center justify-between gap-3"
+                    >
+                      <Body>{entry.dayKey}</Body>
+                      <Body>{formatStepCount(entry.stepCount)}</Body>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <View>
+                <Body>No imported step totals yet.</Body>
+                <Muted className="mt-2">
+                  Connect Apple Health and import recent data to populate this
+                  summary.
+                </Muted>
+              </View>
+            )}
+          </Card>
+        </View>
+
+        <View className="pb-4">
           <Card label="Latest Reading" className="rounded-[24px] px-5 py-5">
             {latestEntry ? (
               <StatRow
@@ -264,7 +496,8 @@ export function ProfileScreen(): React.JSX.Element {
               <View>
                 <Body>No body-weight entries yet.</Body>
                 <Muted className="mt-2">
-                  Your first offline log will appear here.
+                  Your first manual or imported body-weight entry will appear
+                  here.
                 </Muted>
               </View>
             )}

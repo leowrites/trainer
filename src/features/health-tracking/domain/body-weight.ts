@@ -1,7 +1,24 @@
+/**
+ * Body-weight contracts and formatting helpers.
+ *
+ * CALLING SPEC:
+ *   mapBodyWeightEntry(row) -> BodyWeightEntry
+ *   sanitizeBodyWeightEntryInput(input) -> BodyWeightEntryInput
+ *   buildLoggedAtTimestamp(dateInput, timeInput) -> number | null
+ *
+ * Inputs:
+ *   - SQLite body-weight rows and manual form data.
+ * Outputs:
+ *   - Feature-safe body-weight entities and validated form values.
+ * Side effects:
+ *   - None.
+ */
 export const BODY_WEIGHT_TABLE = 'body_weight_entries';
 export const BODY_WEIGHT_UNITS = ['kg', 'lb'] as const;
+export const BODY_WEIGHT_SOURCES = ['manual', 'apple_health'] as const;
 
 export type BodyWeightUnit = (typeof BODY_WEIGHT_UNITS)[number];
+export type BodyWeightSource = (typeof BODY_WEIGHT_SOURCES)[number];
 
 export interface BodyWeightEntryRow {
   id: string;
@@ -9,6 +26,10 @@ export interface BodyWeightEntryRow {
   unit: string;
   logged_at: number;
   notes: string | null;
+  source: string;
+  source_record_id: string | null;
+  source_app: string | null;
+  imported_at: number | null;
 }
 
 export interface BodyWeightEntry {
@@ -17,6 +38,10 @@ export interface BodyWeightEntry {
   unit: BodyWeightUnit;
   loggedAt: number;
   notes: string | null;
+  source: BodyWeightSource;
+  sourceRecordId: string | null;
+  sourceApp: string | null;
+  importedAt: number | null;
 }
 
 export interface BodyWeightEntryInput {
@@ -38,6 +63,10 @@ export function coerceBodyWeightUnit(unit: string): BodyWeightUnit {
   return unit === 'lb' ? 'lb' : 'kg';
 }
 
+export function coerceBodyWeightSource(source: string): BodyWeightSource {
+  return source === 'apple_health' ? 'apple_health' : 'manual';
+}
+
 export function mapBodyWeightEntry(row: BodyWeightEntryRow): BodyWeightEntry {
   return {
     id: row.id,
@@ -45,6 +74,10 @@ export function mapBodyWeightEntry(row: BodyWeightEntryRow): BodyWeightEntry {
     unit: coerceBodyWeightUnit(row.unit),
     loggedAt: row.logged_at,
     notes: row.notes,
+    source: coerceBodyWeightSource(row.source),
+    sourceRecordId: row.source_record_id,
+    sourceApp: row.source_app,
+    importedAt: row.imported_at,
   };
 }
 
@@ -163,4 +196,8 @@ export function buildLoggedAtTimestamp(
   }
 
   return date.getTime();
+}
+
+export function isManualBodyWeightEntry(entry: BodyWeightEntry): boolean {
+  return entry.source === 'manual';
 }

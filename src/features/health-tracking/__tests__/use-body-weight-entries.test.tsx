@@ -8,13 +8,13 @@ import type { BodyWeightEntryRow } from '../domain/body-weight';
 import { useBodyWeightEntries } from '../hooks/use-body-weight-entries';
 
 const LIST_BODY_WEIGHT_ENTRIES_SQL =
-  'SELECT id, weight, unit, logged_at, notes FROM body_weight_entries ORDER BY logged_at DESC, id DESC';
+  'SELECT id, weight, unit, logged_at, notes, source, source_record_id, source_app, imported_at FROM body_weight_entries ORDER BY logged_at DESC, id DESC';
 const INSERT_BODY_WEIGHT_ENTRY_SQL =
-  'INSERT INTO body_weight_entries (id, weight, unit, logged_at, notes) VALUES (?, ?, ?, ?, ?)';
+  'INSERT INTO body_weight_entries (id, weight, unit, logged_at, notes, source, source_record_id, source_app, imported_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
 const UPDATE_BODY_WEIGHT_ENTRY_SQL =
-  'UPDATE body_weight_entries SET weight = ?, unit = ?, logged_at = ?, notes = ? WHERE id = ?';
+  "UPDATE body_weight_entries SET weight = ?, unit = ?, logged_at = ?, notes = ? WHERE id = ? AND source = 'manual'";
 const DELETE_BODY_WEIGHT_ENTRY_SQL =
-  'DELETE FROM body_weight_entries WHERE id = ?';
+  "DELETE FROM body_weight_entries WHERE id = ? AND source = 'manual'";
 
 describe('useBodyWeightEntries', () => {
   function createSeededDb(): ReturnType<typeof createMockDb> {
@@ -32,6 +32,10 @@ describe('useBodyWeightEntries', () => {
         unit: 'kg',
         logged_at: 1710685800000,
         notes: 'Post-workout',
+        source: 'apple_health',
+        source_record_id: 'hk-2',
+        source_app: 'Health',
+        imported_at: 1710686800000,
       },
       {
         id: 'weight-1',
@@ -39,6 +43,10 @@ describe('useBodyWeightEntries', () => {
         unit: 'kg',
         logged_at: 1710599400000,
         notes: null,
+        source: 'manual',
+        source_record_id: null,
+        source_app: null,
+        imported_at: null,
       },
     ];
 
@@ -56,6 +64,10 @@ describe('useBodyWeightEntries', () => {
         unit: 'kg',
         loggedAt: 1710685800000,
         notes: 'Post-workout',
+        source: 'apple_health',
+        sourceRecordId: 'hk-2',
+        sourceApp: 'Health',
+        importedAt: 1710686800000,
       },
       {
         id: 'weight-1',
@@ -63,6 +75,10 @@ describe('useBodyWeightEntries', () => {
         unit: 'kg',
         loggedAt: 1710599400000,
         notes: null,
+        source: 'manual',
+        sourceRecordId: null,
+        sourceApp: null,
+        importedAt: null,
       },
     ]);
   });
@@ -86,7 +102,7 @@ describe('useBodyWeightEntries', () => {
 
     expect(db.runSync).toHaveBeenCalledWith(
       INSERT_BODY_WEIGHT_ENTRY_SQL,
-      expect.arrayContaining([181.6, 'lb', 1710685800000, null]),
+      expect.arrayContaining([181.6, 'lb', 1710685800000, null, 'manual']),
     );
     expect((db.getAllSync as jest.Mock).mock.calls.length).toBeGreaterThan(1);
   });

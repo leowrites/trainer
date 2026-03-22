@@ -21,6 +21,10 @@ interface LegacyRoutineExerciseRow {
   target_sets: number;
 }
 
+interface ScalarRow {
+  value: number | null;
+}
+
 interface Migration {
   version: number;
   description: string;
@@ -335,6 +339,95 @@ const migrations: Migration[] = [
         SET target_reps_min = COALESCE(target_reps_min, target_reps),
             target_reps_max = COALESCE(target_reps_max, target_reps)
       `);
+    },
+  },
+  {
+    version: 11,
+    description:
+      'Add Apple Health import metadata, daily step storage, and sync state tracking.',
+    up: (db) => {
+      if (!columnExists(db, 'body_weight_entries', 'source')) {
+        db.execSync(
+          "ALTER TABLE body_weight_entries ADD COLUMN source TEXT NOT NULL DEFAULT 'manual';",
+        );
+      }
+
+      if (!columnExists(db, 'body_weight_entries', 'source_record_id')) {
+        db.execSync(
+          'ALTER TABLE body_weight_entries ADD COLUMN source_record_id TEXT;',
+        );
+      }
+
+      if (!columnExists(db, 'body_weight_entries', 'source_app')) {
+        db.execSync(
+          'ALTER TABLE body_weight_entries ADD COLUMN source_app TEXT;',
+        );
+      }
+
+      if (!columnExists(db, 'body_weight_entries', 'imported_at')) {
+        db.execSync(
+          'ALTER TABLE body_weight_entries ADD COLUMN imported_at INTEGER;',
+        );
+      }
+
+      db.execSync(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_body_weight_entries_source_record
+          ON body_weight_entries (source, source_record_id);
+
+        CREATE TABLE IF NOT EXISTS daily_step_entries (
+          id               TEXT PRIMARY KEY NOT NULL,
+          day_key          TEXT NOT NULL,
+          step_count       INTEGER NOT NULL,
+          source           TEXT NOT NULL DEFAULT 'apple_health',
+          source_record_id TEXT,
+          imported_at      INTEGER
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_step_entries_day_source
+          ON daily_step_entries (day_key, source);
+
+        CREATE TABLE IF NOT EXISTS health_sync_state (
+          provider                 TEXT PRIMARY KEY NOT NULL,
+          last_body_weight_sync_at INTEGER,
+          last_steps_sync_at       INTEGER,
+          last_status              TEXT NOT NULL DEFAULT 'idle',
+          last_error               TEXT,
+          updated_at               INTEGER NOT NULL
+        );
+      `);
+
+      db.execSync(`
+        UPDATE body_weight_entries
+        SET source = COALESCE(source, 'manual')
+      `);
+
+      const latestBodyWeightSyncAt = db.getFirstSync<ScalarRow>(
+        'SELECT MAX(logged_at) AS value FROM body_weight_entries WHERE source = ?',
+        ['apple_health'],
+      )?.value;
+      const latestStepsSyncAt = db.getFirstSync<ScalarRow>(
+        'SELECT MAX(imported_at) AS value FROM daily_step_entries WHERE source = ?',
+        ['apple_health'],
+      )?.value;
+
+      db.runSync(
+        `INSERT OR IGNORE INTO health_sync_state (
+          provider,
+          last_body_weight_sync_at,
+          last_steps_sync_at,
+          last_status,
+          last_error,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          'apple_health',
+          latestBodyWeightSyncAt ?? null,
+          latestStepsSyncAt ?? null,
+          'idle',
+          null,
+          Date.now(),
+        ],
+      );
     },
   },
 ];
