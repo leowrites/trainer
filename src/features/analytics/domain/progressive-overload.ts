@@ -52,8 +52,7 @@ export function recommendProgressions(
       qualifyingSets.some(
         (set) =>
           set.reps < targetRepsMin ||
-          (hasExplicitUpperBound &&
-            set.reps > targetRepsMax),
+          (hasExplicitUpperBound && set.reps > targetRepsMax),
       )
     ) {
       return [];
