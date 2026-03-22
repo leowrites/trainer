@@ -12,6 +12,7 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { useExercises } from '@features/routines';
+import { useHistoryAnalytics } from '@features/analytics';
 import {
   Body,
   Button,
@@ -73,8 +74,9 @@ function parseOptionalInteger(value: string): number | null {
 
 export function GoalsScreen({}: GoalsScreenProps): React.JSX.Element {
   const { exercises } = useExercises();
+  const { allSessions } = useHistoryAnalytics();
   const { goalViewModels, createGoal, updateGoal, deleteGoal } =
-    useTrainingGoals();
+    useTrainingGoals(allSessions);
   const [form, setForm] = useState<GoalFormState>(EMPTY_FORM);
   const exercisesByName = useMemo(
     () =>

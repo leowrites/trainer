@@ -9,7 +9,6 @@
  */
 
 import type { TrainingGoal } from '@core/database/types';
-import { ADHERENCE_WINDOW_DAYS } from '../constants';
 import type {
   ExerciseCapability,
   ExerciseExposure,
@@ -187,8 +186,7 @@ function buildVolumeGoalProgress(
   exposures: ExerciseExposure[],
   capabilitiesByExerciseId: Record<string, ExerciseCapability>,
 ): GoalProgressSummary {
-  const recentWindowStart =
-    Date.now() - ADHERENCE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const recentWindowStart = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const recentExposures = exposures.filter(
     (exposure) =>
       exposure.startTime >= recentWindowStart &&
