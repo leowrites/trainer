@@ -359,14 +359,41 @@ export function RoutineDetailScreen({
                 }
                 onAddSet={() => handleAddSet(item.exerciseId)}
                 onRemoveSet={(setId) => handleRemoveSet(item.exerciseId, setId)}
-                onChangeSetTargetReps={(setId, value) =>
+                onChangeSetTargetRepsMin={(setId, value) =>
                   handleUpdateSetDraft(item.exerciseId, setId, {
-                    targetReps: value,
+                    targetRepsMin: value,
+                  })
+                }
+                onChangeSetTargetRepsMax={(setId, value) =>
+                  handleUpdateSetDraft(item.exerciseId, setId, {
+                    targetRepsMax: value,
                   })
                 }
                 onChangeSetPlannedWeight={(setId, value) =>
                   handleUpdateSetDraft(item.exerciseId, setId, {
                     plannedWeight: value,
+                  })
+                }
+                onChangeProgressionPolicy={(value) =>
+                  handleUpdateDraft(item.exerciseId, {
+                    progressionPolicy: value,
+                    sets: item.sets.map((setEntry, index) => ({
+                      ...setEntry,
+                      setRole:
+                        value === 'top_set_backoff'
+                          ? index === 0
+                            ? 'top_set'
+                            : 'backoff'
+                          : setEntry.setRole === 'warmup' ||
+                              setEntry.setRole === 'optional'
+                            ? setEntry.setRole
+                            : 'work',
+                    })),
+                  })
+                }
+                onChangeTargetRir={(value) =>
+                  handleUpdateDraft(item.exerciseId, {
+                    targetRir: value,
                   })
                 }
               />

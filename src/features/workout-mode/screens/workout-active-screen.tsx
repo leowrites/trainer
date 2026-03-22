@@ -69,6 +69,7 @@ export function WorkoutActiveScreen({
     updateExerciseRestSeconds,
     updateReps,
     updateWeight,
+    updateActualRir,
     toggleSetLogged,
     completeWorkout,
     deleteWorkout,
@@ -280,6 +281,7 @@ export function WorkoutActiveScreen({
       deleteSet={deleteSet}
       updateReps={updateReps}
       updateWeight={updateWeight}
+      updateActualRir={updateActualRir}
       toggleSetLogged={(exerciseId, setId, isCompleted) => {
         toggleSetLogged(setId, isCompleted);
 

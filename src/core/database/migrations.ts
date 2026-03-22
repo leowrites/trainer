@@ -225,6 +225,118 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    version: 10,
+    description:
+      'Add deterministic intelligence columns for set roles, rep ranges, exercise capability flags, and typed goals.',
+    up: (db) => {
+      if (!columnExists(db, 'exercises', 'strength_estimation_mode')) {
+        db.execSync(
+          "ALTER TABLE exercises ADD COLUMN strength_estimation_mode TEXT NOT NULL DEFAULT 'limited';",
+        );
+      }
+
+      if (!columnExists(db, 'routine_exercises', 'progression_policy')) {
+        db.execSync(
+          "ALTER TABLE routine_exercises ADD COLUMN progression_policy TEXT NOT NULL DEFAULT 'double_progression';",
+        );
+      }
+
+      if (!columnExists(db, 'routine_exercises', 'target_rir')) {
+        db.execSync(
+          'ALTER TABLE routine_exercises ADD COLUMN target_rir REAL;',
+        );
+      }
+
+      if (!columnExists(db, 'routine_exercise_sets', 'target_reps_min')) {
+        db.execSync(
+          'ALTER TABLE routine_exercise_sets ADD COLUMN target_reps_min INTEGER;',
+        );
+      }
+
+      if (!columnExists(db, 'routine_exercise_sets', 'target_reps_max')) {
+        db.execSync(
+          'ALTER TABLE routine_exercise_sets ADD COLUMN target_reps_max INTEGER;',
+        );
+      }
+
+      if (!columnExists(db, 'routine_exercise_sets', 'set_role')) {
+        db.execSync(
+          "ALTER TABLE routine_exercise_sets ADD COLUMN set_role TEXT NOT NULL DEFAULT 'work';",
+        );
+      }
+
+      if (
+        !columnExists(db, 'workout_session_exercises', 'progression_policy')
+      ) {
+        db.execSync(
+          "ALTER TABLE workout_session_exercises ADD COLUMN progression_policy TEXT NOT NULL DEFAULT 'double_progression';",
+        );
+      }
+
+      if (!columnExists(db, 'workout_session_exercises', 'target_rir')) {
+        db.execSync(
+          'ALTER TABLE workout_session_exercises ADD COLUMN target_rir REAL;',
+        );
+      }
+
+      if (!columnExists(db, 'workout_sets', 'target_reps_min')) {
+        db.execSync(
+          'ALTER TABLE workout_sets ADD COLUMN target_reps_min INTEGER;',
+        );
+      }
+
+      if (!columnExists(db, 'workout_sets', 'target_reps_max')) {
+        db.execSync(
+          'ALTER TABLE workout_sets ADD COLUMN target_reps_max INTEGER;',
+        );
+      }
+
+      if (!columnExists(db, 'workout_sets', 'actual_rir')) {
+        db.execSync('ALTER TABLE workout_sets ADD COLUMN actual_rir REAL;');
+      }
+
+      if (!columnExists(db, 'workout_sets', 'set_role')) {
+        db.execSync(
+          "ALTER TABLE workout_sets ADD COLUMN set_role TEXT NOT NULL DEFAULT 'work';",
+        );
+      }
+
+      db.execSync(`
+        CREATE TABLE IF NOT EXISTS training_goals (
+          id TEXT PRIMARY KEY NOT NULL,
+          goal_type TEXT NOT NULL,
+          exercise_id TEXT,
+          muscle_group TEXT,
+          target_load REAL,
+          target_reps INTEGER,
+          target_sessions_per_week INTEGER,
+          target_sets_per_week INTEGER,
+          target_weeks INTEGER,
+          start_time INTEGER,
+          end_time INTEGER,
+          status TEXT NOT NULL DEFAULT 'active',
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_training_goals_status
+          ON training_goals (status);
+      `);
+
+      db.execSync(`
+        UPDATE routine_exercise_sets
+        SET target_reps_min = COALESCE(target_reps_min, target_reps),
+            target_reps_max = COALESCE(target_reps_max, target_reps)
+      `);
+
+      db.execSync(`
+        UPDATE workout_sets
+        SET target_reps_min = COALESCE(target_reps_min, target_reps),
+            target_reps_max = COALESCE(target_reps_max, target_reps)
+      `);
+    },
+  },
 ];
 
 function setUserVersion(db: SQLiteDatabase, version: number): void {

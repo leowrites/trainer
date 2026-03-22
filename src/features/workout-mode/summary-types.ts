@@ -8,6 +8,10 @@
  */
 
 import type { HistorySession, WeightUnit } from '@features/analytics';
+import type {
+  GoalProgressSummary,
+  SessionPrescription,
+} from '@features/intelligence';
 
 export type WorkoutRecordBadgeTone = 'accent' | 'warning' | 'error' | 'muted';
 export type WorkoutFeedbackMetric = 'effort' | 'fatigue';
@@ -50,6 +54,9 @@ export interface WorkoutSummaryViewModel {
   streakLabel: string;
   weeklyProgressLabel: string;
   recordBadges: WorkoutRecordBadge[];
+  negativeSignals?: WorkoutRecordBadge[];
+  prescriptions?: SessionPrescription[];
+  goalDeltas?: GoalProgressSummary[];
   scheduleContext: WorkoutSummaryScheduleContext | null;
   effortLevel: number | null;
   fatigueLevel: number | null;

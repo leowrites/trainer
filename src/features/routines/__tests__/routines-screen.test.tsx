@@ -450,20 +450,59 @@ describe('RoutinesScreen', () => {
         {
           exerciseId: 'exercise-2',
           restSeconds: null,
+          progressionPolicy: 'double_progression',
+          targetRir: null,
           sets: [
-            { targetReps: 8, plannedWeight: null },
-            { targetReps: 8, plannedWeight: null },
-            { targetReps: 8, plannedWeight: null },
-            { targetReps: 8, plannedWeight: null },
+            {
+              targetRepsMin: 8,
+              targetRepsMax: 8,
+              plannedWeight: null,
+              setRole: 'work',
+            },
+            {
+              targetRepsMin: 8,
+              targetRepsMax: 8,
+              plannedWeight: null,
+              setRole: 'work',
+            },
+            {
+              targetRepsMin: 8,
+              targetRepsMax: 8,
+              plannedWeight: null,
+              setRole: 'work',
+            },
+            {
+              targetRepsMin: 8,
+              targetRepsMax: 8,
+              plannedWeight: null,
+              setRole: 'work',
+            },
           ],
         },
         {
           exerciseId: 'exercise-1',
           restSeconds: null,
+          progressionPolicy: 'double_progression',
+          targetRir: null,
           sets: [
-            { targetReps: 10, plannedWeight: null },
-            { targetReps: 10, plannedWeight: null },
-            { targetReps: 10, plannedWeight: null },
+            {
+              targetRepsMin: 10,
+              targetRepsMax: 10,
+              plannedWeight: null,
+              setRole: 'work',
+            },
+            {
+              targetRepsMin: 10,
+              targetRepsMax: 10,
+              plannedWeight: null,
+              setRole: 'work',
+            },
+            {
+              targetRepsMin: 10,
+              targetRepsMax: 10,
+              plannedWeight: null,
+              setRole: 'work',
+            },
           ],
         },
       ],
@@ -586,12 +625,30 @@ describe('RoutinesScreen', () => {
         {
           exerciseId: 'exercise-1',
           restSeconds: null,
-          sets: [{ targetReps: 10, plannedWeight: null }],
+          progressionPolicy: 'double_progression',
+          targetRir: null,
+          sets: [
+            {
+              targetRepsMin: 10,
+              targetRepsMax: 10,
+              plannedWeight: null,
+              setRole: 'work',
+            },
+          ],
         },
         {
           exerciseId: 'exercise-3',
           restSeconds: null,
-          sets: [{ targetReps: 10, plannedWeight: null }],
+          progressionPolicy: 'double_progression',
+          targetRir: null,
+          sets: [
+            {
+              targetRepsMin: 10,
+              targetRepsMax: 10,
+              plannedWeight: null,
+              setRole: 'work',
+            },
+          ],
         },
       ],
     });

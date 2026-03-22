@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 
+import { GoalsScreen } from '@features/intelligence';
 import { DEFAULT_PROGRESSION_CONFIG } from '../constants';
 import type { HistoryStackParamList } from '../navigation-types';
 import type { ProgressiveOverloadConfig } from '../types';
@@ -34,6 +35,11 @@ export function HistoryNavigator({
           />
         )}
       </Stack.Screen>
+      <Stack.Screen
+        name="Goals"
+        component={GoalsScreen}
+        options={{ headerShown: true, title: '' }}
+      />
       <Stack.Screen
         name="HistorySessionDetail"
         options={{

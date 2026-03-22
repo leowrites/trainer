@@ -20,9 +20,19 @@ export function recommendProgressions(
   const precision = config.precision ?? 2;
 
   return candidates.flatMap((candidate: ProgressiveOverloadCandidate) => {
-    const targetReps = candidate.targetReps;
+    const targetRepsMin =
+      candidate.targetRepsMin ?? candidate.targetReps ?? null;
+    const targetRepsMax =
+      candidate.targetRepsMax ??
+      candidate.targetRepsMin ??
+      candidate.targetReps ??
+      null;
+    const hasExplicitUpperBound =
+      candidate.targetRepsMax !== undefined ||
+      (candidate.targetRepsMin !== undefined &&
+        candidate.targetRepsMax !== undefined);
 
-    if (targetReps === null || targetReps <= 0) {
+    if (targetRepsMin === null || targetRepsMin <= 0) {
       return [];
     }
 
@@ -40,7 +50,15 @@ export function recommendProgressions(
 
     const qualifyingSets = completedSets.slice(0, totalRequiredSets);
 
-    if (qualifyingSets.some((set) => set.reps < targetReps)) {
+    if (
+      qualifyingSets.some(
+        (set) =>
+          set.reps < targetRepsMin ||
+          (hasExplicitUpperBound &&
+            targetRepsMax !== null &&
+            set.reps > targetRepsMax),
+      )
+    ) {
       return [];
     }
 
@@ -54,12 +72,17 @@ export function recommendProgressions(
       {
         exerciseId: candidate.exerciseId,
         exerciseName: candidate.exerciseName,
-        targetReps,
+        targetRepsMin,
+        targetRepsMax: targetRepsMax ?? targetRepsMin,
         completedSetCount: qualifyingSets.length,
         currentWeight,
         recommendedWeight,
         weightIncrement: config.weightIncrement,
         unit: config.unit,
+        reason:
+          targetRepsMax !== null && targetRepsMax > targetRepsMin
+            ? `All ${qualifyingSets.length} work sets landed inside ${targetRepsMin}-${targetRepsMax} reps.`
+            : `All ${qualifyingSets.length} work sets hit ${targetRepsMin} reps.`,
       },
     ];
   });

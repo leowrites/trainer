@@ -14,10 +14,12 @@ export {
 } from './routine-template-repository';
 export type {
   NewRoutineInput,
+  ProgressionPolicy,
   RoutineExerciseInput,
   RoutineExerciseTemplate,
   RoutineExerciseTemplateSet,
   RoutineExerciseSetInput,
+  RoutineSetRole,
 } from './template-types';
 export { buildRoutineSnapshot } from './domain/routine-snapshot';
 export type {

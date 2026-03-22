@@ -45,7 +45,7 @@ export function useExercises(): {
 
   useEffect(() => {
     const rows = db.getAllSync<Exercise>(
-      'SELECT id, name, muscle_group, how_to, equipment, is_deleted FROM exercises WHERE is_deleted = 0 ORDER BY name ASC',
+      'SELECT id, name, muscle_group, how_to, equipment, strength_estimation_mode, is_deleted FROM exercises WHERE is_deleted = 0 ORDER BY name ASC',
     );
     setExercises(rows);
     setHasLoaded(true);
@@ -59,6 +59,7 @@ export function useExercises(): {
         muscle_group: input.muscleGroup,
         how_to: normalizeMetadata(input.howTo),
         equipment: normalizeMetadata(input.equipment),
+        strength_estimation_mode: 'limited',
         is_deleted: 0,
       };
 

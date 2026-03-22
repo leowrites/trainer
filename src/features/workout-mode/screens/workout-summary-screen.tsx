@@ -230,6 +230,54 @@ export function WorkoutSummaryScreen({
           )}
         </View>
 
+        {(summary.negativeSignals?.length ?? 0) > 0 ? (
+          <View className="gap-3">
+            <Heading className="text-2xl">Watchouts</Heading>
+            <View className="flex-row flex-wrap gap-3">
+              {summary.negativeSignals?.map((badge) => (
+                <WorkoutRecordBadgeCard key={badge.id} badge={badge} />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {(summary.prescriptions?.length ?? 0) > 0 ? (
+          <View className="gap-3">
+            <Heading className="text-2xl">Next Session</Heading>
+            {summary.prescriptions?.map((prescription) => (
+              <Surface
+                key={prescription.exerciseId}
+                className="rounded-3xl bg-surface-elevated px-5 py-5"
+              >
+                <Body className="font-medium">{prescription.exerciseName}</Body>
+                <Caption className="mt-2">{prescription.reason}</Caption>
+                <Caption className="mt-2">
+                  {formatVolume(prescription.currentWeight, summary.unit)} to{' '}
+                  {formatVolume(prescription.recommendedWeight, summary.unit)}
+                </Caption>
+              </Surface>
+            ))}
+          </View>
+        ) : null}
+
+        {(summary.goalDeltas?.length ?? 0) > 0 ? (
+          <View className="gap-3">
+            <Heading className="text-2xl">Goal Progress</Heading>
+            {summary.goalDeltas?.map((goalDelta) => (
+              <Surface
+                key={goalDelta.id}
+                className="rounded-3xl bg-surface-elevated px-5 py-5"
+              >
+                <Body className="font-medium">{goalDelta.title}</Body>
+                <Caption className="mt-2">{goalDelta.progressText}</Caption>
+                <Caption className="mt-2">
+                  Confidence: {goalDelta.quality.level}
+                </Caption>
+              </Surface>
+            ))}
+          </View>
+        ) : null}
+
         {summary.scheduleContext ? (
           <Surface className="rounded-3xl bg-surface-card px-5 py-5">
             <Label>Schedule</Label>

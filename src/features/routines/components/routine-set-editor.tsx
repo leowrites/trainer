@@ -11,21 +11,23 @@ import React from 'react';
 import { TextInput, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
-import { Body, InteractivePressable } from '@shared/components';
+import { Badge, Body, InteractivePressable } from '@shared/components';
 import type { RoutineSetDraft } from '../types';
 
 export function RoutineSetEditor({
   draft,
   exerciseName,
   setNumber,
-  onChangeTargetReps,
+  onChangeTargetRepsMin,
+  onChangeTargetRepsMax,
   onChangePlannedWeight,
   onRemove,
 }: {
   draft: RoutineSetDraft;
   exerciseName: string;
   setNumber: number;
-  onChangeTargetReps: (value: string) => void;
+  onChangeTargetRepsMin: (value: string) => void;
+  onChangeTargetRepsMax: (value: string) => void;
   onChangePlannedWeight: (value: string) => void;
   onRemove: () => void;
 }): React.JSX.Element {
@@ -41,12 +43,22 @@ export function RoutineSetEditor({
         </View>
         <TextInput
           className="h-11 flex-1 rounded-[12px] bg-surface-card px-3 py-0 font-body text-sm text-foreground"
-          value={draft.targetReps}
-          onChangeText={onChangeTargetReps}
+          value={draft.targetRepsMin}
+          onChangeText={onChangeTargetRepsMin}
           keyboardType="number-pad"
           returnKeyType="done"
-          accessibilityLabel={`${exerciseName} set ${setNumber} reps`}
-          placeholder="Reps"
+          accessibilityLabel={`${exerciseName} set ${setNumber} minimum reps`}
+          placeholder="Min"
+          placeholderTextColor={tokens.textMuted}
+        />
+        <TextInput
+          className="h-11 flex-1 rounded-[12px] bg-surface-card px-3 py-0 font-body text-sm text-foreground"
+          value={draft.targetRepsMax}
+          onChangeText={onChangeTargetRepsMax}
+          keyboardType="number-pad"
+          returnKeyType="done"
+          accessibilityLabel={`${exerciseName} set ${setNumber} maximum reps`}
+          placeholder="Max"
           placeholderTextColor={tokens.textMuted}
         />
         <TextInput
@@ -67,6 +79,11 @@ export function RoutineSetEditor({
         >
           <Body className="text-sm font-semibold text-error">Drop</Body>
         </InteractivePressable>
+      </View>
+      <View className="mt-2 flex-row justify-end px-2">
+        <Badge variant={draft.setRole === 'top_set' ? 'accent' : 'muted'}>
+          {draft.setRole.replace('_', ' ')}
+        </Badge>
       </View>
     </View>
   );

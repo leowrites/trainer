@@ -13,17 +13,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   buildDashboardMetrics,
   useHistoryAnalytics,
-  useHistorySessions,
   useHistorySessionDetail,
+  useHistorySessions,
   type WeightUnit,
 } from '@features/analytics';
 import { useUserProfile } from '@features/health-tracking';
+import {
+  useSessionIntelligence,
+  useTrainingGoals,
+} from '@features/intelligence';
 import { useDatabase } from '@core/database/provider';
 import type {
   WorkoutFeedbackMetric,
   WorkoutSummaryViewModel,
 } from '../summary-types';
-import { buildWorkoutRecordBadges } from '../domain/workout-summary';
 import {
   loadWorkoutSummaryMeta,
   saveWorkoutFeedbackLevel,
@@ -112,7 +115,7 @@ export function useWorkoutSummary(sessionId: string): {
   const { session, isLoading: isSessionLoading } =
     useHistorySessionDetail(sessionId);
   const { allSessions, isLoading: isHistoryLoading } = useHistoryAnalytics();
-  const { sessions: historySessions, isLoading: isHistorySessionsLoading } =
+  const { sessions: detailedSessions, isLoading: isDetailedHistoryLoading } =
     useHistorySessions();
   const { profile } = useUserProfile();
   const [meta, setMeta] = useState<WorkoutSummaryMeta>(
@@ -141,13 +144,39 @@ export function useWorkoutSummary(sessionId: string): {
   );
 
   const unit: WeightUnit = profile?.preferredWeightUnit ?? 'kg';
-  const recordBadges = useMemo(() => {
-    if (!session) {
-      return [];
-    }
-
-    return buildWorkoutRecordBadges(session, historySessions, unit);
-  }, [historySessions, session, unit]);
+  const intelligenceSessions =
+    detailedSessions.length > 0 ? detailedSessions : allSessions;
+  const { goalViewModels } = useTrainingGoals(intelligenceSessions);
+  const intelligence = useSessionIntelligence(
+    session,
+    intelligenceSessions,
+    goalViewModels,
+    unit,
+  );
+  const recordBadges = useMemo(
+    () =>
+      intelligence.recordBadges.map((badge) => ({
+        id: badge.id,
+        label: badge.label,
+        detail: badge.detail,
+        tone: badge.tone,
+        exerciseId: badge.exerciseId,
+        exerciseName: badge.exerciseName,
+      })),
+    [intelligence.recordBadges],
+  );
+  const negativeSignals = useMemo(
+    () =>
+      intelligence.negativeSignals.map((badge) => ({
+        id: badge.id,
+        label: badge.label,
+        detail: badge.detail,
+        tone: badge.tone,
+        exerciseId: badge.exerciseId,
+        exerciseName: badge.exerciseName,
+      })),
+    [intelligence.negativeSignals],
+  );
 
   const applyTemplateUpdate = useCallback((): void => {
     if (isApplyingTemplateUpdate) {
@@ -187,6 +216,9 @@ export function useWorkoutSummary(sessionId: string): {
         dashboardMetrics.workoutsThisWeek,
       ),
       recordBadges,
+      negativeSignals,
+      prescriptions: intelligence.prescriptions,
+      goalDeltas: intelligence.goalDeltas,
       scheduleContext: meta.scheduleContext,
       effortLevel: meta.effortLevel,
       fatigueLevel: meta.fatigueLevel,
@@ -202,10 +234,20 @@ export function useWorkoutSummary(sessionId: string): {
                   : formatTimeLabel(templateUpdate.appliedAt),
             },
     };
-  }, [allSessions, meta, recordBadges, session, templateUpdate, unit]);
+  }, [
+    allSessions,
+    intelligence.goalDeltas,
+    intelligence.prescriptions,
+    meta,
+    negativeSignals,
+    recordBadges,
+    session,
+    templateUpdate,
+    unit,
+  ]);
 
   return {
-    isLoading: isSessionLoading || isHistoryLoading || isHistorySessionsLoading,
+    isLoading: isSessionLoading || isHistoryLoading || isDetailedHistoryLoading,
     summary,
     saveFeedback,
     applyTemplateUpdate,

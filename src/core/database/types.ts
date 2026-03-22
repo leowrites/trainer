@@ -8,6 +8,7 @@ export interface Exercise {
   muscle_group: string;
   how_to: string | null;
   equipment: string | null;
+  strength_estimation_mode?: 'primary' | 'limited' | 'disabled';
   is_deleted: number;
 }
 
@@ -25,6 +26,8 @@ export interface RoutineExercise {
   target_sets: number;
   target_reps: number;
   rest_seconds?: number | null;
+  progression_policy?: 'double_progression' | 'top_set_backoff';
+  target_rir?: number | null;
 }
 
 export interface RoutineExerciseSet {
@@ -33,6 +36,9 @@ export interface RoutineExerciseSet {
   position: number;
   target_reps: number;
   planned_weight: number | null;
+  target_reps_min?: number | null;
+  target_reps_max?: number | null;
+  set_role?: 'work' | 'top_set' | 'backoff' | 'warmup' | 'optional';
 }
 
 export interface Schedule {
@@ -72,6 +78,8 @@ export interface WorkoutSessionExercise {
   exercise_id: string;
   position: number;
   rest_seconds?: number | null;
+  progression_policy?: 'double_progression' | 'top_set_backoff';
+  target_rir?: number | null;
 }
 
 export interface WorkoutSet {
@@ -84,6 +92,10 @@ export interface WorkoutSet {
   is_completed: number; // SQLite uses 0/1 for booleans
   target_sets: number | null;
   target_reps: number | null;
+  target_reps_min?: number | null;
+  target_reps_max?: number | null;
+  actual_rir?: number | null;
+  set_role?: 'work' | 'top_set' | 'backoff' | 'warmup' | 'optional';
 }
 
 export interface BodyWeightEntry {
@@ -98,6 +110,23 @@ export interface UserProfile {
   id: string;
   display_name: string | null;
   preferred_weight_unit: 'kg' | 'lb';
+  created_at: number;
+  updated_at: number;
+}
+
+export interface TrainingGoal {
+  id: string;
+  goal_type: 'strength' | 'performance' | 'adherence' | 'volume';
+  exercise_id: string | null;
+  muscle_group: string | null;
+  target_load: number | null;
+  target_reps: number | null;
+  target_sessions_per_week: number | null;
+  target_sets_per_week: number | null;
+  target_weeks: number | null;
+  start_time: number | null;
+  end_time: number | null;
+  status: 'active' | 'completed' | 'archived';
   created_at: number;
   updated_at: number;
 }

@@ -9,7 +9,10 @@ import {
   useHistorySessions,
 } from '@features/analytics';
 import { useUserProfile } from '@features/health-tracking';
-import { buildWorkoutRecordBadges } from '../domain/workout-summary';
+import {
+  useSessionIntelligence,
+  useTrainingGoals,
+} from '@features/intelligence';
 import {
   loadWorkoutSummaryMeta,
   saveWorkoutFeedbackLevel,
@@ -18,6 +21,7 @@ import type { HistorySession } from '@features/analytics';
 
 jest.mock('@core/database/provider', () => ({
   useDatabase: jest.fn(),
+  useOptionalDatabase: jest.fn(),
 }));
 
 jest.mock('@features/analytics', () => ({
@@ -31,8 +35,9 @@ jest.mock('@features/health-tracking', () => ({
   useUserProfile: jest.fn(),
 }));
 
-jest.mock('../domain/workout-summary', () => ({
-  buildWorkoutRecordBadges: jest.fn(),
+jest.mock('@features/intelligence', () => ({
+  useSessionIntelligence: jest.fn(),
+  useTrainingGoals: jest.fn(),
 }));
 
 jest.mock('../workout-summary-repository', () => ({
@@ -46,7 +51,8 @@ const mockUseHistoryAnalytics = jest.mocked(useHistoryAnalytics);
 const mockUseHistorySessionDetail = jest.mocked(useHistorySessionDetail);
 const mockUseHistorySessions = jest.mocked(useHistorySessions);
 const mockUseUserProfile = jest.mocked(useUserProfile);
-const mockBuildWorkoutRecordBadges = jest.mocked(buildWorkoutRecordBadges);
+const mockUseSessionIntelligence = jest.mocked(useSessionIntelligence);
+const mockUseTrainingGoals = jest.mocked(useTrainingGoals);
 const mockLoadWorkoutSummaryMeta = jest.mocked(loadWorkoutSummaryMeta);
 const mockSaveWorkoutFeedbackLevel = jest.mocked(saveWorkoutFeedbackLevel);
 
@@ -126,6 +132,21 @@ describe('useWorkoutSummary', () => {
     mockUseUserProfile.mockReturnValue({
       profile: { preferredWeightUnit: 'lb' },
     } as never);
+    mockUseTrainingGoals.mockReturnValue({
+      goals: [],
+      goalViewModels: [],
+      createGoal: jest.fn(),
+      updateGoal: jest.fn(),
+      deleteGoal: jest.fn(),
+      refresh: jest.fn(),
+    });
+    mockUseSessionIntelligence.mockReturnValue({
+      recordBadges: [],
+      negativeSignals: [],
+      prescriptions: [],
+      classifications: [],
+      goalDeltas: [],
+    });
     mockBuildDashboardMetrics.mockReturnValue({
       workoutsThisWeek: 2,
       workoutDaysThisWeek: 2,
@@ -137,31 +158,23 @@ describe('useWorkoutSummary', () => {
       fatigueLevel: null,
       scheduleContext: null,
     });
-    mockBuildWorkoutRecordBadges.mockReturnValue([
-      {
-        id: 'badge-1',
-        label: 'Volume PR',
-        detail: 'Bench Press hit 3200 lb.',
-        tone: 'warning',
-        exerciseId: 'exercise-1',
-        exerciseName: 'Bench Press',
-      },
-    ]);
   });
 
-  it('builds badges from detailed history sessions instead of trend-only rows', () => {
+  it('uses detailed history sessions for intelligence instead of trend-only rows', () => {
     renderHook(() => useWorkoutSummary('current'));
 
-    expect(mockBuildWorkoutRecordBadges).toHaveBeenCalledWith(
+    expect(mockUseTrainingGoals).toHaveBeenCalledWith(detailedHistory);
+    expect(mockUseSessionIntelligence).toHaveBeenCalledWith(
       currentSession,
       detailedHistory,
+      [],
       'lb',
     );
   });
 
   it('does not rebuild badges when feedback changes', () => {
     const { result } = renderHook(() => useWorkoutSummary('current'));
-    const initialCallCount = mockBuildWorkoutRecordBadges.mock.calls.length;
+    const initialRecordBadges = result.current.summary?.recordBadges;
 
     act(() => {
       result.current.saveFeedback('effort', 4);
@@ -173,8 +186,6 @@ describe('useWorkoutSummary', () => {
       'effort',
       4,
     );
-    expect(mockBuildWorkoutRecordBadges).toHaveBeenCalledTimes(
-      initialCallCount,
-    );
+    expect(result.current.summary?.recordBadges).toEqual(initialRecordBadges);
   });
 });

@@ -9,17 +9,32 @@
  *   startup code.
  */
 
+export type ProgressionPolicy = 'double_progression' | 'top_set_backoff';
+export type RoutineSetRole =
+  | 'work'
+  | 'top_set'
+  | 'backoff'
+  | 'warmup'
+  | 'optional';
+
 export interface RoutineExerciseSetInput {
-  targetReps: number;
+  targetReps?: number;
+  targetRepsMin: number;
+  targetRepsMax: number;
   plannedWeight: number | null;
+  setRole?: RoutineSetRole;
 }
 
 export interface RoutineExerciseInput {
   exerciseId: string;
   restSeconds?: number | null;
+  progressionPolicy?: ProgressionPolicy;
+  targetRir?: number | null;
   sets?: RoutineExerciseSetInput[];
   targetSets?: number;
   targetReps?: number;
+  targetRepsMin?: number;
+  targetRepsMax?: number;
 }
 
 export interface NewRoutineInput {
@@ -30,8 +45,11 @@ export interface NewRoutineInput {
 export interface RoutineExerciseTemplateSet {
   id: string;
   position: number;
-  targetReps: number;
+  targetReps?: number;
+  targetRepsMin: number;
+  targetRepsMax: number;
   plannedWeight: number | null;
+  setRole: RoutineSetRole;
 }
 
 export interface RoutineExerciseTemplate {
@@ -39,7 +57,11 @@ export interface RoutineExerciseTemplate {
   exerciseId: string;
   position: number;
   restSeconds: number | null;
+  progressionPolicy: ProgressionPolicy;
+  targetRir: number | null;
   targetSets: number;
-  targetReps: number | null;
+  targetReps?: number | null;
+  targetRepsMin: number | null;
+  targetRepsMax: number | null;
   sets: RoutineExerciseTemplateSet[];
 }

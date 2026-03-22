@@ -49,8 +49,15 @@ export function buildHistorySession(
       exercises.push({
         exerciseId: setRow.exercise_id,
         exerciseName: setRow.exercise_name?.trim() || 'Exercise',
+        progressionPolicy: setRow.progression_policy ?? 'double_progression',
+        targetRir: setRow.target_rir,
         targetSets: setRow.target_sets,
         targetReps: setRow.target_reps,
+        targetRepsMin: setRow.target_reps_min ?? setRow.target_reps,
+        targetRepsMax:
+          setRow.target_reps_max ??
+          setRow.target_reps_min ??
+          setRow.target_reps,
         sets: [],
         totalSets: 0,
         completedSets: 0,
@@ -66,6 +73,12 @@ export function buildHistorySession(
       reps: setRow.reps,
       weight: setRow.weight,
       isCompleted: setRow.is_completed === 1,
+      targetReps: setRow.target_reps,
+      targetRepsMin: setRow.target_reps_min ?? setRow.target_reps,
+      targetRepsMax:
+        setRow.target_reps_max ?? setRow.target_reps_min ?? setRow.target_reps,
+      actualRir: setRow.actual_rir,
+      setRole: setRow.set_role ?? 'work',
     };
 
     exercise.sets.push(set);

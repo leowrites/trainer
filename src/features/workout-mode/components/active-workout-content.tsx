@@ -45,6 +45,7 @@ export interface ActiveWorkoutContentProps {
   deleteSet: (setId: string) => void;
   updateReps: (setId: string, reps: number) => void;
   updateWeight: (setId: string, weight: number) => void;
+  updateActualRir?: (setId: string, actualRir: number | null) => void;
   toggleSetLogged: (
     exerciseId: string,
     setId: string,
@@ -74,6 +75,7 @@ export function ActiveWorkoutContent({
   deleteSet,
   updateReps,
   updateWeight,
+  updateActualRir,
   toggleSetLogged,
   exerciseTimerEndsAtByExerciseId,
   exerciseTimerDurationByExerciseId,
@@ -164,6 +166,7 @@ export function ActiveWorkoutContent({
                   <Label className="w-8 text-center text-xs">Set</Label>
                   <Label className="flex-1 text-xs">Reps</Label>
                   <Label className="flex-1 text-xs">Weight</Label>
+                  <Label className="flex-1 text-xs">RIR</Label>
                   <Label className="w-[58px] text-center text-xs">Log</Label>
                 </View>
                 {exercise.sets.map((setItem, index) => (
@@ -179,6 +182,9 @@ export function ActiveWorkoutContent({
                     onUpdateReps={(reps) => updateReps(setItem.id, reps)}
                     onUpdateWeight={(weight) =>
                       updateWeight(setItem.id, weight)
+                    }
+                    onUpdateActualRir={(actualRir) =>
+                      updateActualRir?.(setItem.id, actualRir)
                     }
                     onToggleLogged={(isCompleted) =>
                       toggleSetLogged(

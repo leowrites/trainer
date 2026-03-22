@@ -152,10 +152,14 @@ export function useWorkoutStarter(): {
           exerciseId: exercise.exerciseId,
           position: exercise.position,
           restSeconds: exercise.restSeconds,
+          progressionPolicy: exercise.progressionPolicy,
+          targetRir: exercise.targetRir,
           sets: exercise.sets.map((setEntry) => ({
             position: setEntry.position,
-            targetReps: setEntry.targetReps,
+            targetRepsMin: setEntry.targetRepsMin,
+            targetRepsMax: setEntry.targetRepsMax,
             plannedWeight: setEntry.plannedWeight,
+            setRole: setEntry.setRole,
           })),
         })),
       );
@@ -178,6 +182,7 @@ export function useWorkoutStarter(): {
       // Eagerly create placeholder WorkoutSets from the snapshot so that
       // routine edits cannot affect this session.
       for (const exercise of snapshot.exercises) {
+        const sessionExerciseId = generateId();
         db.runSync(
           `INSERT INTO workout_session_exercises (
             id,
@@ -187,7 +192,7 @@ export function useWorkoutStarter(): {
             rest_seconds
           ) VALUES (?, ?, ?, ?, ?)`,
           [
-            generateId(),
+            sessionExerciseId,
             sessionId,
             exercise.exerciseId,
             exercise.position,
@@ -195,7 +200,32 @@ export function useWorkoutStarter(): {
           ],
         );
 
+        if (
+          (exercise.progressionPolicy ?? 'double_progression') !==
+            'double_progression' ||
+          exercise.targetRir !== null
+        ) {
+          db.runSync(
+            `UPDATE workout_session_exercises
+             SET progression_policy = ?, target_rir = ?
+             WHERE id = ?`,
+            [
+              exercise.progressionPolicy ?? 'double_progression',
+              exercise.targetRir ?? null,
+              sessionExerciseId,
+            ],
+          );
+        }
+
         for (const setEntry of exercise.sets ?? []) {
+          const setId = generateId();
+          const defaultSetRole =
+            setEntry.setRole ??
+            (exercise.progressionPolicy === 'top_set_backoff'
+              ? setEntry.position === 0
+                ? 'top_set'
+                : 'backoff'
+              : 'work');
           db.runSync(
             `INSERT INTO workout_sets (
               id,
@@ -209,17 +239,34 @@ export function useWorkoutStarter(): {
               target_reps
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-              generateId(),
+              setId,
               sessionId,
               exercise.exerciseId,
               setEntry.position,
               setEntry.plannedWeight ?? 0,
-              setEntry.targetReps,
+              setEntry.targetRepsMin,
               0,
               (exercise.sets ?? []).length,
-              setEntry.targetReps,
+              setEntry.targetRepsMin,
             ],
           );
+
+          if (
+            setEntry.targetRepsMax !== setEntry.targetRepsMin ||
+            defaultSetRole !== 'optional'
+          ) {
+            db.runSync(
+              `UPDATE workout_sets
+               SET target_reps_min = ?, target_reps_max = ?, set_role = ?
+               WHERE id = ?`,
+              [
+                setEntry.targetRepsMin,
+                setEntry.targetRepsMax,
+                defaultSetRole,
+                setId,
+              ],
+            );
+          }
         }
       }
     });

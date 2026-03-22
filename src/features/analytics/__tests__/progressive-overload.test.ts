@@ -27,12 +27,14 @@ describe('recommendProgressions', () => {
       {
         exerciseId: 'exercise-1',
         exerciseName: 'Bench Press',
-        targetReps: 10,
+        targetRepsMin: 10,
+        targetRepsMax: 10,
         completedSetCount: 3,
         currentWeight: 100,
         recommendedWeight: 105,
         weightIncrement: 5,
         unit: 'kg',
+        reason: 'All 3 work sets hit 10 reps.',
       },
     ]);
   });

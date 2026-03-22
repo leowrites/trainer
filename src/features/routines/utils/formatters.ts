@@ -12,7 +12,9 @@ import type { RoutineExercise } from '@core/database/types';
 import { DEFAULT_EXERCISE_TIMER_SECONDS } from '@shared/utils';
 import type {
   NewRoutineInput,
+  ProgressionPolicy,
   RoutineExerciseTemplate,
+  RoutineSetRole,
 } from '../template-types';
 import type { RoutineExerciseDraft, RoutineSetDraft } from '../types';
 
@@ -68,8 +70,10 @@ export function parseOptionalWeight(value: string): number | null {
 export function buildDefaultRoutineSetDraft(): RoutineSetDraft {
   return {
     id: generateId(),
-    targetReps: '10',
+    targetRepsMin: '10',
+    targetRepsMax: '10',
     plannedWeight: '',
+    setRole: 'work',
   };
 }
 
@@ -99,15 +103,33 @@ export function buildRoutineExerciseDrafts(
               ? entry.restSeconds
               : entry.rest_seconds,
           ),
+    progressionPolicy: isRoutineExerciseTemplate(entry)
+      ? entry.progressionPolicy
+      : (entry.progression_policy ?? 'double_progression'),
+    targetRir:
+      (isRoutineExerciseTemplate(entry)
+        ? entry.targetRir
+        : entry.target_rir) === null ||
+      (isRoutineExerciseTemplate(entry)
+        ? entry.targetRir
+        : entry.target_rir) === undefined
+        ? ''
+        : String(
+            isRoutineExerciseTemplate(entry)
+              ? entry.targetRir
+              : entry.target_rir,
+          ),
     sets:
       isRoutineExerciseTemplate(entry) && entry.sets.length > 0
         ? entry.sets.map((setEntry) => ({
             id: setEntry.id,
-            targetReps: String(setEntry.targetReps),
+            targetRepsMin: String(setEntry.targetRepsMin),
+            targetRepsMax: String(setEntry.targetRepsMax),
             plannedWeight:
               setEntry.plannedWeight === null
                 ? ''
                 : String(setEntry.plannedWeight),
+            setRole: setEntry.setRole,
           }))
         : Array.from(
             {
@@ -120,12 +142,25 @@ export function buildRoutineExerciseDrafts(
             },
             (_, index) => ({
               id: `${entry.id}-${index}`,
-              targetReps: String(
+              targetRepsMin: String(
                 isRoutineExerciseTemplate(entry)
-                  ? (entry.targetReps ?? 1)
+                  ? (entry.targetRepsMin ?? 1)
+                  : entry.target_reps,
+              ),
+              targetRepsMax: String(
+                isRoutineExerciseTemplate(entry)
+                  ? (entry.targetRepsMax ?? 1)
                   : entry.target_reps,
               ),
               plannedWeight: '',
+              setRole:
+                (isRoutineExerciseTemplate(entry)
+                  ? entry.progressionPolicy
+                  : entry.progression_policy) === 'top_set_backoff'
+                  ? index === 0
+                    ? 'top_set'
+                    : 'backoff'
+                  : 'work',
             }),
           ),
   }));
@@ -133,12 +168,58 @@ export function buildRoutineExerciseDrafts(
 
 export function buildDefaultRoutineExerciseDraft(
   exerciseId: string,
+  progressionPolicy: ProgressionPolicy = 'double_progression',
 ): RoutineExerciseDraft {
   return {
     exerciseId,
     restSeconds: '',
+    progressionPolicy,
+    targetRir: '',
     sets: [buildDefaultRoutineSetDraft()],
   };
+}
+
+function parseOptionalNumber(value: string): number | null {
+  const trimmedValue = value.trim();
+
+  if (trimmedValue === '') {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(trimmedValue);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeRange(
+  minValue: string,
+  maxValue: string,
+): Pick<
+  RoutineExerciseTemplate['sets'][number],
+  'targetRepsMin' | 'targetRepsMax'
+> {
+  const parsedMin = parsePositiveWholeNumber(minValue, 1);
+  const parsedMax = parsePositiveWholeNumber(maxValue, parsedMin);
+
+  return {
+    targetRepsMin: Math.min(parsedMin, parsedMax),
+    targetRepsMax: Math.max(parsedMin, parsedMax),
+  };
+}
+
+function normalizeSetRole(
+  progressionPolicy: ProgressionPolicy,
+  setRole: RoutineSetRole,
+  index: number,
+): RoutineSetRole {
+  if (progressionPolicy === 'top_set_backoff') {
+    if (setRole === 'warmup' || setRole === 'optional') {
+      return setRole;
+    }
+
+    return index === 0 ? 'top_set' : 'backoff';
+  }
+
+  return setRole === 'warmup' || setRole === 'optional' ? setRole : 'work';
 }
 
 export function buildRoutineInput(
@@ -156,9 +237,16 @@ export function buildRoutineInput(
               entry.restSeconds,
               DEFAULT_EXERCISE_TIMER_SECONDS,
             ),
+      progressionPolicy: entry.progressionPolicy,
+      targetRir: parseOptionalNumber(entry.targetRir),
       sets: entry.sets.map((setEntry) => ({
-        targetReps: parsePositiveWholeNumber(setEntry.targetReps, 1),
+        ...normalizeRange(setEntry.targetRepsMin, setEntry.targetRepsMax),
         plannedWeight: parseOptionalWeight(setEntry.plannedWeight),
+        setRole: normalizeSetRole(
+          entry.progressionPolicy,
+          setEntry.setRole,
+          entry.sets.indexOf(setEntry),
+        ),
       })),
     })),
   };

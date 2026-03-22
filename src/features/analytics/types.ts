@@ -19,6 +19,12 @@ export interface HistorySetRow {
   is_completed: number;
   target_sets: number | null;
   target_reps: number | null;
+  target_reps_min?: number | null;
+  target_reps_max?: number | null;
+  actual_rir?: number | null;
+  set_role?: 'work' | 'top_set' | 'backoff' | 'warmup' | 'optional' | null;
+  progression_policy?: 'double_progression' | 'top_set_backoff' | null;
+  target_rir?: number | null;
 }
 
 export interface HistoryTrendSessionRow {
@@ -37,13 +43,22 @@ export interface HistorySet {
   reps: number;
   weight: number;
   isCompleted: boolean;
+  targetReps?: number | null;
+  targetRepsMin?: number | null;
+  targetRepsMax?: number | null;
+  actualRir?: number | null;
+  setRole?: 'work' | 'top_set' | 'backoff' | 'warmup' | 'optional';
 }
 
 export interface HistoryExerciseSummary {
   exerciseId: string;
   exerciseName: string;
+  progressionPolicy?: 'double_progression' | 'top_set_backoff';
+  targetRir?: number | null;
   targetSets: number | null;
-  targetReps: number | null;
+  targetReps?: number | null;
+  targetRepsMin?: number | null;
+  targetRepsMax?: number | null;
   sets: HistorySet[];
   totalSets: number;
   completedSets: number;
@@ -94,13 +109,19 @@ export interface ProgressiveOverloadSet {
   reps: number;
   weight: number;
   isCompleted: boolean;
+  actualRir?: number | null;
+  setRole?: 'work' | 'top_set' | 'backoff' | 'warmup' | 'optional';
 }
 
 export interface ProgressiveOverloadCandidate {
   exerciseId: string;
   exerciseName: string;
+  progressionPolicy?: 'double_progression' | 'top_set_backoff';
+  targetRir?: number | null;
   targetSets: number | null;
-  targetReps: number | null;
+  targetReps?: number | null;
+  targetRepsMin?: number | null;
+  targetRepsMax?: number | null;
   sets: ProgressiveOverloadSet[];
 }
 
@@ -113,10 +134,12 @@ export interface ProgressiveOverloadConfig {
 export interface ProgressiveOverloadRecommendation {
   exerciseId: string;
   exerciseName: string;
-  targetReps: number;
+  targetRepsMin: number;
+  targetRepsMax: number;
   completedSetCount: number;
   currentWeight: number;
   recommendedWeight: number;
   weightIncrement: number;
   unit: WeightUnit;
+  reason: string;
 }

@@ -6,7 +6,7 @@
  * changes. Forward-only migration steps belong in migrations.ts.
  */
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS exercises (
@@ -15,6 +15,7 @@ export const CREATE_TABLES_SQL = `
     muscle_group TEXT NOT NULL,
     how_to       TEXT,
     equipment    TEXT,
+    strength_estimation_mode TEXT NOT NULL DEFAULT 'limited',
     is_deleted   INTEGER NOT NULL DEFAULT 0
   );
 
@@ -32,7 +33,9 @@ export const CREATE_TABLES_SQL = `
     position    INTEGER NOT NULL,
     target_sets INTEGER NOT NULL,
     target_reps INTEGER NOT NULL,
-    rest_seconds INTEGER
+    rest_seconds INTEGER,
+    progression_policy TEXT NOT NULL DEFAULT 'double_progression',
+    target_rir REAL
   );
 
   CREATE INDEX IF NOT EXISTS idx_routine_exercises_routine
@@ -45,7 +48,10 @@ export const CREATE_TABLES_SQL = `
     routine_exercise_id TEXT NOT NULL,
     position            INTEGER NOT NULL,
     target_reps         INTEGER NOT NULL,
-    planned_weight      REAL
+    planned_weight      REAL,
+    target_reps_min     INTEGER,
+    target_reps_max     INTEGER,
+    set_role            TEXT NOT NULL DEFAULT 'work'
   );
 
   CREATE INDEX IF NOT EXISTS idx_routine_exercise_sets_routine_exercise
@@ -93,7 +99,9 @@ export const CREATE_TABLES_SQL = `
     session_id  TEXT NOT NULL,
     exercise_id TEXT NOT NULL,
     position    INTEGER NOT NULL,
-    rest_seconds INTEGER
+    rest_seconds INTEGER,
+    progression_policy TEXT NOT NULL DEFAULT 'double_progression',
+    target_rir REAL
   );
 
   CREATE INDEX IF NOT EXISTS idx_workout_session_exercises_session
@@ -108,7 +116,11 @@ export const CREATE_TABLES_SQL = `
     reps         INTEGER NOT NULL,
     is_completed INTEGER NOT NULL DEFAULT 0,
     target_sets  INTEGER,
-    target_reps  INTEGER
+    target_reps  INTEGER,
+    target_reps_min INTEGER,
+    target_reps_max INTEGER,
+    actual_rir REAL,
+    set_role TEXT NOT NULL DEFAULT 'work'
   );
 
   CREATE INDEX IF NOT EXISTS idx_workout_sets_session
@@ -134,4 +146,24 @@ export const CREATE_TABLES_SQL = `
     created_at            INTEGER NOT NULL,
     updated_at            INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS training_goals (
+    id TEXT PRIMARY KEY NOT NULL,
+    goal_type TEXT NOT NULL,
+    exercise_id TEXT,
+    muscle_group TEXT,
+    target_load REAL,
+    target_reps INTEGER,
+    target_sessions_per_week INTEGER,
+    target_sets_per_week INTEGER,
+    target_weeks INTEGER,
+    start_time INTEGER,
+    end_time INTEGER,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_training_goals_status
+    ON training_goals (status);
 `;

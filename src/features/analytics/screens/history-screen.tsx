@@ -3,7 +3,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useRef, useState } from 'react';
 import { FlatList, View } from 'react-native';
 
-import { Caption, Container, Heading, Muted } from '@shared/components';
+import {
+  useIntelligenceOverview,
+  useTrainingGoals,
+} from '@features/intelligence';
+import { Button, Caption, Container, Heading, Muted } from '@shared/components';
 import { DEFAULT_PROGRESSION_CONFIG } from '../constants';
 import { HistoryChartCard } from '../components/history-chart-card';
 import { HistorySessionCard } from '../components/history-session-card';
@@ -34,11 +38,18 @@ export function HistoryScreen({
     isLoading,
     isLoadingMore,
     hasMore,
+    allSessions,
     sessions,
     trendSeriesByMetric,
     loadMore,
     refresh,
   } = useHistoryAnalytics({ trendRange: activeRange });
+  const { goalViewModels } = useTrainingGoals(allSessions);
+  const {
+    exerciseTrendSummaries,
+    routineTrendSummaries,
+    goalViewModels: overviewGoalViewModels,
+  } = useIntelligenceOverview(allSessions, goalViewModels);
   const hasHandledInitialFocus = useRef(false);
 
   useFocusEffect(
@@ -94,11 +105,83 @@ export function HistoryScreen({
             />
 
             <View className="pb-2 pt-3">
-              <Heading className="text-2xl leading-[24px]">Sessions</Heading>
+              <View className="flex-row items-center justify-between gap-3">
+                <Heading className="text-2xl leading-[24px]">Sessions</Heading>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onPress={() => navigation?.navigate('Goals')}
+                >
+                  Goals
+                </Button>
+              </View>
               <Muted className="mt-2 text-sm leading-[17px]">
                 Open a session to inspect exercise details and progression cues.
               </Muted>
             </View>
+
+            {exerciseTrendSummaries.length > 0 ? (
+              <View className="pb-2">
+                <Heading className="text-2xl leading-[24px]">
+                  Exercise Trends
+                </Heading>
+                <View className="mt-3 gap-3">
+                  {exerciseTrendSummaries.map((summary) => (
+                    <View
+                      key={summary.exerciseId}
+                      className="rounded-[24px] border border-surface-border/80 bg-surface-card px-5 py-5"
+                    >
+                      <Caption className="font-medium text-foreground">
+                        {summary.exerciseName}
+                      </Caption>
+                      <Muted className="mt-2">{summary.summary}</Muted>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {routineTrendSummaries.length > 0 ? (
+              <View className="pb-2">
+                <Heading className="text-2xl leading-[24px]">
+                  Routine Trends
+                </Heading>
+                <View className="mt-3 gap-3">
+                  {routineTrendSummaries.map((summary) => (
+                    <View
+                      key={summary.routineId}
+                      className="rounded-[24px] border border-surface-border/80 bg-surface-card px-5 py-5"
+                    >
+                      <Caption className="font-medium text-foreground">
+                        {summary.routineName}
+                      </Caption>
+                      <Muted className="mt-2">{summary.summary}</Muted>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {overviewGoalViewModels.length > 0 ? (
+              <View className="pb-2">
+                <Heading className="text-2xl leading-[24px]">Goals</Heading>
+                <View className="mt-3 gap-3">
+                  {overviewGoalViewModels.slice(0, 3).map((goalViewModel) => (
+                    <View
+                      key={goalViewModel.goal.id}
+                      className="rounded-[24px] border border-surface-border/80 bg-surface-card px-5 py-5"
+                    >
+                      <Caption className="font-medium text-foreground">
+                        {goalViewModel.title}
+                      </Caption>
+                      <Muted className="mt-2">
+                        {goalViewModel.progress.progressText}
+                      </Muted>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
           </>
         }
         ListEmptyComponent={

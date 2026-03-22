@@ -34,9 +34,18 @@ const HISTORY_SET_SELECT_SQL = `
     wset.reps,
     wset.is_completed,
     wset.target_sets,
-    wset.target_reps
+    wset.target_reps,
+    wset.target_reps_min,
+    wset.target_reps_max,
+    wset.actual_rir,
+    wset.set_role,
+    wse.progression_policy,
+    wse.target_rir
   FROM workout_sets wset
   LEFT JOIN exercises e ON e.id = wset.exercise_id
+  LEFT JOIN workout_session_exercises wse
+    ON wse.session_id = wset.session_id
+   AND wse.exercise_id = wset.exercise_id
 `;
 
 const HISTORY_SET_ORDER_SQL =
