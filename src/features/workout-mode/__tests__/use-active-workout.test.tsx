@@ -101,7 +101,20 @@ describe('useActiveWorkout', () => {
     );
     expect(db.runSync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO workout_sets'),
-      ['new-set-1', 'session-2', 'exercise-2', 0, 0, 0, 0, null, null],
+      [
+        'new-set-1',
+        'session-2',
+        'exercise-2',
+        0,
+        0,
+        0,
+        0,
+        null,
+        null,
+        null,
+        null,
+        'optional',
+      ],
     );
     expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([
       {
