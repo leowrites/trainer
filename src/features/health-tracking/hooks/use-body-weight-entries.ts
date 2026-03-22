@@ -26,10 +26,38 @@ import {
   sanitizeBodyWeightEntryInput,
 } from '../domain/body-weight';
 
+const LIST_BODY_WEIGHT_ENTRIES_LEGACY_SQL = `SELECT id, weight, unit, logged_at, notes FROM ${BODY_WEIGHT_TABLE} ORDER BY logged_at DESC, id DESC`;
 const LIST_BODY_WEIGHT_ENTRIES_WITH_SOURCE_SQL = `SELECT id, weight, unit, logged_at, notes, source, source_record_id, source_app, imported_at FROM ${BODY_WEIGHT_TABLE} ORDER BY logged_at DESC, id DESC`;
 const INSERT_BODY_WEIGHT_ENTRY_SQL = `INSERT INTO ${BODY_WEIGHT_TABLE} (id, weight, unit, logged_at, notes, source, source_record_id, source_app, imported_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 const UPDATE_BODY_WEIGHT_ENTRY_SQL = `UPDATE ${BODY_WEIGHT_TABLE} SET weight = ?, unit = ?, logged_at = ?, notes = ? WHERE id = ? AND source = 'manual'`;
 const DELETE_BODY_WEIGHT_ENTRY_SQL = `DELETE FROM ${BODY_WEIGHT_TABLE} WHERE id = ? AND source = 'manual'`;
+
+function isMissingSourceColumnError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes('no such column: source')
+  );
+}
+
+function mapLegacyBodyWeightRows(
+  rows: Array<{
+    id: string;
+    weight: number;
+    unit: string;
+    logged_at: number;
+    notes: string | null;
+  }>,
+): BodyWeightEntry[] {
+  return rows.map((row) =>
+    mapBodyWeightEntry({
+      ...row,
+      source: 'manual',
+      source_record_id: null,
+      source_app: null,
+      imported_at: null,
+    }),
+  );
+}
 
 export function useBodyWeightEntries(): {
   entries: BodyWeightEntry[];
@@ -56,6 +84,26 @@ export function useBodyWeightEntries(): {
       setEntries(rows.map(mapBodyWeightEntry));
       setError(null);
     } catch (loadError) {
+      if (isMissingSourceColumnError(loadError)) {
+        try {
+          const legacyRows = db.getAllSync<{
+            id: string;
+            weight: number;
+            unit: string;
+            logged_at: number;
+            notes: string | null;
+          }>(LIST_BODY_WEIGHT_ENTRIES_LEGACY_SQL);
+          setEntries(mapLegacyBodyWeightRows(legacyRows));
+          setError(null);
+          return;
+        } catch (legacyLoadError) {
+          console.error(
+            '[HealthTracking] Failed to load legacy body-weight entries:',
+            legacyLoadError,
+          );
+        }
+      }
+
       console.error(
         '[HealthTracking] Failed to load body-weight entries:',
         loadError,

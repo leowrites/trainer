@@ -168,4 +168,43 @@ describe('useBodyWeightEntries', () => {
 
     consoleErrorSpy.mockRestore();
   });
+
+  it('falls back to legacy body-weight rows when source metadata is missing', () => {
+    const db = createSeededDb();
+    db.getAllSync
+      .mockImplementationOnce(() => {
+        throw new Error('no such column: source');
+      })
+      .mockImplementationOnce(() => [
+        {
+          id: 'weight-1',
+          weight: 72.2,
+          unit: 'kg',
+          logged_at: 1710599400000,
+          notes: null,
+        },
+      ]);
+
+    const { result } = renderHook(() => useBodyWeightEntries(), {
+      wrapper: createDatabaseWrapper(db),
+    });
+
+    expect(db.getAllSync).toHaveBeenNthCalledWith(
+      1,
+      LIST_BODY_WEIGHT_ENTRIES_SQL,
+    );
+    expect(result.current.entries).toEqual([
+      {
+        id: 'weight-1',
+        weight: 72.2,
+        unit: 'kg',
+        loggedAt: 1710599400000,
+        notes: null,
+        source: 'manual',
+        sourceRecordId: null,
+        sourceApp: null,
+        importedAt: null,
+      },
+    ]);
+  });
 });

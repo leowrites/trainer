@@ -262,4 +262,48 @@ describe('prepareDatabase', () => {
       expect.arrayContaining(['apple_health', 'idle']),
     );
   });
+
+  it('repairs Apple Health columns when schema version is already current but the table is stale', () => {
+    const db = createMigrationDbMock({
+      version: SCHEMA_VERSION,
+      tableNames: ['body_weight_entries', 'daily_step_entries', 'health_sync_state'],
+      columnsByTable: {
+        workout_sessions: ['schedule_id', 'snapshot_name'],
+        workout_sets: [
+          'target_sets',
+          'target_reps',
+          'target_reps_min',
+          'target_reps_max',
+          'actual_rir',
+          'set_role',
+        ],
+        exercises: [
+          'how_to',
+          'equipment',
+          'is_deleted',
+          'strength_estimation_mode',
+        ],
+        routines: ['is_deleted'],
+        schedules: ['is_deleted'],
+        routine_exercises: ['rest_seconds', 'progression_policy', 'target_rir'],
+        routine_exercise_sets: [
+          'target_reps_min',
+          'target_reps_max',
+          'set_role',
+        ],
+        workout_session_exercises: ['progression_policy', 'target_rir'],
+        body_weight_entries: ['unit', 'logged_at', 'notes'],
+      },
+    });
+
+    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+
+    expect(finalVersion).toBe(SCHEMA_VERSION);
+    expect(db.execSync).toHaveBeenCalledWith(
+      "ALTER TABLE body_weight_entries ADD COLUMN source TEXT NOT NULL DEFAULT 'manual';",
+    );
+    expect(db.execSync).toHaveBeenCalledWith(
+      'ALTER TABLE body_weight_entries ADD COLUMN source_record_id TEXT;',
+    );
+  });
 });
