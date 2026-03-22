@@ -29,6 +29,7 @@ export function WorkoutSetRow({
   onDelete,
   onUpdateReps,
   onUpdateWeight,
+  onUpdateActualRir,
   onToggleLogged,
 }: {
   exerciseName: string;
@@ -37,11 +38,15 @@ export function WorkoutSetRow({
   onDelete: () => void;
   onUpdateReps: (reps: number) => void;
   onUpdateWeight: (weight: number) => void;
+  onUpdateActualRir?: (actualRir: number | null) => void;
   onToggleLogged: (isCompleted: boolean) => void;
 }): React.JSX.Element {
   const { tokens } = useTheme();
   const [repsText, setRepsText] = useState(String(setItem.reps));
   const [weightText, setWeightText] = useState(String(setItem.weight));
+  const [actualRirText, setActualRirText] = useState(
+    setItem.actualRir === null ? '' : String(setItem.actualRir),
+  );
   const translateX = React.useRef(new Animated.Value(0)).current;
   const completionScale = React.useRef(new Animated.Value(1)).current;
   const offsetRef = React.useRef(0);
@@ -57,6 +62,12 @@ export function WorkoutSetRow({
   useEffect(() => {
     setWeightText(String(setItem.weight));
   }, [setItem.weight]);
+
+  useEffect(() => {
+    setActualRirText(
+      setItem.actualRir === null ? '' : String(setItem.actualRir),
+    );
+  }, [setItem.actualRir]);
 
   useEffect(() => {
     if (!hasHandledCompletionChange.current) {
@@ -90,6 +101,18 @@ export function WorkoutSetRow({
   const handlePersistWeight = useCallback((): void => {
     onUpdateWeight(parseDecimalNumber(weightText));
   }, [onUpdateWeight, weightText]);
+
+  const handlePersistActualRir = useCallback((): void => {
+    const trimmedValue = actualRirText.trim();
+
+    if (trimmedValue === '') {
+      onUpdateActualRir?.(null);
+      return;
+    }
+
+    const parsedValue = parseDecimalNumber(trimmedValue);
+    onUpdateActualRir?.(Number.isFinite(parsedValue) ? parsedValue : null);
+  }, [actualRirText, onUpdateActualRir]);
 
   const closeSwipe = useCallback((): void => {
     offsetRef.current = 0;
@@ -212,6 +235,18 @@ export function WorkoutSetRow({
           keyboardType="decimal-pad"
           returnKeyType="done"
           accessibilityLabel={`${exerciseName} set ${index + 1} weight`}
+          placeholderTextColor={tokens.textMuted}
+        />
+        <TextInput
+          className="h-11 flex-1 rounded-[12px]  bg-surface-card px-3 py-0 font-body text-sm text-foreground"
+          value={actualRirText}
+          onChangeText={setActualRirText}
+          onEndEditing={handlePersistActualRir}
+          onSubmitEditing={handlePersistActualRir}
+          keyboardType="decimal-pad"
+          returnKeyType="done"
+          accessibilityLabel={`${exerciseName} set ${index + 1} RIR`}
+          placeholder="RIR"
           placeholderTextColor={tokens.textMuted}
         />
         <InteractivePressable

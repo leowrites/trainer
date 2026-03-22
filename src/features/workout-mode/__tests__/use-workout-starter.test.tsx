@@ -205,6 +205,9 @@ describe('useWorkoutStarter', () => {
       0,
       2,
       8,
+      8,
+      8,
+      'work',
     ]);
     expect(setInsertCalls[1][1]).toEqual([
       expect.any(String),
@@ -216,6 +219,9 @@ describe('useWorkoutStarter', () => {
       0,
       2,
       8,
+      8,
+      8,
+      'work',
     ]);
     expect(setInsertCalls[2][1]).toEqual([
       expect.any(String),
@@ -227,6 +233,9 @@ describe('useWorkoutStarter', () => {
       0,
       1,
       10,
+      10,
+      10,
+      'work',
     ]);
     expect(db.runSync).not.toHaveBeenCalledWith(
       'UPDATE schedules SET current_position = ? WHERE id = ?',

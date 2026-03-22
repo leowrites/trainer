@@ -110,6 +110,8 @@ describe('WorkoutSummaryScreen', () => {
     expect(screen.getByText('Pull A logged.')).toBeTruthy();
     expect(screen.getByText('3 week streak')).toBeTruthy();
     expect(screen.getByText('Session Volume')).toBeTruthy();
+    expect(screen.getByText('Watchouts')).toBeTruthy();
+    expect(screen.getByText('No watchouts from this session.')).toBeTruthy();
     expect(screen.getByText('Upper Split')).toBeTruthy();
     expect(screen.getByText('Row')).toBeTruthy();
     expect(screen.getByText('Back to home')).toBeTruthy();
@@ -118,6 +120,77 @@ describe('WorkoutSummaryScreen', () => {
 
     expect(goBack).toHaveBeenCalledTimes(1);
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('renders watchout cards when negative signals are present', () => {
+    mockUseWorkoutSummary.mockReturnValue({
+      isLoading: false,
+      saveFeedback: jest.fn(),
+      summary: {
+        unit: 'kg',
+        completedAtLabel: '8:42 AM',
+        dateLabel: 'Mar 21, 2026',
+        durationLabel: '42m',
+        volumeLabel: '5,240 kg',
+        streakLabel: '3 week streak',
+        weeklyProgressLabel: '2 workouts completed this week',
+        effortLevel: null,
+        fatigueLevel: null,
+        scheduleContext: null,
+        recordBadges: [],
+        negativeSignals: [
+          {
+            id: 'miss-exercise-1',
+            label: 'Target Miss',
+            detail:
+              'Bench Press missed its programmed rep floor on eligible work sets.',
+            tone: 'error',
+            exerciseId: 'exercise-1',
+            exerciseName: 'Bench Press',
+          },
+        ],
+        session: {
+          id: 'session-1',
+          routineId: 'routine-1',
+          routineName: 'Push A',
+          startTime: 1,
+          endTime: 2,
+          durationMinutes: 42,
+          totalSets: 6,
+          totalCompletedSets: 6,
+          totalReps: 48,
+          totalVolume: 3000,
+          exerciseCount: 2,
+          exercises: [],
+        },
+      },
+    });
+
+    render(
+      <WorkoutSummaryScreen
+        navigation={
+          {
+            canGoBack: jest.fn(() => true),
+            goBack: jest.fn(),
+            navigate: jest.fn(),
+            setOptions: jest.fn(),
+          } as never
+        }
+        route={{
+          key: 'WorkoutSummary-key',
+          name: 'WorkoutSummary',
+          params: { sessionId: 'session-1' },
+        }}
+      />,
+    );
+
+    expect(screen.getByText('Watchouts')).toBeTruthy();
+    expect(screen.getByText('Target Miss')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Bench Press missed its programmed rep floor on eligible work sets.',
+      ),
+    ).toBeTruthy();
   });
 
   it('saves effort and fatigue selections immediately', () => {

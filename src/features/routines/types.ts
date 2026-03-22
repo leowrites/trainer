@@ -1,3 +1,5 @@
+import type { ProgressionPolicy, RoutineSetRole } from './template-types';
+
 export type Section = 'schedules' | 'routines' | 'exercises';
 
 export type RoutinesStackParamList = {
@@ -11,12 +13,16 @@ export type RoutinesStackParamList = {
 
 export interface RoutineSetDraft {
   id: string;
-  targetReps: string;
+  targetRepsMin: string;
+  targetRepsMax: string;
   plannedWeight: string;
+  setRole: RoutineSetRole;
 }
 
 export interface RoutineExerciseDraft {
   exerciseId: string;
   restSeconds: string;
+  progressionPolicy: ProgressionPolicy;
+  targetRir: string;
   sets: RoutineSetDraft[];
 }

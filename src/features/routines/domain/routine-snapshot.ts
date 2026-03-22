@@ -9,19 +9,28 @@
  * changing target sets/reps) will NOT mutate the in-progress session.
  */
 
+import type { ProgressionPolicy, RoutineSetRole } from '../template-types';
+
 export interface RoutineExerciseData {
   exerciseId: string;
   position: number;
   restSeconds?: number | null;
+  progressionPolicy?: ProgressionPolicy;
+  targetRir?: number | null;
   sets?: RoutineSetData[];
   targetSets?: number;
   targetReps?: number;
+  targetRepsMin?: number;
+  targetRepsMax?: number;
 }
 
 export interface RoutineSetData {
   position: number;
-  targetReps: number;
+  targetReps?: number;
+  targetRepsMin: number;
+  targetRepsMax: number;
   plannedWeight: number | null;
+  setRole?: RoutineSetRole;
 }
 
 export interface WorkoutSnapshotInput {
@@ -54,12 +63,23 @@ export function buildRoutineSnapshot(
       .map((exercise) => ({
         ...exercise,
         restSeconds: exercise.restSeconds ?? null,
+        progressionPolicy: exercise.progressionPolicy ?? 'double_progression',
+        targetRir: exercise.targetRir ?? null,
         sets: [
           ...(exercise.sets ??
             Array.from({ length: exercise.targetSets ?? 0 }, (_, index) => ({
               position: index,
-              targetReps: exercise.targetReps ?? 0,
+              targetReps: exercise.targetReps ?? exercise.targetRepsMin ?? 0,
+              targetRepsMin: exercise.targetRepsMin ?? 0,
+              targetRepsMax:
+                exercise.targetRepsMax ?? exercise.targetRepsMin ?? 0,
               plannedWeight: null,
+              setRole:
+                exercise.progressionPolicy === 'top_set_backoff'
+                  ? index === 0
+                    ? 'top_set'
+                    : 'backoff'
+                  : 'work',
             }))),
         ]
           .sort((a, b) => a.position - b.position)

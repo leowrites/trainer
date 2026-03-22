@@ -142,7 +142,7 @@ export function WorkoutSummaryScreen({
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: insets.top + 56,
+          paddingTop: insets.top,
           paddingBottom: insets.bottom + 32,
           gap: 16,
         }}
@@ -229,6 +229,64 @@ export function WorkoutSummaryScreen({
             </Surface>
           )}
         </View>
+
+        <View className="gap-3">
+          <Heading className="text-2xl">Watchouts</Heading>
+          {(summary.negativeSignals?.length ?? 0) > 0 ? (
+            <View className="flex-row flex-wrap gap-3">
+              {summary.negativeSignals?.map((badge) => (
+                <WorkoutRecordBadgeCard key={badge.id} badge={badge} />
+              ))}
+            </View>
+          ) : (
+            <Surface className="rounded-3xl bg-surface-elevated px-5 py-5">
+              <Body className="font-medium">
+                No watchouts from this session.
+              </Body>
+              <Caption className="mt-2">
+                Misses, overshot effort, fatigue flags, stalls, and plateaus
+                will show up here when the intelligence engine detects them.
+              </Caption>
+            </Surface>
+          )}
+        </View>
+
+        {(summary.prescriptions?.length ?? 0) > 0 ? (
+          <View className="gap-3">
+            <Heading className="text-2xl">Next Session</Heading>
+            {summary.prescriptions?.map((prescription) => (
+              <Surface
+                key={prescription.exerciseId}
+                className="rounded-3xl bg-surface-elevated px-5 py-5"
+              >
+                <Body className="font-medium">{prescription.exerciseName}</Body>
+                <Caption className="mt-2">{prescription.reason}</Caption>
+                <Caption className="mt-2">
+                  {formatVolume(prescription.currentWeight, summary.unit)} to{' '}
+                  {formatVolume(prescription.recommendedWeight, summary.unit)}
+                </Caption>
+              </Surface>
+            ))}
+          </View>
+        ) : null}
+
+        {(summary.goalDeltas?.length ?? 0) > 0 ? (
+          <View className="gap-3">
+            <Heading className="text-2xl">Goal Progress</Heading>
+            {summary.goalDeltas?.map((goalDelta) => (
+              <Surface
+                key={goalDelta.id}
+                className="rounded-3xl bg-surface-elevated px-5 py-5"
+              >
+                <Body className="font-medium">{goalDelta.title}</Body>
+                <Caption className="mt-2">{goalDelta.progressText}</Caption>
+                <Caption className="mt-2">
+                  Confidence: {goalDelta.quality.level}
+                </Caption>
+              </Surface>
+            ))}
+          </View>
+        ) : null}
 
         {summary.scheduleContext ? (
           <Surface className="rounded-3xl bg-surface-card px-5 py-5">

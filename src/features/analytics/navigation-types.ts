@@ -7,6 +7,7 @@ import type { HistorySession } from './types';
  */
 export type HistoryStackParamList = {
   HistoryOverview: undefined;
+  Goals: undefined;
   HistorySessionDetail: {
     sessionId: string;
     session?: HistorySession;

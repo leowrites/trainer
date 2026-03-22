@@ -12,6 +12,7 @@ import {
   getNextWorkoutSessionExercisePosition,
   loadActiveWorkoutSession,
   updateWorkoutSessionExerciseRest,
+  updateWorkoutSetActualRir,
   updateWorkoutSetCompletion,
   updateWorkoutSetReps,
   updateWorkoutSetWeight,
@@ -34,6 +35,14 @@ function normalizeWeight(value: number): number {
   return Math.max(0, value);
 }
 
+function normalizeOptionalRir(value: number | null): number | null {
+  if (value === null || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.max(0, Math.round(value * 10) / 10);
+}
+
 export function useActiveWorkout(): {
   activeSession: ActiveWorkoutSession | null;
   addExercise: (exerciseId: string, exerciseName: string) => void;
@@ -43,6 +52,7 @@ export function useActiveWorkout(): {
   updateExerciseRestSeconds?: (exerciseId: string, restSeconds: number) => void;
   updateReps: (setId: string, reps: number) => void;
   updateWeight: (setId: string, weight: number) => void;
+  updateActualRir?: (setId: string, actualRir: number | null) => void;
   toggleSetLogged: (setId: string, isCompleted: boolean) => void;
   completeWorkout: () => string | null;
   deleteWorkout: () => boolean;
@@ -102,6 +112,8 @@ export function useActiveWorkout(): {
           0,
           null,
           null,
+          null,
+          'optional',
         );
         createWorkoutSessionExerciseRecord(
           db,
@@ -109,6 +121,8 @@ export function useActiveWorkout(): {
           exerciseId,
           nextExercisePosition,
           DEFAULT_EXERCISE_TIMER_SECONDS,
+          'double_progression',
+          null,
         );
       });
 
@@ -120,8 +134,12 @@ export function useActiveWorkout(): {
         exerciseId,
         exerciseName,
         restSeconds: DEFAULT_EXERCISE_TIMER_SECONDS,
+        progressionPolicy: 'double_progression',
+        targetRir: null,
         targetSets: null,
         targetReps: null,
+        targetRepsMin: null,
+        targetRepsMax: null,
         sets: [newSet],
       });
     },
@@ -179,7 +197,19 @@ export function useActiveWorkout(): {
         previousSet?.reps ?? 0,
         previousSet?.weight ?? 0,
         exercise?.targetSets ?? previousSet?.targetSets ?? null,
-        exercise?.targetReps ?? previousSet?.targetReps ?? null,
+        exercise?.targetRepsMin ??
+          exercise?.targetReps ??
+          previousSet?.targetRepsMin ??
+          previousSet?.targetReps ??
+          null,
+        exercise?.targetRepsMax ??
+          exercise?.targetRepsMin ??
+          exercise?.targetReps ??
+          previousSet?.targetRepsMax ??
+          previousSet?.targetRepsMin ??
+          previousSet?.targetReps ??
+          null,
+        'optional',
       );
 
       addSetToStore(exerciseId, newSet);
@@ -219,6 +249,15 @@ export function useActiveWorkout(): {
     [db, updateSet],
   );
 
+  const updateActualRir = useCallback(
+    (setId: string, actualRir: number | null): void => {
+      const normalizedActualRir = normalizeOptionalRir(actualRir);
+      updateWorkoutSetActualRir(db, setId, normalizedActualRir);
+      updateSet(setId, { actualRir: normalizedActualRir });
+    },
+    [db, updateSet],
+  );
+
   const completeWorkout = useCallback((): string | null => {
     if (!activeSessionId) {
       return null;
@@ -249,6 +288,7 @@ export function useActiveWorkout(): {
     updateExerciseRestSeconds,
     updateReps,
     updateWeight,
+    updateActualRir,
     toggleSetLogged,
     completeWorkout,
     deleteWorkout,

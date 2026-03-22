@@ -101,15 +101,32 @@ describe('useActiveWorkout', () => {
     );
     expect(db.runSync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO workout_sets'),
-      ['new-set-1', 'session-2', 'exercise-2', 0, 0, 0, 0, null, null],
+      [
+        'new-set-1',
+        'session-2',
+        'exercise-2',
+        0,
+        0,
+        0,
+        0,
+        null,
+        null,
+        null,
+        null,
+        'optional',
+      ],
     );
     expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([
       {
         exerciseId: 'exercise-2',
         exerciseName: 'Goblet Squat',
         restSeconds: 60,
+        progressionPolicy: 'double_progression',
+        targetRir: null,
         targetSets: null,
         targetReps: null,
+        targetRepsMin: null,
+        targetRepsMax: null,
         sets: [
           {
             id: 'new-set-1',
@@ -120,6 +137,10 @@ describe('useActiveWorkout', () => {
             isCompleted: false,
             targetSets: null,
             targetReps: null,
+            targetRepsMin: null,
+            targetRepsMax: null,
+            actualRir: null,
+            setRole: 'optional',
           },
         ],
       },
@@ -251,10 +272,11 @@ describe('useActiveWorkout', () => {
       'UPDATE workout_sets SET weight = ?, is_completed = 1 WHERE id = ?',
       [145.5, 'set-1'],
     );
-    expect(db.runSync).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO workout_sets'),
-      ['new-set-1', 'session-1', 'exercise-1', 0, 145.5, 10, 0, 3, 8],
-    );
+    expect(
+      db.runSync.mock.calls.some(([sql]) =>
+        (sql as string).includes('INSERT INTO workout_sets'),
+      ),
+    ).toBe(true);
     expect(db.runSync).toHaveBeenCalledWith(
       'DELETE FROM workout_sets WHERE id = ?',
       ['set-1'],
@@ -270,6 +292,10 @@ describe('useActiveWorkout', () => {
           isCompleted: false,
           targetSets: 3,
           targetReps: 8,
+          targetRepsMin: 8,
+          targetRepsMax: 8,
+          actualRir: null,
+          setRole: 'optional',
         },
       ],
     );

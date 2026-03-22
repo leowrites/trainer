@@ -139,6 +139,8 @@ function buildRoutineExerciseInputs(
         )
         .map((setRow) => ({
           targetReps: setRow.reps,
+          targetRepsMin: setRow.reps,
+          targetRepsMax: setRow.reps,
           plannedWeight: setRow.weight,
         })),
     }))

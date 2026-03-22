@@ -1,6 +1,10 @@
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
 
+import {
+  useSessionIntelligence,
+  useTrainingGoals,
+} from '@features/intelligence';
 import { Badge, Body, Caption, Card, Label } from '@shared/components';
 import { recommendProgressions } from '../domain/progressive-overload';
 import {
@@ -38,12 +42,18 @@ function buildRecommendations(
     session.exercises.map((exercise: HistoryExerciseSummary) => ({
       exerciseId: exercise.exerciseId,
       exerciseName: exercise.exerciseName,
+      progressionPolicy: exercise.progressionPolicy,
+      targetRir: exercise.targetRir,
       targetSets: exercise.targetSets,
       targetReps: exercise.targetReps,
+      targetRepsMin: exercise.targetRepsMin,
+      targetRepsMax: exercise.targetRepsMax,
       sets: exercise.sets.map((set) => ({
         reps: set.reps,
         weight: set.weight,
         isCompleted: set.isCompleted,
+        actualRir: set.actualRir,
+        setRole: set.setRole,
       })),
     })),
     config,
@@ -78,7 +88,11 @@ function RecommendationStrip({
                   </Body>
                   <Caption className="mt-1">
                     All {recommendation.completedSetCount} sets hit{' '}
-                    {recommendation.targetReps} reps.
+                    {recommendation.targetRepsMin}
+                    {recommendation.targetRepsMax > recommendation.targetRepsMin
+                      ? `-${recommendation.targetRepsMax}`
+                      : ''}{' '}
+                    reps.
                   </Caption>
                 </View>
                 <Badge variant="accent">
@@ -86,10 +100,7 @@ function RecommendationStrip({
                   {config.unit}
                 </Badge>
               </View>
-              <Caption className="mt-2">
-                {formatWeight(recommendation.currentWeight, config.unit)} to{' '}
-                {formatWeight(recommendation.recommendedWeight, config.unit)}
-              </Caption>
+              <Caption className="mt-2">{recommendation.reason}</Caption>
             </Card>
           ),
         )}
@@ -105,9 +116,16 @@ export function HistorySessionDetailContent({
   session: HistorySession;
   progressionConfig: ProgressiveOverloadConfig;
 }): React.JSX.Element {
+  const { goalViewModels } = useTrainingGoals([session]);
   const recommendations = useMemo(
     () => buildRecommendations(session, progressionConfig),
     [session, progressionConfig],
+  );
+  const intelligence = useSessionIntelligence(
+    session,
+    [session],
+    goalViewModels,
+    progressionConfig.unit,
   );
 
   return (
@@ -152,6 +170,36 @@ export function HistorySessionDetailContent({
         recommendations={recommendations}
         config={progressionConfig}
       />
+
+      {intelligence.negativeSignals.length > 0 ? (
+        <View className="mt-4 gap-2">
+          <Label>Classification</Label>
+          {intelligence.negativeSignals.map((badge) => (
+            <Card
+              key={badge.id}
+              className="rounded-xl border-surface-border bg-surface-elevated"
+            >
+              <Badge variant={badge.tone}>{badge.label}</Badge>
+              <Caption className="mt-2">{badge.detail}</Caption>
+            </Card>
+          ))}
+        </View>
+      ) : null}
+
+      {intelligence.prescriptions.length > 0 ? (
+        <View className="mt-4 gap-2">
+          <Label>Conservative Next Step</Label>
+          {intelligence.prescriptions.map((prescription) => (
+            <Card
+              key={prescription.exerciseId}
+              className="rounded-xl border-surface-border bg-surface-elevated"
+            >
+              <Body className="font-medium">{prescription.exerciseName}</Body>
+              <Caption className="mt-2">{prescription.reason}</Caption>
+            </Card>
+          ))}
+        </View>
+      ) : null}
     </>
   );
 }

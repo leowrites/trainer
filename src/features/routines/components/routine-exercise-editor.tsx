@@ -2,9 +2,11 @@ import React from 'react';
 import { View } from 'react-native';
 
 import {
+  Badge,
   Body,
   ExerciseCard,
   InteractivePressable,
+  Input,
   Label,
 } from '@shared/components';
 import {
@@ -24,8 +26,11 @@ export function RoutineExerciseEditor({
   onOpenRestTimerOptions,
   onAddSet,
   onRemoveSet,
-  onChangeSetTargetReps,
+  onChangeSetTargetRepsMin,
+  onChangeSetTargetRepsMax,
   onChangeSetPlannedWeight,
+  onChangeProgressionPolicy,
+  onChangeTargetRir,
 }: {
   draft: RoutineExerciseDraft;
   exerciseName: string;
@@ -36,8 +41,13 @@ export function RoutineExerciseEditor({
   onOpenRestTimerOptions: () => void;
   onAddSet: () => void;
   onRemoveSet: (setId: string) => void;
-  onChangeSetTargetReps: (setId: string, value: string) => void;
+  onChangeSetTargetRepsMin: (setId: string, value: string) => void;
+  onChangeSetTargetRepsMax: (setId: string, value: string) => void;
   onChangeSetPlannedWeight: (setId: string, value: string) => void;
+  onChangeProgressionPolicy: (
+    value: RoutineExerciseDraft['progressionPolicy'],
+  ) => void;
+  onChangeTargetRir: (value: string) => void;
 }): React.JSX.Element {
   const parsedRestSeconds = Number.parseInt(draft.restSeconds, 10);
   const restTimerDisplayLabel = `Timer ${formatTimerDuration(
@@ -79,9 +89,61 @@ export function RoutineExerciseEditor({
             },
           ]}
         >
+          <View className="mb-3 flex-row flex-wrap gap-2 px-1">
+            <InteractivePressable
+              className={`rounded-[12px] px-3 py-2 ${
+                draft.progressionPolicy === 'double_progression'
+                  ? 'bg-accent'
+                  : 'bg-surface-elevated'
+              }`}
+              accessibilityRole="button"
+              accessibilityLabel={`${exerciseName} double progression policy`}
+              onPress={() => onChangeProgressionPolicy('double_progression')}
+            >
+              <Body
+                className={`text-sm font-semibold ${
+                  draft.progressionPolicy === 'double_progression'
+                    ? 'text-accent-foreground'
+                    : 'text-foreground'
+                }`}
+              >
+                Double progression
+              </Body>
+            </InteractivePressable>
+            <InteractivePressable
+              className={`rounded-[12px] px-3 py-2 ${
+                draft.progressionPolicy === 'top_set_backoff'
+                  ? 'bg-accent'
+                  : 'bg-surface-elevated'
+              }`}
+              accessibilityRole="button"
+              accessibilityLabel={`${exerciseName} top set backoff policy`}
+              onPress={() => onChangeProgressionPolicy('top_set_backoff')}
+            >
+              <Body
+                className={`text-sm font-semibold ${
+                  draft.progressionPolicy === 'top_set_backoff'
+                    ? 'text-accent-foreground'
+                    : 'text-foreground'
+                }`}
+              >
+                Top set + backoff
+              </Body>
+            </InteractivePressable>
+            <View className="min-w-32 flex-1">
+              <Input
+                value={draft.targetRir}
+                onChangeText={onChangeTargetRir}
+                keyboardType="decimal-pad"
+                placeholder="Target RIR"
+                accessibilityLabel={`${exerciseName} target RIR`}
+              />
+            </View>
+          </View>
           <View className="flex-row items-center gap-2 px-1 pb-3 pt-1">
             <Label className="w-8 text-center text-xs">Set</Label>
-            <Label className="flex-1 text-xs">Reps</Label>
+            <Label className="flex-1 text-xs">Min</Label>
+            <Label className="flex-1 text-xs">Max</Label>
             <Label className="flex-1 text-xs">Weight</Label>
             <Label className="w-[58px] text-center text-xs">Drop</Label>
           </View>
@@ -91,8 +153,11 @@ export function RoutineExerciseEditor({
               draft={setEntry}
               exerciseName={exerciseName}
               setNumber={index + 1}
-              onChangeTargetReps={(value) =>
-                onChangeSetTargetReps(setEntry.id, value)
+              onChangeTargetRepsMin={(value) =>
+                onChangeSetTargetRepsMin(setEntry.id, value)
+              }
+              onChangeTargetRepsMax={(value) =>
+                onChangeSetTargetRepsMax(setEntry.id, value)
               }
               onChangePlannedWeight={(value) =>
                 onChangeSetPlannedWeight(setEntry.id, value)
@@ -100,6 +165,14 @@ export function RoutineExerciseEditor({
               onRemove={() => onRemoveSet(setEntry.id)}
             />
           ))}
+
+          <View className="mt-1 flex-row justify-end px-1">
+            <Badge variant="muted">
+              {draft.progressionPolicy === 'top_set_backoff'
+                ? 'Set roles auto-map to top set and backoff'
+                : 'Logged sets default to work sets'}
+            </Badge>
+          </View>
 
           <InteractivePressable
             accessibilityRole="button"

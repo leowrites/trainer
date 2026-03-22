@@ -21,7 +21,13 @@ import type {
 
 interface WorkoutSessionExerciseRow extends Pick<
   WorkoutSessionExercise,
-  'id' | 'session_id' | 'exercise_id' | 'position' | 'rest_seconds'
+  | 'id'
+  | 'session_id'
+  | 'exercise_id'
+  | 'position'
+  | 'rest_seconds'
+  | 'progression_policy'
+  | 'target_rir'
 > {}
 
 function buildFallbackSessionExerciseRows(
@@ -35,6 +41,8 @@ function buildFallbackSessionExerciseRows(
       exercise_id: exerciseId,
       position,
       rest_seconds: null,
+      progression_policy: 'double_progression',
+      target_rir: null,
     }),
   );
 }
@@ -71,14 +79,14 @@ function loadExerciseRows(
   setRows: WorkoutSetRow[];
 } {
   const sessionExerciseRows = db.getAllSync<WorkoutSessionExerciseRow>(
-    `SELECT id, session_id, exercise_id, position, rest_seconds
+    `SELECT id, session_id, exercise_id, position, rest_seconds, progression_policy, target_rir
      FROM workout_session_exercises
      WHERE session_id = ?
      ORDER BY position ASC`,
     [sessionId],
   );
   const setRows = db.getAllSync<WorkoutSetRow>(
-    `SELECT ws.id, ws.session_id, ws.exercise_id, ws.position, ws.weight, ws.reps, ws.is_completed, ws.target_sets, ws.target_reps
+    `SELECT ws.id, ws.session_id, ws.exercise_id, ws.position, ws.weight, ws.reps, ws.is_completed, ws.target_sets, ws.target_reps, ws.target_reps_min, ws.target_reps_max, ws.actual_rir, ws.set_role
      FROM workout_sets ws
      WHERE ws.session_id = ?
      ORDER BY COALESCE(ws.position, 0) ASC, ws.rowid ASC`,
@@ -130,6 +138,11 @@ function buildActiveWorkoutSession(
       isCompleted: row.is_completed === 1,
       targetSets: row.target_sets,
       targetReps: row.target_reps,
+      targetRepsMin: row.target_reps_min ?? row.target_reps,
+      targetRepsMax:
+        row.target_reps_max ?? row.target_reps_min ?? row.target_reps,
+      actualRir: row.actual_rir ?? null,
+      setRole: row.set_role ?? 'work',
     });
     setRowsByExerciseId.set(row.exercise_id, exerciseSets);
   }
@@ -141,8 +154,12 @@ function buildActiveWorkoutSession(
       exerciseId: row.exercise_id,
       exerciseName: exerciseNames.get(row.exercise_id) ?? 'Exercise',
       restSeconds: row.rest_seconds,
+      progressionPolicy: row.progression_policy ?? 'double_progression',
+      targetRir: row.target_rir ?? null,
       targetSets: exerciseSets[0]?.targetSets ?? null,
       targetReps: exerciseSets[0]?.targetReps ?? null,
+      targetRepsMin: exerciseSets[0]?.targetRepsMin ?? null,
+      targetRepsMax: exerciseSets[0]?.targetRepsMax ?? null,
       sets: exerciseSets,
     };
   });
@@ -238,6 +255,10 @@ export function createWorkoutSessionExerciseRecord(
   exerciseId: string,
   position: number,
   restSeconds: number | null,
+  progressionPolicy: NonNullable<
+    WorkoutSessionExerciseRow['progression_policy']
+  >,
+  targetRir: number | null,
 ): WorkoutSessionExerciseRow {
   const sessionExerciseId = generateId();
   db.runSync(
@@ -251,12 +272,26 @@ export function createWorkoutSessionExerciseRecord(
     [sessionExerciseId, sessionId, exerciseId, position, restSeconds],
   );
 
+  if (
+    (progressionPolicy ?? 'double_progression') !== 'double_progression' ||
+    targetRir !== null
+  ) {
+    db.runSync(
+      `UPDATE workout_session_exercises
+       SET progression_policy = ?, target_rir = ?
+       WHERE id = ?`,
+      [progressionPolicy ?? 'double_progression', targetRir, sessionExerciseId],
+    );
+  }
+
   return {
     id: sessionExerciseId,
     session_id: sessionId,
     exercise_id: exerciseId,
     position,
     rest_seconds: restSeconds,
+    progression_policy: progressionPolicy ?? 'double_progression',
+    target_rir: targetRir,
   };
 }
 
@@ -296,10 +331,13 @@ export function createWorkoutSetRecord(
   reps: number,
   weight: number,
   targetSets: number | null,
-  targetReps: number | null,
+  targetRepsMin: number | null,
+  targetRepsMax: number | null,
+  setRole: ActiveWorkoutSet['setRole'] = 'optional',
 ): ActiveWorkoutSet {
   const setId = generateId();
   const position = getNextWorkoutSetPosition(db, sessionId, exerciseId);
+  const targetReps = targetRepsMin;
   db.runSync(
     `INSERT INTO workout_sets (
       id,
@@ -310,8 +348,11 @@ export function createWorkoutSetRecord(
       reps,
       is_completed,
       target_sets,
-      target_reps
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      target_reps,
+      target_reps_min,
+      target_reps_max,
+      set_role
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       setId,
       sessionId,
@@ -322,6 +363,9 @@ export function createWorkoutSetRecord(
       0,
       targetSets,
       targetReps,
+      targetRepsMin,
+      targetRepsMax,
+      setRole,
     ],
   );
 
@@ -333,7 +377,11 @@ export function createWorkoutSetRecord(
     weight,
     isCompleted: false,
     targetSets,
-    targetReps,
+    targetReps: targetRepsMin,
+    targetRepsMin,
+    targetRepsMax,
+    actualRir: null,
+    setRole,
   };
 }
 
@@ -366,6 +414,17 @@ export function updateWorkoutSetCompletion(
 ): void {
   db.runSync('UPDATE workout_sets SET is_completed = ? WHERE id = ?', [
     isCompleted ? 1 : 0,
+    setId,
+  ]);
+}
+
+export function updateWorkoutSetActualRir(
+  db: SQLiteDatabase,
+  setId: string,
+  actualRir: number | null,
+): void {
+  db.runSync('UPDATE workout_sets SET actual_rir = ? WHERE id = ?', [
+    actualRir,
     setId,
   ]);
 }

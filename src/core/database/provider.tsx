@@ -61,3 +61,7 @@ export function useDatabase(): SQLiteDatabase {
   }
   return db;
 }
+
+export function useOptionalDatabase(): SQLiteDatabase | null {
+  return useContext(DatabaseContext);
+}

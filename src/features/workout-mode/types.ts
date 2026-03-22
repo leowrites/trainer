@@ -1,3 +1,4 @@
+import type { ProgressionPolicy, RoutineSetRole } from '@features/routines';
 import type {
   Exercise,
   WorkoutSession,
@@ -12,15 +13,23 @@ export interface ActiveWorkoutSet {
   weight: number;
   isCompleted: boolean;
   targetSets: number | null;
-  targetReps: number | null;
+  targetReps?: number | null;
+  targetRepsMin?: number | null;
+  targetRepsMax?: number | null;
+  actualRir?: number | null;
+  setRole?: RoutineSetRole;
 }
 
 export interface ActiveWorkoutExercise {
   exerciseId: string;
   exerciseName: string;
   restSeconds?: number | null;
+  progressionPolicy?: ProgressionPolicy;
+  targetRir?: number | null;
   targetSets: number | null;
-  targetReps: number | null;
+  targetReps?: number | null;
+  targetRepsMin?: number | null;
+  targetRepsMax?: number | null;
   sets: ActiveWorkoutSet[];
 }
 
@@ -54,6 +63,10 @@ export type WorkoutSetRow = Pick<
   | 'is_completed'
   | 'target_sets'
   | 'target_reps'
+  | 'target_reps_min'
+  | 'target_reps_max'
+  | 'actual_rir'
+  | 'set_role'
 >;
 
 export type ExerciseNameRow = Pick<Exercise, 'id' | 'name'>;

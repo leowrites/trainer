@@ -42,7 +42,9 @@ interface WorkoutActions {
   /** Update fields for a single set in the active session. */
   updateSet: (
     setId: string,
-    changes: Partial<Pick<ActiveWorkoutSet, 'reps' | 'weight' | 'isCompleted'>>,
+    changes: Partial<
+      Pick<ActiveWorkoutSet, 'reps' | 'weight' | 'isCompleted' | 'actualRir'>
+    >,
   ) => void;
   /** Append a new set to an existing exercise block. */
   addSet: (exerciseId: string, newSet: ActiveWorkoutSet) => void;

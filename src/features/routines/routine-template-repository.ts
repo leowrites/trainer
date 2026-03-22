@@ -26,7 +26,7 @@ function buildTargetSummary(
 ): Pick<RoutineExercise, 'target_sets' | 'target_reps'> {
   return {
     target_sets: sets.length,
-    target_reps: sets[0]?.targetReps ?? 0,
+    target_reps: sets[0]?.targetRepsMin ?? 0,
   };
 }
 
@@ -43,8 +43,16 @@ function normalizeInputSets(
       : 1;
 
   return Array.from({ length: normalizedTargetSets }, () => ({
-    targetReps: exercise.targetReps ?? 1,
+    targetReps: exercise.targetReps ?? exercise.targetRepsMin ?? 1,
+    targetRepsMin: exercise.targetRepsMin ?? exercise.targetReps ?? 1,
+    targetRepsMax:
+      exercise.targetRepsMax ??
+      exercise.targetRepsMin ??
+      exercise.targetReps ??
+      1,
     plannedWeight: null,
+    setRole:
+      exercise.progressionPolicy === 'top_set_backoff' ? 'backoff' : 'work',
   }));
 }
 
@@ -53,7 +61,7 @@ export function loadRoutineExerciseTemplates(
   routineId: string,
 ): RoutineExerciseTemplate[] {
   const exerciseRows = db.getAllSync<RoutineExercise>(
-    `SELECT id, routine_id, exercise_id, position, target_sets, target_reps, rest_seconds
+    `SELECT id, routine_id, exercise_id, position, target_sets, target_reps, rest_seconds, progression_policy, target_rir
      FROM routine_exercises
      WHERE routine_id = ?
      ORDER BY position ASC`,
@@ -65,7 +73,7 @@ export function loadRoutineExerciseTemplates(
   }
 
   const setRows = db.getAllSync<RoutineExerciseSet>(
-    `SELECT id, routine_exercise_id, position, target_reps, planned_weight
+    `SELECT id, routine_exercise_id, position, target_reps, planned_weight, target_reps_min, target_reps_max, set_role
      FROM routine_exercise_sets
      WHERE routine_exercise_id IN (${exerciseRows.map(() => '?').join(', ')})
      ORDER BY position ASC`,
@@ -80,7 +88,11 @@ export function loadRoutineExerciseTemplates(
       id: setRow.id,
       position: setRow.position,
       targetReps: setRow.target_reps,
+      targetRepsMin: setRow.target_reps_min ?? setRow.target_reps,
+      targetRepsMax:
+        setRow.target_reps_max ?? setRow.target_reps_min ?? setRow.target_reps,
       plannedWeight: setRow.planned_weight,
+      setRole: setRow.set_role ?? 'work',
     });
     setsByExerciseId.set(setRow.routine_exercise_id, sets);
   }
@@ -94,7 +106,15 @@ export function loadRoutineExerciseTemplates(
           id: `${exerciseRow.id}-legacy-${index}`,
           position: index,
           targetReps: exerciseRow.target_reps,
+          targetRepsMin: exerciseRow.target_reps,
+          targetRepsMax: exerciseRow.target_reps,
           plannedWeight: null,
+          setRole:
+            exerciseRow.progression_policy === 'top_set_backoff'
+              ? index === 0
+                ? 'top_set'
+                : 'backoff'
+              : 'work',
         }),
       );
 
@@ -103,8 +123,12 @@ export function loadRoutineExerciseTemplates(
       exerciseId: exerciseRow.exercise_id,
       position: exerciseRow.position,
       restSeconds: exerciseRow.rest_seconds ?? null,
+      progressionPolicy: exerciseRow.progression_policy ?? 'double_progression',
+      targetRir: exerciseRow.target_rir ?? null,
       targetSets: sets.length,
-      targetReps: sets[0]?.targetReps ?? null,
+      targetReps: sets[0]?.targetRepsMin ?? null,
+      targetRepsMin: sets[0]?.targetRepsMin ?? null,
+      targetRepsMax: sets[0]?.targetRepsMax ?? null,
       sets,
     };
   });
@@ -128,8 +152,10 @@ export function insertRoutineExerciseTemplates(
         position,
         target_sets,
         target_reps,
-        rest_seconds
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        rest_seconds,
+        progression_policy,
+        target_rir
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         routineExerciseId,
         routineId,
@@ -138,6 +164,8 @@ export function insertRoutineExerciseTemplates(
         targetSummary.target_sets,
         targetSummary.target_reps,
         exercise.restSeconds ?? null,
+        exercise.progressionPolicy ?? 'double_progression',
+        exercise.targetRir ?? null,
       ],
     );
 
@@ -148,14 +176,25 @@ export function insertRoutineExerciseTemplates(
           routine_exercise_id,
           position,
           target_reps,
-          planned_weight
-        ) VALUES (?, ?, ?, ?, ?)`,
+          planned_weight,
+          target_reps_min,
+          target_reps_max,
+          set_role
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           generateId(),
           routineExerciseId,
           setPosition,
-          setEntry.targetReps,
+          setEntry.targetRepsMin,
           setEntry.plannedWeight,
+          setEntry.targetRepsMin,
+          setEntry.targetRepsMax,
+          setEntry.setRole ??
+            (exercise.progressionPolicy === 'top_set_backoff'
+              ? setPosition === 0
+                ? 'top_set'
+                : 'backoff'
+              : 'work'),
         ],
       );
     });

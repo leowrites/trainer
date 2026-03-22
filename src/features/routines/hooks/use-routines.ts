@@ -55,7 +55,7 @@ export function useRoutines(): {
   const getRoutineExercises = useCallback(
     (routineId: string): RoutineExercise[] => {
       return db.getAllSync<RoutineExercise>(
-        `SELECT id, routine_id, exercise_id, position, target_sets, target_reps, rest_seconds
+        `SELECT id, routine_id, exercise_id, position, target_sets, target_reps, rest_seconds, progression_policy, target_rir
          FROM routine_exercises
          WHERE routine_id = ?
          ORDER BY position ASC`,
