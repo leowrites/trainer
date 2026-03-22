@@ -44,6 +44,34 @@ function isEligibleWorkSet(
   return setRole !== 'warmup' && setRole !== 'optional';
 }
 
+function resolveSetMinimumTarget(
+  setItem: HistoryExerciseSummary['sets'][number],
+  exercise: HistoryExerciseSummary,
+): number {
+  return (
+    setItem.targetRepsMin ??
+    setItem.targetReps ??
+    exercise.targetRepsMin ??
+    exercise.targetReps ??
+    0
+  );
+}
+
+function resolveSetTopTarget(
+  setItem: HistoryExerciseSummary['sets'][number],
+  exercise: HistoryExerciseSummary,
+): number {
+  return (
+    setItem.targetRepsMax ??
+    setItem.targetRepsMin ??
+    setItem.targetReps ??
+    exercise.targetRepsMax ??
+    exercise.targetRepsMin ??
+    exercise.targetReps ??
+    0
+  );
+}
+
 function buildExerciseExposure(
   session: HistorySession,
   exercise: HistoryExerciseSummary,
@@ -80,8 +108,7 @@ function buildExerciseExposure(
     .filter((value): value is number => value !== null);
   const targetCompletionRatios = eligibleSets
     .map((setItem) => {
-      const targetReps =
-        exercise.targetRepsMax ?? exercise.targetRepsMin ?? exercise.targetReps;
+      const targetReps = resolveSetTopTarget(setItem, exercise);
 
       if (!targetReps || targetReps <= 0) {
         return null;
@@ -127,26 +154,23 @@ function buildExerciseExposure(
     bestEstimatedOneRepMax,
     allTopRangeHits:
       eligibleSets.length > 0 &&
-      eligibleSets.every(
-        (setItem) =>
-          (exercise.targetRepsMax ?? exercise.targetRepsMin ?? 0) > 0 &&
-          setItem.reps >=
-            (exercise.targetRepsMax ?? exercise.targetRepsMin ?? 0),
-      ),
+      eligibleSets.every((setItem) => {
+        const topTarget = resolveSetTopTarget(setItem, exercise);
+        return topTarget > 0 && setItem.reps >= topTarget;
+      }),
     targetHit:
       eligibleSets.length > 0 &&
       eligibleSets.every((setItem) => {
-        const minimumTarget =
-          exercise.targetRepsMin ?? exercise.targetReps ?? 0;
+        const minimumTarget = resolveSetMinimumTarget(setItem, exercise);
 
         return minimumTarget <= 0 || setItem.reps >= minimumTarget;
       }),
     anyMajorMiss: eligibleSets.some((setItem) => {
-      const minimumTarget = exercise.targetRepsMin ?? 0;
+      const minimumTarget = resolveSetMinimumTarget(setItem, exercise);
       return minimumTarget > 0 && setItem.reps <= minimumTarget - 3;
     }),
     workSetMissCount: eligibleSets.filter((setItem) => {
-      const minimumTarget = exercise.targetRepsMin ?? 0;
+      const minimumTarget = resolveSetMinimumTarget(setItem, exercise);
       return minimumTarget > 0 && setItem.reps < minimumTarget;
     }).length,
     averageActualRir: calculateAverage(actualRirs),

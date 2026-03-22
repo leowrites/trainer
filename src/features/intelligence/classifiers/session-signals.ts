@@ -25,6 +25,18 @@ import type {
   IntelligenceBadge,
 } from '../types';
 
+function buildSessionVolumeIndex(
+  exposuresByExerciseId: Record<string, ExerciseExposure[]>,
+): Record<string, number> {
+  return Object.values(exposuresByExerciseId)
+    .flat()
+    .reduce<Record<string, number>>((index, exposure) => {
+      index[exposure.sessionId] =
+        (index[exposure.sessionId] ?? 0) + exposure.sessionVolume;
+      return index;
+    }, {});
+}
+
 function hasMeaningfulProgress(
   currentValue: number,
   previousBestValue: number,
@@ -283,11 +295,12 @@ export function buildSessionRecordBadges(
 ): IntelligenceBadge[] {
   const badges: IntelligenceBadge[] = [];
   const currentSessionVolume = currentSession.totalVolume;
-  const previousSessionBestVolume = Object.values(exposuresByExerciseId)
-    .flat()
-    .filter((exposure) => exposure.sessionId !== currentSession.id)
+  const previousSessionBestVolume = Object.entries(
+    buildSessionVolumeIndex(exposuresByExerciseId),
+  )
+    .filter(([sessionId]) => sessionId !== currentSession.id)
     .reduce(
-      (bestValue, exposure) => Math.max(bestValue, exposure.sessionVolume),
+      (bestValue, [, sessionVolume]) => Math.max(bestValue, sessionVolume),
       0,
     );
 
