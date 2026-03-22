@@ -9,7 +9,10 @@
 
 import { useMemo } from 'react';
 
-import type { HistorySession } from '@features/analytics';
+import {
+  buildDashboardMetrics,
+  type HistorySession,
+} from '@features/analytics';
 import { useOptionalDatabase } from '@core/database/provider';
 import { loadExerciseCapabilities } from '../metrics/capabilities';
 import {
@@ -20,17 +23,29 @@ import {
   buildExerciseTrendSummaries,
   buildRoutineTrendSummaries,
 } from '../metrics/trends';
-import type { TrainingGoalViewModel } from '../types';
+import {
+  selectHomeExerciseHighlights,
+  selectHomePrimaryInsight,
+} from '../selectors/home-surface';
+import type {
+  HomeExerciseHighlight,
+  HomePrimaryInsight,
+  TrainingGoalViewModel,
+} from '../types';
 
 export function useIntelligenceOverview(
   allSessions: HistorySession[],
   goalViewModels: TrainingGoalViewModel[],
+  options: { now?: number } = {},
 ): {
   exerciseTrendSummaries: ReturnType<typeof buildExerciseTrendSummaries>;
   routineTrendSummaries: ReturnType<typeof buildRoutineTrendSummaries>;
   goalViewModels: TrainingGoalViewModel[];
+  homePrimaryInsight: HomePrimaryInsight;
+  homeExerciseHighlights: HomeExerciseHighlight[];
 } {
   const db = useOptionalDatabase();
+  const now = options.now ?? Date.now();
 
   return useMemo(() => {
     const capabilitiesByExerciseId =
@@ -41,17 +56,33 @@ export function useIntelligenceOverview(
       buildExerciseExposures(allSessions, capabilitiesByExerciseId),
     );
 
-    return {
-      exerciseTrendSummaries: buildExerciseTrendSummaries(
-        exposuresByExerciseId,
-        capabilitiesByExerciseId,
-      ).slice(0, 4),
-      routineTrendSummaries: buildRoutineTrendSummaries(
-        allSessions,
-        exposuresByExerciseId,
-        capabilitiesByExerciseId,
-      ).slice(0, 4),
+    const exerciseTrendSummaries = buildExerciseTrendSummaries(
+      exposuresByExerciseId,
+      capabilitiesByExerciseId,
+    ).slice(0, 4);
+    const routineTrendSummaries = buildRoutineTrendSummaries(
+      allSessions,
+      exposuresByExerciseId,
+      capabilitiesByExerciseId,
+    ).slice(0, 4);
+
+    const dashboardMetrics = buildDashboardMetrics(allSessions, { now });
+    const homePrimaryInsight = selectHomePrimaryInsight({
+      dashboardMetrics,
+      exerciseTrendSummaries,
+      routineTrendSummaries,
       goalViewModels,
+      now,
+    });
+
+    return {
+      exerciseTrendSummaries,
+      routineTrendSummaries,
+      goalViewModels,
+      homePrimaryInsight,
+      homeExerciseHighlights: selectHomeExerciseHighlights(
+        exerciseTrendSummaries,
+      ),
     };
-  }, [allSessions, db, goalViewModels]);
+  }, [allSessions, db, goalViewModels, now]);
 }

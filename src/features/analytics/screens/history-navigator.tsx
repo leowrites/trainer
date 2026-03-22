@@ -10,7 +10,7 @@ import { HistoryScreen } from './history-screen';
 
 const Stack = createNativeStackNavigator<HistoryStackParamList>();
 
-interface HistoryNavigatorProps {
+export interface HistoryNavigatorProps {
   progressionConfig?: ProgressiveOverloadConfig;
 }
 

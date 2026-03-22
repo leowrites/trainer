@@ -16,7 +16,7 @@
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
-export type InteractionFeedbackIntent = 'set-log' | 'set-unlog';
+export type InteractionFeedbackIntent = 'set-log' | 'set-unlog' | 'set-adjust';
 
 export function triggerInteractionFeedback(
   intent: InteractionFeedbackIntent,
@@ -29,6 +29,11 @@ export function triggerInteractionFeedback(
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
       () => undefined,
     );
+    return;
+  }
+
+  if (intent === 'set-adjust') {
+    void Haptics.selectionAsync().catch(() => undefined);
     return;
   }
 

@@ -356,8 +356,20 @@ export function WorkoutSummaryScreen({
           </View>
         </Surface>
 
+        <Surface className="rounded-3xl bg-surface-elevated px-5 py-5">
+          <Label>Next move</Label>
+          <Heading className="mt-3 text-2xl">
+            {summary.scheduleContext?.nextRoutineName
+              ? `Back home for ${summary.scheduleContext.nextRoutineName}`
+              : 'Back home and reset for the next session'}
+          </Heading>
+          <Caption className="mt-2">
+            Close the debrief and jump back into your training loop.
+          </Caption>
+        </Surface>
+
         <Button onPress={handleBackToHome} className="w-full">
-          Back to home
+          Return Home
         </Button>
       </ScrollView>
     </Container>

@@ -2,20 +2,27 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { type CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { RootStackParamList, RootTabParamList } from '@core/navigation';
+import { useTheme } from '@core/theme/theme-context';
 import {
   buildDashboardMetrics,
+  type HistorySession,
   useHistoryAnalytics,
 } from '@features/analytics';
-import { useUserProfile } from '@features/health-tracking';
 import {
+  useIntelligenceOverview,
+  useTrainingGoals,
+} from '@features/intelligence';
+import {
+  Body,
   Button,
   Container,
   DisplayHeading,
   Heading,
+  InteractivePressable,
   Label,
   Meta,
   Muted,
@@ -23,17 +30,71 @@ import {
 } from '@shared/components';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
 import { useWorkoutStore } from '../store';
-import { getGreeting, formatShortDate } from '../utils/formatters';
-import { DashboardStatCard } from '../components/dashboard-stat-card';
 
 export type WorkoutHomeScreenProps = CompositeScreenProps<
   BottomTabScreenProps<RootTabParamList, 'Workout'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 
+interface WeekCalendarDay {
+  key: string;
+  dayLabel: string;
+  dateLabel: string;
+  hasWorkout: boolean;
+  isToday: boolean;
+}
+
+function startOfLocalDay(timestamp: number): Date {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function getStartOfLocalWeek(timestamp: number, weekStartsOn = 0): Date {
+  const date = startOfLocalDay(timestamp);
+  const currentDay = date.getDay();
+  const normalizedWeekStart = ((weekStartsOn % 7) + 7) % 7;
+  const dayOffset = (currentDay - normalizedWeekStart + 7) % 7;
+
+  date.setDate(date.getDate() - dayOffset);
+  return date;
+}
+
+function buildWeekCalendarDays(
+  sessions: HistorySession[],
+  now: number,
+  weekStartsOn = 0,
+): WeekCalendarDay[] {
+  const startOfWeek = getStartOfLocalWeek(now, weekStartsOn);
+  const todayKey = startOfLocalDay(now).toISOString();
+  const completedDayKeys = new Set(
+    sessions
+      .filter((session) => session.endTime !== null)
+      .map((session) =>
+        startOfLocalDay(session.endTime as number).toISOString(),
+      ),
+  );
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(startOfWeek);
+    date.setDate(startOfWeek.getDate() + index);
+
+    const key = date.toISOString();
+
+    return {
+      key,
+      dayLabel: date.toLocaleDateString(undefined, { weekday: 'narrow' }),
+      dateLabel: date.toLocaleDateString(undefined, { day: 'numeric' }),
+      hasWorkout: completedDayKeys.has(key),
+      isToday: key === todayKey,
+    };
+  });
+}
+
 export function WorkoutHomeScreen({
   navigation,
 }: WorkoutHomeScreenProps): React.JSX.Element {
+  const { tokens } = useTheme();
   const {
     currentWorkoutTitle,
     currentExerciseCount,
@@ -54,31 +115,35 @@ export function WorkoutHomeScreen({
     startFreeWorkout,
   } = useWorkoutStarter();
   const { allSessions, refresh: refreshHistory } = useHistoryAnalytics();
-  const { profile, refresh: refreshProfile } = useUserProfile();
   const [starting, setStarting] = useState(false);
   const [dashboardNow] = useState(() => Date.now());
-  const greeting = getGreeting(profile?.displayName ?? null, dashboardNow);
   const dashboardMetrics = useMemo(
     () => buildDashboardMetrics(allSessions, { now: dashboardNow }),
     [allSessions, dashboardNow],
   );
+  const weekCalendarDays = useMemo(
+    () => buildWeekCalendarDays(allSessions, dashboardNow),
+    [allSessions, dashboardNow],
+  );
+  const { goalViewModels } = useTrainingGoals(allSessions);
+  const { homePrimaryInsight, homeExerciseHighlights } =
+    useIntelligenceOverview(allSessions, goalViewModels, {
+      now: dashboardNow,
+    });
 
+  const activeGoal = goalViewModels.find(
+    (goalViewModel) => !goalViewModel.progress.isComplete,
+  );
   const hasCurrentWorkout = isWorkoutActive && currentWorkoutTitle !== null;
-  const inactiveSubtitle = hasCurrentWorkout
-    ? 'Your current workout is still in progress.'
-    : nextRoutine
-      ? `Your next workout is ready, ${nextRoutine.routineName}.`
-      : 'Your next workout will appear here once a schedule is active.';
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       refreshPreview();
       refreshHistory();
-      refreshProfile();
     });
 
     return unsubscribe;
-  }, [navigation, refreshHistory, refreshPreview, refreshProfile]);
+  }, [navigation, refreshHistory, refreshPreview]);
 
   const handleStartScheduled = (): void => {
     if (starting) {
@@ -117,112 +182,196 @@ export function WorkoutHomeScreen({
     navigation.navigate('ActiveWorkout');
   };
 
+  const heroTitle = hasCurrentWorkout ? 'IN PROGRESS' : 'UP NEXT';
+  const heroPrimary = hasCurrentWorkout
+    ? currentWorkoutTitle
+    : (nextRoutine?.routineName ?? 'Free workout');
+  const heroSecondary = hasCurrentWorkout
+    ? `${currentExerciseCount} exercises • Ready to finish`
+    : nextRoutine
+      ? `${nextRoutine.exerciseCount} exercises • ${nextRoutine.estimatedMinutes} min`
+      : 'No schedule queued';
+  const heroTertiary = hasCurrentWorkout
+    ? 'Workout in progress'
+    : nextRoutine
+      ? nextRoutine.scheduleName
+      : null;
+
   return (
-    <Container className="px-0 pb-0" edges={['left', 'right']}>
+    <Container edges={['left', 'right']} className="px-0">
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: 0,
-          paddingTop: 0,
-          paddingBottom: 24,
-          gap: 12,
-        }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }}
       >
-        <View className="gap-2 pb-1" accessibilityRole="header">
-          <Heading className="text-4xl leading-[36px]">
-            {greeting.title}
-          </Heading>
-          <Muted className="max-w-[320px]">{greeting.subtitle}</Muted>
+        <View>
+          <Meta>{heroTitle}</Meta>
+          <DisplayHeading className="mt-5 text-7xl">
+            {heroPrimary}
+          </DisplayHeading>
+          <Body className="mt-1 font-semibold">{heroSecondary}</Body>
+          {heroTertiary ? <Muted className="mt-1">{heroTertiary}</Muted> : null}
+
+          <View className="mt-4 gap-2">
+            {hasCurrentWorkout ? (
+              <Button onPress={handleContinueWorkout} className="w-full">
+                Continue now
+              </Button>
+            ) : nextRoutine ? (
+              <Button
+                onPress={handleStartScheduled}
+                disabled={starting}
+                loading={starting}
+                className="w-full"
+              >
+                Start now
+              </Button>
+            ) : (
+              <Button
+                onPress={handleStartFree}
+                disabled={starting}
+                loading={starting}
+                className="w-full"
+              >
+                Start now
+              </Button>
+            )}
+
+            {!hasCurrentWorkout && nextRoutine ? (
+              <Button
+                accessibilityLabel="Free workout"
+                onPress={handleStartFree}
+                className="mt-2 self-start px-4 py-1 button-ghost"
+              >
+                Free workout
+              </Button>
+            ) : null}
+          </View>
         </View>
 
-        {hasCurrentWorkout && currentWorkoutTitle ? (
-          <Surface variant="card" className="w-full rounded-[22px]  p-5">
-            <View className="mb-3 flex-row items-center justify-between gap-3">
-              <Label className="text-secondary">Current Workout</Label>
-              <Meta>In progress</Meta>
+        <View className="mt-3 flex-1 rounded-[28px] py-5">
+          <View className="gap-3">
+            <View className="px-1 py-1">
+              <Heading>Insights</Heading>
+              <Body>{homePrimaryInsight.text}</Body>
             </View>
-            <DisplayHeading className="text-3xl leading-[32px]">
-              {currentWorkoutTitle}
-            </DisplayHeading>
-            <Muted className="mt-3">
-              {currentExerciseCount} exercises in this session. Collapse it
-              anytime and return here when you are ready.
-            </Muted>
-          </Surface>
-        ) : nextRoutine ? (
-          <Surface variant="card" className="w-full rounded-[22px] p-5">
-            <View className="mb-3 flex-row items-center justify-between gap-3">
-              <Label className="text-secondary">Next Workout</Label>
-              <Meta>{nextRoutine.scheduleName}</Meta>
+
+            <View className="mt-2 flex-row justify-between gap-1.5">
+              {weekCalendarDays.map((day) => (
+                <View
+                  key={day.key}
+                  accessibilityLabel={`${day.dayLabel} ${day.dateLabel}${day.hasWorkout ? ', workout completed' : ''}${day.isToday ? ', today' : ''}`}
+                  className="flex-1 items-center rounded-[12px] px-1 py-2"
+                  style={{
+                    backgroundColor: day.hasWorkout
+                      ? tokens.accent
+                      : day.isToday
+                        ? tokens.bgElevated
+                        : 'transparent',
+                    borderWidth: day.isToday ? 1 : 0,
+                    borderColor: day.isToday ? tokens.bgBorder : 'transparent',
+                  }}
+                >
+                  <Text
+                    className="font-body text-2xs"
+                    style={{
+                      color: day.hasWorkout
+                        ? tokens.accentForeground
+                        : tokens.textMuted,
+                    }}
+                  >
+                    {day.dayLabel}
+                  </Text>
+                  <Text
+                    className="mt-1 font-heading text-base"
+                    style={{
+                      color: day.hasWorkout
+                        ? tokens.accentForeground
+                        : tokens.textPrimary,
+                    }}
+                  >
+                    {day.dateLabel}
+                  </Text>
+                </View>
+              ))}
             </View>
-            <DisplayHeading className="text-3xl leading-[32px]">
-              {nextRoutine.routineName}
-            </DisplayHeading>
-            <Muted className="mt-3">
-              {nextRoutine.exerciseCount} exercises • ~
-              {nextRoutine.estimatedMinutes} mins
-            </Muted>
-            <Muted className="mt-2">{inactiveSubtitle}</Muted>
-          </Surface>
-        ) : (
-          <Surface variant="card" className="w-full rounded-[22px] p-5">
-            <Heading className="text-2xl leading-[24px]">
-              No active schedule
-            </Heading>
-            <Muted className="mt-2">
-              Create a schedule to queue your next workout, or start a free
-              session now.
-            </Muted>
-          </Surface>
-        )}
+            <View className="flex-row gap-2.5">
+              <Surface className="flex-1 rounded-[16px] bg-surface px-3 py-2.5">
+                <Label>This week</Label>
+              </Surface>
+              <Surface className="flex-1 rounded-[16px] bg-surface px-3 py-2.5">
+                <Label>Streak</Label>
+                <Heading className="mt-1.5 text-3xl">
+                  {dashboardMetrics.currentWeeklyStreak}
+                </Heading>
+              </Surface>
+              <Surface className="flex-1 rounded-[16px] bg-surface px-3 py-2.5">
+                <Label>Active days</Label>
+                <Heading className="mt-1.5 text-3xl">
+                  {dashboardMetrics.workoutDaysThisWeek}
+                </Heading>
+              </Surface>
+            </View>
 
-        {hasCurrentWorkout ? (
-          <Button onPress={handleContinueWorkout} className="w-full">
-            Continue
-          </Button>
-        ) : nextRoutine ? (
-          <Button
-            onPress={handleStartScheduled}
-            disabled={starting}
-            loading={starting}
-            className="w-full"
-          >
-            Start {nextRoutine.routineName}
-          </Button>
-        ) : null}
+            {homeExerciseHighlights.length > 0 ? (
+              <Surface className="rounded-[22px] border border-surface-border/60 bg-surface px-4 py-4">
+                <View className="flex-row items-center justify-between gap-3">
+                  <Heading className="text-xl">Highlights</Heading>
+                </View>
+                <View className="mt-3 gap-2">
+                  {homeExerciseHighlights.map((highlight) => (
+                    <InteractivePressable
+                      key={highlight.exerciseId}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Open ${highlight.exerciseName} detail`}
+                      className="rounded-[16px] bg-surface-elevated px-4 py-3"
+                      onPress={() =>
+                        navigation.navigate('ExerciseDetail', {
+                          exerciseId: highlight.exerciseId,
+                        })
+                      }
+                    >
+                      <View className="flex-row items-center justify-between gap-3">
+                        <View className="flex-1">
+                          <Body className="font-semibold">
+                            {highlight.exerciseName}
+                          </Body>
+                          <Muted className="mt-1 text-sm">
+                            {highlight.text}
+                          </Muted>
+                        </View>
+                        <Heading className="text-lg">
+                          {highlight.direction === 'up'
+                            ? '↑'
+                            : highlight.direction === 'down'
+                              ? '↓'
+                              : '→'}
+                        </Heading>
+                      </View>
+                    </InteractivePressable>
+                  ))}
+                </View>
+              </Surface>
+            ) : null}
 
-        {!hasCurrentWorkout ? (
-          <Button
-            variant="ghost"
-            onPress={handleStartFree}
-            disabled={starting}
-            loading={starting}
-            className="w-full"
-          >
-            Start Free Workout
-          </Button>
-        ) : null}
-
-        <View className="gap-3">
-          <DashboardStatCard
-            label="Workouts This Week"
-            value={dashboardMetrics.workoutsThisWeek}
-            caption={`${dashboardMetrics.workoutDaysThisWeek} active days`}
-          />
-          <DashboardStatCard
-            label="Weekly Streak"
-            value={dashboardMetrics.currentWeeklyStreak}
-            caption={
-              dashboardMetrics.currentWeeklyStreak === 1
-                ? '1 week in a row'
-                : `${dashboardMetrics.currentWeeklyStreak} weeks in a row`
-            }
-          />
-          <DashboardStatCard
-            label="Last Workout"
-            value={formatShortDate(dashboardMetrics.lastCompletedWorkoutAt)}
-            caption="Most recent completed session"
-          />
+            {activeGoal ? (
+              <InteractivePressable
+                accessibilityRole="button"
+                accessibilityLabel="Open goals"
+                className="rounded-[22px] border border-surface-border/60 bg-surface px-4 py-4"
+                onPress={() =>
+                  navigation.navigate('History', {
+                    screen: 'Goals',
+                  })
+                }
+              >
+                <Heading className="text-xl">Goal</Heading>
+                <Body className="mt-3 font-semibold">{activeGoal.title}</Body>
+                <Muted className="mt-2">
+                  {activeGoal.progress.progressText}
+                </Muted>
+              </InteractivePressable>
+            ) : null}
+          </View>
         </View>
       </ScrollView>
     </Container>

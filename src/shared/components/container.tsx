@@ -44,7 +44,7 @@ export function Container({
   return (
     <SafeAreaView
       edges={edges ?? ['top', 'left', 'right']}
-      className={`px-4 pb-0 flex-1 w-full bg-surface web:self-center web:max-w-5xl ${className}`}
+      className={`px-4 pb-0 flex-1 w-full bg-background web:self-center web:max-w-5xl ${className}`}
       style={style}
       accessibilityRole="none"
     >

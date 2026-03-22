@@ -269,7 +269,8 @@ export function RootNavigator(): React.JSX.Element {
           options={{
             headerShown: true,
             title: '',
-            presentation: 'modal',
+            gestureEnabled: false,
+            // presentation: 'modal',
           }}
         />
         <Stack.Screen

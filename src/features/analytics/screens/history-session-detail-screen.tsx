@@ -11,7 +11,7 @@ import { useHistorySessionDetail } from '../hooks/use-history-session-detail';
 import type { HistoryStackParamList } from '../navigation-types';
 import type { ProgressiveOverloadConfig } from '../types';
 
-interface HistorySessionDetailScreenProps {
+export interface HistorySessionDetailScreenProps {
   route: RouteProp<HistoryStackParamList, 'HistorySessionDetail'>;
   navigation: NativeStackNavigationProp<
     HistoryStackParamList,
