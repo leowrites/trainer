@@ -90,9 +90,7 @@ describe('GoalsScreen', () => {
     render(<GoalsScreen {...({} as GoalsScreenProps)} />);
 
     expect(mockUseTrainingGoals).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 'session-1' }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ id: 'session-1' })]),
     );
   });
 });
