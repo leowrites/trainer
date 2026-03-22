@@ -38,7 +38,6 @@ describe('goal progress', () => {
           sessionVolume: 2400,
           completedSetCount: 3,
           eligibleSetCount: 3,
-          eligibleSets: [],
           bestLoad: 100,
           bestRepsAtBestLoad: 8,
           bestEstimatedOneRepMax: 126.7,
@@ -50,6 +49,19 @@ describe('goal progress', () => {
           averagePlannedRir: 2,
           averageTargetCompletion: 1,
           performanceVariability: 0.03,
+          eligibleSets: [
+            {
+              id: 'session-1-set-1',
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 100,
+              isCompleted: true,
+              targetRepsMin: 8,
+              targetRepsMax: 8,
+              actualRir: 2,
+              setRole: 'work',
+            },
+          ],
         },
         {
           sessionId: 'session-2',
@@ -66,7 +78,6 @@ describe('goal progress', () => {
           sessionVolume: 2400,
           completedSetCount: 3,
           eligibleSetCount: 3,
-          eligibleSets: [],
           bestLoad: 100,
           bestRepsAtBestLoad: 8,
           bestEstimatedOneRepMax: 126.7,
@@ -78,6 +89,19 @@ describe('goal progress', () => {
           averagePlannedRir: 2,
           averageTargetCompletion: 1,
           performanceVariability: 0.03,
+          eligibleSets: [
+            {
+              id: 'session-2-set-1',
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 100,
+              isCompleted: true,
+              targetRepsMin: 8,
+              targetRepsMax: 8,
+              actualRir: 2,
+              setRole: 'work',
+            },
+          ],
         },
         {
           sessionId: 'session-3',
@@ -94,7 +118,6 @@ describe('goal progress', () => {
           sessionVolume: 2400,
           completedSetCount: 3,
           eligibleSetCount: 3,
-          eligibleSets: [],
           bestLoad: 100,
           bestRepsAtBestLoad: 8,
           bestEstimatedOneRepMax: 126.7,
@@ -106,6 +129,19 @@ describe('goal progress', () => {
           averagePlannedRir: 2,
           averageTargetCompletion: 1,
           performanceVariability: 0.03,
+          eligibleSets: [
+            {
+              id: 'session-3-set-1',
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 100,
+              isCompleted: true,
+              targetRepsMin: 8,
+              targetRepsMax: 8,
+              actualRir: 2,
+              setRole: 'work',
+            },
+          ],
         },
         {
           sessionId: 'session-4',
@@ -122,7 +158,6 @@ describe('goal progress', () => {
           sessionVolume: 2400,
           completedSetCount: 3,
           eligibleSetCount: 3,
-          eligibleSets: [],
           bestLoad: 100,
           bestRepsAtBestLoad: 8,
           bestEstimatedOneRepMax: 126.7,
@@ -134,6 +169,19 @@ describe('goal progress', () => {
           averagePlannedRir: 2,
           averageTargetCompletion: 1,
           performanceVariability: 0.03,
+          eligibleSets: [
+            {
+              id: 'session-4-set-1',
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 100,
+              isCompleted: true,
+              targetRepsMin: 8,
+              targetRepsMax: 8,
+              actualRir: 2,
+              setRole: 'work',
+            },
+          ],
         },
       ],
     };
@@ -154,5 +202,132 @@ describe('goal progress', () => {
 
     expect(summary?.progress.progressText).toBe('2 of 2 goal weeks completed.');
     expect(summary?.progress.isComplete).toBe(true);
+  });
+
+  it('evaluates volume goals against a rolling 7 day window rather than a 28 day aggregate', () => {
+    const now = Date.UTC(2026, 2, 14);
+    jest.spyOn(Date, 'now').mockReturnValue(now);
+
+    const goal: TrainingGoal = {
+      id: 'goal-2',
+      goal_type: 'volume',
+      exercise_id: null,
+      muscle_group: 'Chest',
+      target_load: null,
+      target_reps: null,
+      target_sessions_per_week: null,
+      target_sets_per_week: 2,
+      target_weeks: null,
+      start_time: null,
+      end_time: null,
+      status: 'active',
+      created_at: now,
+      updated_at: now,
+    };
+    const exposuresByExerciseId: Record<string, ExerciseExposure[]> = {
+      'exercise-1': [
+        {
+          sessionId: 'session-old',
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          routineId: 'routine-1',
+          routineName: 'Upper A',
+          startTime: Date.UTC(2026, 2, 1),
+          progressionPolicy: 'double_progression',
+          targetRir: 2,
+          targetSets: 3,
+          targetRepsMin: 8,
+          targetRepsMax: 8,
+          sessionVolume: 2400,
+          completedSetCount: 3,
+          eligibleSetCount: 3,
+          bestLoad: 100,
+          bestRepsAtBestLoad: 8,
+          bestEstimatedOneRepMax: 126.7,
+          allTopRangeHits: true,
+          targetHit: true,
+          anyMajorMiss: false,
+          workSetMissCount: 0,
+          averageActualRir: 2,
+          averagePlannedRir: 2,
+          averageTargetCompletion: 1,
+          performanceVariability: 0.03,
+          eligibleSets: [
+            {
+              id: 'old-set-1',
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 100,
+              isCompleted: true,
+              targetRepsMin: 8,
+              targetRepsMax: 8,
+              actualRir: 2,
+              setRole: 'work',
+            },
+          ],
+        },
+        {
+          sessionId: 'session-recent',
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          routineId: 'routine-1',
+          routineName: 'Upper A',
+          startTime: Date.UTC(2026, 2, 12),
+          progressionPolicy: 'double_progression',
+          targetRir: 2,
+          targetSets: 3,
+          targetRepsMin: 8,
+          targetRepsMax: 8,
+          sessionVolume: 2400,
+          completedSetCount: 3,
+          eligibleSetCount: 3,
+          bestLoad: 100,
+          bestRepsAtBestLoad: 8,
+          bestEstimatedOneRepMax: 126.7,
+          allTopRangeHits: true,
+          targetHit: true,
+          anyMajorMiss: false,
+          workSetMissCount: 0,
+          averageActualRir: 2,
+          averagePlannedRir: 2,
+          averageTargetCompletion: 1,
+          performanceVariability: 0.03,
+          eligibleSets: [
+            {
+              id: 'recent-set-1',
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 100,
+              isCompleted: true,
+              targetRepsMin: 8,
+              targetRepsMax: 8,
+              actualRir: 2,
+              setRole: 'work',
+            },
+          ],
+        },
+      ],
+    };
+    const capabilitiesByExerciseId: Record<string, ExerciseCapability> = {
+      'exercise-1': {
+        exerciseId: 'exercise-1',
+        exerciseName: 'Bench Press',
+        muscleGroup: 'Chest',
+        strengthEstimationMode: 'primary',
+      },
+    };
+
+    const [summary] = buildGoalProgressSummaries(
+      [goal],
+      exposuresByExerciseId,
+      capabilitiesByExerciseId,
+    );
+
+    expect(summary?.progress.progressText).toBe(
+      '1 hard sets toward 2 weekly sets.',
+    );
+    expect(summary?.progress.isComplete).toBe(false);
+
+    jest.restoreAllMocks();
   });
 });
