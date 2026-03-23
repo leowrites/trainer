@@ -48,6 +48,29 @@ jest.mock('@react-navigation/elements', () => ({
   useHeaderHeight: () => 96,
 }));
 
+jest.mock('react-native-gesture-handler/Swipeable', () => {
+  const ReactNative = require('react-native');
+
+  return ({
+    children,
+    renderRightActions,
+    testID,
+  }: {
+    children?: React.ReactNode;
+    renderRightActions?: () => React.ReactNode;
+    testID?: string;
+  }) => (
+    <ReactNative.View testID={testID}>
+      {children}
+      {renderRightActions ? (
+        <ReactNative.View testID={`${testID}-actions`}>
+          {renderRightActions()}
+        </ReactNative.View>
+      ) : null}
+    </ReactNative.View>
+  );
+});
+
 jest.mock('@expo/vector-icons', () => {
   const ReactNative = require('react-native');
 
@@ -71,6 +94,38 @@ jest.mock('react-native-safe-area-context', () => {
       bottom: 34,
       left: 0,
     }),
+  };
+});
+
+jest.mock('react-native-tab-view', () => {
+  const ReactNative = require('react-native');
+
+  return {
+    TabView: ({
+      navigationState,
+      onIndexChange,
+      renderScene,
+      renderTabBar,
+    }: {
+      navigationState: {
+        index: number;
+        routes: Array<{ key: string }>;
+      };
+      onIndexChange: (index: number) => void;
+      renderScene: (scene: { route: { key: string } }) => React.ReactNode;
+      renderTabBar?: () => React.ReactNode;
+    }) => (
+      <ReactNative.View
+        testID="focused-workout-tab-view"
+        navigationState={navigationState}
+        onIndexChange={onIndexChange}
+      >
+        {renderTabBar?.()}
+        {renderScene({
+          route: navigationState.routes[navigationState.index],
+        })}
+      </ReactNative.View>
+    ),
   };
 });
 
@@ -162,7 +217,6 @@ type HeroWheelTestInstance = {
     }) => void;
   };
 };
-
 function createWorkoutTabScreenProps(): WorkoutTabScreenProps {
   return {
     navigation: {
@@ -576,25 +630,24 @@ describe('WorkoutScreen', () => {
     expect(workoutRender.getAllByText('10').length).toBeGreaterThan(0);
 
     fireEvent.press(workoutRender.getByText('Timer 1:00'));
-    fireEvent.press(workoutRender.getByText('Overview'));
-    fireEvent.press(workoutRender.getByText('Detail'));
-    expect(workoutRender.queryByText('Close')).toBeNull();
-    fireEvent.press(workoutRender.getByText('Overview'));
-    fireEvent.press(workoutRender.getByText('Timer'));
-    expect(workoutRender.queryByText('Close')).toBeNull();
-    fireEvent.press(workoutRender.getByText('Overview'));
+    fireEvent.press(workoutRender.getAllByText('Overview')[0]);
+    expect(
+      workoutRender.getByText('0/1 exercises · 0/1 sets · 1080 volume'),
+    ).toBeTruthy();
+    expect(workoutRender.queryByText('Detail')).toBeNull();
+    expect(workoutRender.queryByText('Timer')).toBeNull();
+    expect(workoutRender.queryByText('Logged')).toBeNull();
+    expect(workoutRender.queryByText('Pending')).toBeNull();
     fireEvent.press(workoutRender.getByText('Add set'));
-    fireEvent.press(workoutRender.getByText('Delete set'));
-    fireEvent.press(workoutRender.getByText('Remove'));
-    fireEvent.press(workoutRender.getByText('Close'));
+    fireEvent.press(workoutRender.getByLabelText('Delete Set 1'));
+    fireEvent.press(workoutRender.getByText('Remove exercise'));
+    fireEvent.press(workoutRender.getAllByText('Overview')[0]);
+    fireEvent.press(workoutRender.getByLabelText('Jump to Set 1'));
     fireEvent.press(workoutRender.getByText('Complete Set'));
     act(() => {
       jest.advanceTimersByTime(200);
     });
 
-    expect(navigate).toHaveBeenCalledWith('ExerciseDetail', {
-      exerciseId: 'exercise-1',
-    });
     expect(updateReps).toHaveBeenCalledWith('set-1', 10);
     expect(updateWeight).toHaveBeenCalledWith('set-1', 140);
     expect(toggleSetLogged).toHaveBeenCalledWith('set-1', true);
@@ -690,6 +743,89 @@ describe('WorkoutScreen', () => {
     expect(collapseWorkout).not.toHaveBeenCalled();
   });
 
+  it('renders the focused pager on the initial incomplete set and responds to index changes', () => {
+    const activeSession = {
+      id: 'session-1',
+      title: 'Push A',
+      startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+      isFreeWorkout: false,
+      exercises: [
+        {
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          targetSets: 2,
+          targetReps: 8,
+          sets: [
+            {
+              id: 'set-1',
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 135,
+              isCompleted: true,
+              targetSets: 2,
+              targetReps: 8,
+            },
+            {
+              id: 'set-2',
+              exerciseId: 'exercise-1',
+              reps: 6,
+              weight: 135,
+              isCompleted: false,
+              targetSets: 2,
+              targetReps: 8,
+            },
+          ],
+        },
+      ],
+    };
+
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={activeSession}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={2}
+        volume={1890}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={jest.fn()}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const pager = view.getByTestId('focused-workout-tab-view');
+
+    expect(pager.props.navigationState.index).toBe(1);
+    expect(view.getAllByText(/Set 2 of 2/).length).toBeGreaterThan(0);
+
+    act(() => {
+      pager.props.onIndexChange(0);
+    });
+
+    expect(view.getAllByText(/Set 1 of 2/).length).toBeGreaterThan(0);
+  });
+
   it('preserves the jumped overview location after session updates', () => {
     const activeSession = {
       id: 'session-1',
@@ -762,9 +898,9 @@ describe('WorkoutScreen', () => {
     const view = render(<ActiveWorkoutContent {...contentProps} />);
 
     fireEvent.press(view.getByText('Overview'));
-    fireEvent.press(view.getAllByText('Jump')[1]);
+    fireEvent.press(view.getByLabelText('Jump to Set 2'));
 
-    expect(view.getByText(/Set 2 of 2/)).toBeTruthy();
+    expect(view.getAllByText(/Set 2 of 2/).length).toBeGreaterThan(0);
 
     view.rerender(
       <ActiveWorkoutContent
@@ -788,8 +924,93 @@ describe('WorkoutScreen', () => {
       />,
     );
 
-    expect(view.getByText(/Set 2 of 2/)).toBeTruthy();
-    expect(view.queryByText(/Set 1 of 2/)).toBeNull();
+    expect(view.getAllByText(/Set 2 of 2/).length).toBeGreaterThan(0);
+  });
+
+  it('advances to the next page on completion and finishes on the final page', () => {
+    const onComplete = jest.fn();
+
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 2,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 2,
+                  targetReps: 8,
+                },
+                {
+                  id: 'set-2',
+                  exerciseId: 'exercise-1',
+                  reps: 6,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 2,
+                  targetReps: 8,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={2}
+        volume={1890}
+        restLabel={null}
+        onComplete={onComplete}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={jest.fn()}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    fireEvent.press(view.getByText('Complete Set'));
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(view.getAllByText(/Set 2 of 2/).length).toBeGreaterThan(0);
+
+    fireEvent.press(view.getByText('Complete Set'));
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
   it('shows the selected values in the hero and keeps target guidance separate', () => {
@@ -858,6 +1079,94 @@ describe('WorkoutScreen', () => {
     expect(view.getByText('12')).toBeTruthy();
     expect(view.queryByText('135 lbs x 12')).toBeNull();
     expect(view.getByText('Target: 135 lbs x 12')).toBeTruthy();
+  });
+
+  it('renders the compact overview hierarchy and highlights the current row', () => {
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 2,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 185,
+                  isCompleted: true,
+                  targetSets: 2,
+                  targetReps: 8,
+                },
+                {
+                  id: 'set-2',
+                  exerciseId: 'exercise-1',
+                  reps: 6,
+                  weight: 185,
+                  isCompleted: false,
+                  targetSets: 2,
+                  targetReps: 8,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={2}
+        volume={2590}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={jest.fn()}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    fireEvent.press(view.getByText('Overview'));
+
+    expect(view.getByText('+ Add exercise')).toBeTruthy();
+    expect(
+      view.getByText('0/1 exercises · 1/2 sets · 2590 volume'),
+    ).toBeTruthy();
+    expect(view.queryByText('Jump')).toBeNull();
+    expect(view.queryByText('Logged')).toBeNull();
+    expect(view.queryByText('Pending')).toBeNull();
+    expect(view.queryByText('Detail')).toBeNull();
+    expect(view.queryByText('Timer')).toBeNull();
+    expect(
+      within(view.getByTestId('jump-set-1')).getByText('185 × 8'),
+    ).toBeTruthy();
+    expect(view.getByTestId('jump-set-2').props.className).toContain(
+      'border-accent',
+    );
   });
 
   it('settles hero wheel changes and commits the logged value', () => {
@@ -1478,7 +1787,7 @@ describe('WorkoutScreen', () => {
     rerender(<WorkoutActiveScreen {...props} />);
 
     fireEvent.press(screen.getByText('Overview'));
-    fireEvent.press(screen.getByText('Remove'));
+    fireEvent.press(screen.getByText('Remove exercise'));
 
     expect(removeExercise).toHaveBeenCalledWith('exercise-2');
   });
