@@ -106,6 +106,8 @@ jest.mock('react-native-tab-view', () => {
       onIndexChange,
       renderScene,
       renderTabBar,
+      lazy,
+      lazyPreloadDistance,
     }: {
       navigationState: {
         index: number;
@@ -114,11 +116,15 @@ jest.mock('react-native-tab-view', () => {
       onIndexChange: (index: number) => void;
       renderScene: (scene: { route: { key: string } }) => React.ReactNode;
       renderTabBar?: () => React.ReactNode;
+      lazy?: boolean;
+      lazyPreloadDistance?: number;
     }) => (
       <ReactNative.View
         testID="focused-workout-tab-view"
         navigationState={navigationState}
         onIndexChange={onIndexChange}
+        lazy={lazy}
+        lazyPreloadDistance={lazyPreloadDistance}
       >
         {renderTabBar?.()}
         {renderScene({
@@ -824,6 +830,116 @@ describe('WorkoutScreen', () => {
     });
 
     expect(view.getAllByText(/Set 1 of 2/).length).toBeGreaterThan(0);
+  });
+
+  it('keeps the focused scene interactive after a tab change', () => {
+    const updateWeight = jest.fn();
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 1,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetReps: 8,
+                },
+              ],
+            },
+            {
+              exerciseId: 'exercise-2',
+              exerciseName: 'Incline Press',
+              targetSets: 1,
+              targetReps: 10,
+              sets: [
+                {
+                  id: 'set-2',
+                  exerciseId: 'exercise-2',
+                  reps: 10,
+                  weight: 95,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetReps: 10,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={2}
+        volume={2030}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={updateWeight}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{
+          'exercise-1': null,
+          'exercise-2': null,
+        }}
+        exerciseTimerDurationByExerciseId={{
+          'exercise-1': 60,
+          'exercise-2': 60,
+        }}
+        previousPerformanceByExerciseId={{
+          'exercise-1': null,
+          'exercise-2': null,
+        }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const pager = view.getByTestId('focused-workout-tab-view');
+
+    expect(pager.props.lazy).toBe(true);
+    expect(pager.props.lazyPreloadDistance).toBe(1);
+
+    act(() => {
+      pager.props.onIndexChange(1);
+    });
+
+    const weightWheel = getHeroWheelPicker(view, 'hero-zone-weight-wheel');
+
+    act(() => {
+      weightWheel.props.onValueChanged({
+        item: { value: 100, label: '100 lbs' },
+        index: 20,
+      });
+    });
+
+    expect(view.getAllByText(/Set 1 of 1/).length).toBeGreaterThan(0);
+    expect(view.getByText('Incline Press')).toBeTruthy();
+    expect(updateWeight).toHaveBeenCalledWith('set-2', 100);
   });
 
   it('preserves the jumped overview location after session updates', () => {

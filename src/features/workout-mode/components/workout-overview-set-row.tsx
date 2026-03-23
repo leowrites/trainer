@@ -2,99 +2,74 @@
  * Workout overview set row.
  *
  * CALLING SPEC:
- * - render one set row inside the workout overview modal
- * - supports jump, weight, and reps adjustments
+ * - render one compact set row inside the workout overview modal
+ * - supports jump and delete actions for a single set
+ * - highlights the current set without rendering extra status controls
  * - has no side effects beyond invoking callbacks
  */
 
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
-import {
-  Body,
-  Button,
-  Label,
-  Surface,
-  InteractivePressable,
-  Muted,
-} from '@shared/components';
+import { Body, InteractivePressable, Muted } from '@shared/components';
 
-function StepButton({
-  label,
-  onPress,
-  accessibilityLabel,
-}: {
-  label: string;
-  onPress: () => void;
-  accessibilityLabel?: string;
-}): React.JSX.Element {
-  return (
-    <InteractivePressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? label}
-      className="h-11 w-11 items-center justify-center rounded-[16px] border border-surface-border bg-surface-card"
-      onPress={onPress}
-    >
-      <Text className="font-heading text-xl text-foreground">{label}</Text>
-    </InteractivePressable>
-  );
-}
-
-export function WorkoutOverviewSetRow({
-  exerciseName,
-  setLabel,
-  reps,
-  weight,
-  isCompleted,
-  onJump,
-  onAdjustReps,
-  onAdjustWeight,
-}: {
-  exerciseName: string;
+interface WorkoutOverviewSetRowProps {
   setLabel: string;
   reps: number;
   weight: number;
   isCompleted: boolean;
+  isCurrent: boolean;
   onJump: () => void;
-  onAdjustReps: (delta: number) => void;
-  onAdjustWeight: (delta: number) => void;
-}): React.JSX.Element {
+  onDelete: () => void;
+}
+
+export function WorkoutOverviewSetRow({
+  setLabel,
+  reps,
+  weight,
+  isCompleted,
+  isCurrent,
+  onJump,
+  onDelete,
+}: WorkoutOverviewSetRowProps): React.JSX.Element {
+  const rowTestId = `jump-${setLabel.toLowerCase().replace(/\s+/g, '-')}`;
+
   return (
-    <View className="rounded-[18px] border border-surface-border bg-surface-elevated px-4 py-4">
-      <View className="flex-row items-center justify-between gap-3">
-        <View>
-          <Body className="font-semibold">{setLabel}</Body>
-          <Muted className="mt-1">{exerciseName}</Muted>
-        </View>
-        <Button size="sm" variant="secondary" onPress={onJump}>
-          Jump
-        </Button>
-      </View>
-
-      <View className="mt-4 flex-row gap-3">
-        <View className="flex-1 gap-2">
-          <Label>Reps</Label>
-          <View className="flex-row items-center gap-2">
-            <StepButton label="−" onPress={() => onAdjustReps(-1)} />
-            <Surface className="flex-1 items-center rounded-[16px] px-3 py-3">
-              <Body className="font-semibold">{reps}</Body>
-            </Surface>
-            <StepButton label="+" onPress={() => onAdjustReps(1)} />
+    <View className="flex-row items-center gap-2">
+      <InteractivePressable
+        testID={rowTestId}
+        accessibilityRole="button"
+        accessibilityLabel={`Jump to ${setLabel}`}
+        className={`flex-1 rounded-[18px] border px-4 py-4 ${
+          isCurrent
+            ? 'border-accent bg-accent/10'
+            : 'border-surface-border bg-surface-elevated'
+        }`}
+        onPress={onJump}
+      >
+        <View className="flex-row items-center justify-between gap-3">
+          <View className="flex-1">
+            <Body className="font-semibold">{setLabel}</Body>
+            <Muted className="mt-1">
+              {weight} × {reps}
+            </Muted>
           </View>
+          <View
+            className={`h-2.5 w-2.5 rounded-full ${
+              isCompleted ? 'bg-accent' : 'bg-surface-border'
+            }`}
+          />
         </View>
-        <View className="flex-1 gap-2">
-          <Label>Weight</Label>
-          <View className="flex-row items-center gap-2">
-            <StepButton label="−" onPress={() => onAdjustWeight(-5)} />
-            <Surface className="flex-1 items-center rounded-[16px] px-3 py-3">
-              <Body className="font-semibold">{weight}</Body>
-            </Surface>
-            <StepButton label="+" onPress={() => onAdjustWeight(5)} />
-          </View>
-        </View>
-      </View>
+      </InteractivePressable>
 
-      <Muted className="mt-3">{isCompleted ? 'Logged' : 'Pending'}</Muted>
+      <InteractivePressable
+        accessibilityRole="button"
+        accessibilityLabel={`Delete ${setLabel}`}
+        className="rounded-[16px] border border-surface-border bg-surface-card px-3 py-4"
+        onPress={onDelete}
+      >
+        <Body className="text-sm font-semibold">Delete</Body>
+      </InteractivePressable>
     </View>
   );
 }

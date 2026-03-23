@@ -86,6 +86,8 @@ interface FocusedSetRoute {
   location: FocusedWorkoutLocation;
 }
 
+const FOCUSED_SCENE_PRELOAD_DISTANCE = 1;
+
 function clampNumber(value: number, minimum = 0): number {
   return Math.max(minimum, value);
 }
@@ -133,6 +135,22 @@ function findFocusedRouteIndex(
   );
 
   return routeIndex >= 0 ? routeIndex : 0;
+}
+
+function shouldRenderFocusedScene(
+  routes: FocusedSetRoute[],
+  routeKey: string,
+  focusedRouteIndex: number,
+): boolean {
+  const routeIndex = routes.findIndex((route) => route.key === routeKey);
+
+  if (routeIndex === -1) {
+    return false;
+  }
+
+  return (
+    Math.abs(routeIndex - focusedRouteIndex) <= FOCUSED_SCENE_PRELOAD_DISTANCE
+  );
 }
 
 export function ActiveWorkoutContent({
@@ -402,6 +420,16 @@ export function ActiveWorkoutContent({
     const isFocusedRoute =
       route.location.exerciseIndex === location.exerciseIndex &&
       route.location.setIndex === location.setIndex;
+    const shouldRenderScene = shouldRenderFocusedScene(
+      orderedRoutes,
+      route.key,
+      focusedIndex,
+    );
+
+    if (!shouldRenderScene) {
+      return <View className="flex-1" />;
+    }
+
     const sceneReps = isFocusedRoute
       ? selectedReps
       : (routeSet.reps ?? routeExercise.targetRepsMin ?? 0);
@@ -694,6 +722,8 @@ export function ActiveWorkoutContent({
           renderScene={renderFocusedSetScene}
           renderTabBar={() => null}
           initialLayout={{ width }}
+          lazy
+          lazyPreloadDistance={FOCUSED_SCENE_PRELOAD_DISTANCE}
           animationEnabled={!prefersReducedMotion}
           style={{ flex: 1, marginHorizontal: -16 }}
         />
