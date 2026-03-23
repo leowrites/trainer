@@ -1,4 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import WheelPicker from '@quidone/react-native-wheel-picker';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import React from 'react';
 import { ActionSheetIOS, Alert } from 'react-native';
 
@@ -40,6 +47,16 @@ jest.mock('react-native-gifted-charts', () => {
 jest.mock('@react-navigation/elements', () => ({
   useHeaderHeight: () => 96,
 }));
+
+jest.mock('@expo/vector-icons', () => {
+  const ReactNative = require('react-native');
+
+  return {
+    Feather: ({ name }: { name: string }) => (
+      <ReactNative.Text>{name}</ReactNative.Text>
+    ),
+  };
+});
 
 jest.mock('react-native-safe-area-context', () => {
   const ReactNative = require('react-native');
@@ -132,6 +149,19 @@ type WorkoutActiveScreenProps = React.ComponentProps<
   typeof WorkoutActiveScreen
 >;
 type WorkoutStoreState = ReturnType<typeof useWorkoutStore.getState>;
+type HeroWheelTestInstance = {
+  props: {
+    testID?: string;
+    onValueChanging: (event: {
+      item: { value: number; label: string };
+      index: number;
+    }) => void;
+    onValueChanged: (event: {
+      item: { value: number; label: string };
+      index: number;
+    }) => void;
+  };
+};
 
 function createWorkoutTabScreenProps(): WorkoutTabScreenProps {
   return {
@@ -205,6 +235,21 @@ function getLatestHeaderOptions(
   }
 
   return latestCall[0] as Record<string, unknown>;
+}
+
+function getHeroWheelPicker(
+  view: ReturnType<typeof render>,
+  testID: string,
+): HeroWheelTestInstance {
+  const wheel = view
+    .UNSAFE_getAllByType(WheelPicker)
+    .find((candidate) => candidate.props.testID === testID);
+
+  if (!wheel) {
+    throw new Error(`Expected wheel picker with testID ${testID}`);
+  }
+
+  return wheel as HeroWheelTestInstance;
 }
 
 describe('WorkoutScreen', () => {
@@ -500,47 +545,33 @@ describe('WorkoutScreen', () => {
     expect(titleElement.props.totalExerciseCount).toBe(1);
     expect(rightElement.props.durationLabel).toBe('1m');
     expect(workoutRender.getAllByText('135 lbs')).toHaveLength(1);
+    expect(workoutRender.getByText('Weight')).toBeTruthy();
+    expect(workoutRender.getByText('Reps')).toBeTruthy();
 
-    fireEvent.press(workoutRender.getByLabelText('Edit weight'));
-    fireEvent.scroll(workoutRender.getByTestId('weight-wheel-list'), {
-      nativeEvent: {
-        contentOffset: { x: 28 * 96, y: 0 },
-      },
-    });
-    fireEvent(
-      workoutRender.getByTestId('weight-wheel-list'),
-      'scrollBeginDrag',
+    const weightWheel = getHeroWheelPicker(
+      workoutRender,
+      'hero-zone-weight-wheel',
     );
-    fireEvent(
-      workoutRender.getByTestId('weight-wheel-list'),
-      'momentumScrollEnd',
-      {
-        nativeEvent: {
-          contentOffset: { x: 28 * 96, y: 0 },
-          contentSize: { height: 96, width: 96 * 101 },
-          layoutMeasurement: { height: 96, width: 320 },
-        },
-      },
-    );
+    const repsWheel = getHeroWheelPicker(workoutRender, 'hero-zone-reps-wheel');
 
-    fireEvent.press(workoutRender.getByLabelText('Adjust reps'));
-    fireEvent.scroll(workoutRender.getByTestId('reps-wheel-list'), {
-      nativeEvent: {
-        contentOffset: { x: 10 * 96, y: 0 },
-      },
+    act(() => {
+      weightWheel.props.onValueChanging({
+        item: { value: 140, label: '140 lbs' },
+        index: 28,
+      });
+      weightWheel.props.onValueChanged({
+        item: { value: 140, label: '140 lbs' },
+        index: 28,
+      });
+      repsWheel.props.onValueChanging({
+        item: { value: 10, label: '10' },
+        index: 10,
+      });
+      repsWheel.props.onValueChanged({
+        item: { value: 10, label: '10' },
+        index: 10,
+      });
     });
-    fireEvent(workoutRender.getByTestId('reps-wheel-list'), 'scrollBeginDrag');
-    fireEvent(
-      workoutRender.getByTestId('reps-wheel-list'),
-      'momentumScrollEnd',
-      {
-        nativeEvent: {
-          contentOffset: { x: 10 * 96, y: 0 },
-          contentSize: { height: 96, width: 96 * 31 },
-          layoutMeasurement: { height: 96, width: 320 },
-        },
-      },
-    );
 
     expect(workoutRender.getByText('Target: 135 lbs x 8')).toBeTruthy();
     expect(workoutRender.getByText('140 lbs')).toBeTruthy();
@@ -559,6 +590,9 @@ describe('WorkoutScreen', () => {
     fireEvent.press(workoutRender.getByText('Remove'));
     fireEvent.press(workoutRender.getByText('Close'));
     fireEvent.press(workoutRender.getByText('Complete Set'));
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
 
     expect(navigate).toHaveBeenCalledWith('ExerciseDetail', {
       exerciseId: 'exercise-1',
@@ -828,7 +862,7 @@ describe('WorkoutScreen', () => {
     expect(view.getByText('Target: 135 lbs x 12')).toBeTruthy();
   });
 
-  it('opens the weight picker row and updates the hero while scrolling', () => {
+  it('settles hero wheel changes and commits the logged value', () => {
     const updateWeight = jest.fn();
     const activeSession = {
       id: 'session-1',
@@ -892,129 +926,26 @@ describe('WorkoutScreen', () => {
       />,
     );
 
-    fireEvent.press(view.getByLabelText('Edit weight'));
+    const weightWheel = getHeroWheelPicker(view, 'hero-zone-weight-wheel');
 
-    expect(view.getByText('Adjust Weight')).toBeTruthy();
     expect(updateWeight).not.toHaveBeenCalled();
 
-    fireEvent.scroll(view.getByTestId('weight-wheel-list'), {
-      nativeEvent: {
-        contentOffset: {
-          x: 30 * 96,
-          y: 0,
-        },
-      },
-    });
-    fireEvent(view.getByTestId('weight-wheel-list'), 'scrollBeginDrag');
-    fireEvent(view.getByTestId('weight-wheel-list'), 'momentumScrollEnd', {
-      nativeEvent: {
-        contentOffset: {
-          x: 30 * 96,
-          y: 0,
-        },
-        contentSize: {
-          height: 96,
-          width: 96 * 101,
-        },
-        layoutMeasurement: {
-          height: 96,
-          width: 320,
-        },
-      },
+    act(() => {
+      weightWheel.props.onValueChanging({
+        item: { value: 150, label: '150 lbs' },
+        index: 30,
+      });
+      weightWheel.props.onValueChanged({
+        item: { value: 150, label: '150 lbs' },
+        index: 30,
+      });
     });
 
     expect(view.getAllByText('150 lbs').length).toBeGreaterThan(0);
-    expect(view.getByText('Adjust Weight')).toBeTruthy();
     expect(updateWeight).toHaveBeenCalledWith('set-1', 150);
   });
 
-  it('allows tapping a weight option without collapsing the picker row', () => {
-    const updateWeight = jest.fn();
-    const view = render(
-      <ActiveWorkoutContent
-        activeSession={{
-          id: 'session-1',
-          title: 'Push A',
-          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
-          isFreeWorkout: false,
-          exercises: [
-            {
-              exerciseId: 'exercise-1',
-              exerciseName: 'Bench Press',
-              targetSets: 1,
-              targetReps: 8,
-              sets: [
-                {
-                  id: 'set-1',
-                  exerciseId: 'exercise-1',
-                  reps: 8,
-                  weight: 135,
-                  targetWeight: 140,
-                  isCompleted: false,
-                  targetSets: 1,
-                  targetReps: 8,
-                },
-              ],
-            },
-          ],
-        }}
-        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
-        setCount={1}
-        volume={1620}
-        restLabel={null}
-        onComplete={jest.fn()}
-        onDeleteWorkout={jest.fn()}
-        startRestTimer={jest.fn()}
-        clearRestTimer={jest.fn()}
-        onOpenExerciseDetails={jest.fn()}
-        onOpenExerciseTimerOptions={jest.fn()}
-        addSet={jest.fn()}
-        addExercise={jest.fn()}
-        removeExercise={jest.fn()}
-        deleteSet={jest.fn()}
-        updateReps={jest.fn()}
-        updateWeight={updateWeight}
-        updateActualRir={jest.fn()}
-        toggleSetLogged={jest.fn()}
-        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
-        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
-        previousPerformanceByExerciseId={{ 'exercise-1': null }}
-        showExerciseSheet={false}
-        setShowExerciseSheet={jest.fn()}
-        insets={{
-          top: 0,
-          right: 0,
-          bottom: 34,
-          left: 0,
-        }}
-      />,
-    );
-
-    fireEvent.press(view.getByLabelText('Edit weight'));
-    fireEvent.press(view.getByLabelText('Select 45 lbs'));
-    fireEvent(view.getByTestId('weight-wheel-list'), 'momentumScrollEnd', {
-      nativeEvent: {
-        contentOffset: {
-          x: 9 * 96,
-          y: 0,
-        },
-        contentSize: {
-          height: 96,
-          width: 96 * 101,
-        },
-        layoutMeasurement: {
-          height: 96,
-          width: 320,
-        },
-      },
-    });
-
-    expect(view.getAllByText('45 lbs').length).toBeGreaterThan(0);
-    expect(view.getByText('Adjust Weight')).toBeTruthy();
-    expect(updateWeight).toHaveBeenCalledWith('set-1', 45);
-  });
-
-  it('reopens the reps picker row with the latest selected value', () => {
+  it('keeps both hero wheels visible at the same time', () => {
     const view = render(
       <ActiveWorkoutContent
         activeSession={{
@@ -1076,40 +1007,97 @@ describe('WorkoutScreen', () => {
       />,
     );
 
-    fireEvent.press(view.getByLabelText('Edit reps'));
-    fireEvent.scroll(view.getByTestId('reps-wheel-list'), {
-      nativeEvent: {
-        contentOffset: {
-          x: 9 * 96,
-          y: 0,
-        },
-      },
-    });
-    fireEvent(view.getByTestId('reps-wheel-list'), 'scrollBeginDrag');
-    fireEvent(view.getByTestId('reps-wheel-list'), 'momentumScrollEnd', {
-      nativeEvent: {
-        contentOffset: {
-          x: 9 * 96,
-          y: 0,
-        },
-        contentSize: {
-          height: 96,
-          width: 96 * 31,
-        },
-        layoutMeasurement: {
-          height: 96,
-          width: 320,
-        },
-      },
+    expect(view.getByTestId('hero-zone-weight-wheel')).toBeTruthy();
+    expect(view.getByTestId('hero-zone-reps-wheel')).toBeTruthy();
+  });
+
+  it('moves the focused wheel emphasis with the selected value', () => {
+    const updateWeight = jest.fn();
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 1,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  targetWeight: 140,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetReps: 8,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={1}
+        volume={1620}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={updateWeight}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const weightWheel = getHeroWheelPicker(view, 'hero-zone-weight-wheel');
+
+    expect(
+      within(view.getByTestId('hero-zone-weight-option-current')).getByText(
+        '135 lbs',
+      ),
+    ).toBeTruthy();
+
+    act(() => {
+      weightWheel.props.onValueChanging({
+        item: { value: 145, label: '145 lbs' },
+        index: 29,
+      });
+      weightWheel.props.onValueChanged({
+        item: { value: 145, label: '145 lbs' },
+        index: 29,
+      });
     });
 
-    expect(view.getAllByText('9').length).toBeGreaterThan(0);
-
-    fireEvent.press(view.getByLabelText('Adjust reps'));
-    expect(view.queryByText('Adjust Reps')).toBeNull();
-    fireEvent.press(view.getByLabelText('Edit reps'));
-    expect(view.getByText('Adjust Reps')).toBeTruthy();
-    expect(view.getAllByText('9').length).toBeGreaterThan(0);
+    expect(
+      within(view.getByTestId('hero-zone-weight-option-current')).getByText(
+        '145 lbs',
+      ),
+    ).toBeTruthy();
+    expect(updateWeight).toHaveBeenCalledWith('set-1', 145);
   });
 
   it('allows the summary transition to bypass the exit guard after completion', () => {
@@ -1177,6 +1165,9 @@ describe('WorkoutScreen', () => {
     }) => void;
 
     fireEvent.press(workoutRender.getByText('Complete Set'));
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
 
     const preventDefault = jest.fn();
     beforeRemoveHandler({
@@ -1282,6 +1273,7 @@ describe('WorkoutScreen', () => {
 
     render(<WorkoutActiveScreen {...props} />);
 
+    fireEvent.press(screen.getByText('Overview'));
     fireEvent.press(screen.getByLabelText('Add exercise'));
     fireEvent.changeText(screen.getByLabelText('Search exercises'), 'goblet');
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
@@ -1357,6 +1349,7 @@ describe('WorkoutScreen', () => {
 
     const { rerender } = render(<WorkoutActiveScreen {...props} />);
 
+    fireEvent.press(screen.getByText('Overview'));
     fireEvent.press(screen.getByLabelText('Add exercise'));
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
 
@@ -1458,6 +1451,7 @@ describe('WorkoutScreen', () => {
 
     render(<WorkoutActiveScreen {...props} />);
 
+    fireEvent.press(screen.getByText('Overview'));
     fireEvent.press(screen.getByLabelText('Delete workout'));
 
     expect(alertSpy).toHaveBeenCalled();
