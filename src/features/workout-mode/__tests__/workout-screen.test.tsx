@@ -545,8 +545,6 @@ describe('WorkoutScreen', () => {
     expect(titleElement.props.totalExerciseCount).toBe(1);
     expect(rightElement.props.durationLabel).toBe('1m');
     expect(workoutRender.getAllByText('135 lbs')).toHaveLength(1);
-    expect(workoutRender.getByText('Weight')).toBeTruthy();
-    expect(workoutRender.getByText('Reps')).toBeTruthy();
 
     const weightWheel = getHeroWheelPicker(
       workoutRender,

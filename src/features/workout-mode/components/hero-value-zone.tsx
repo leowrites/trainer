@@ -24,7 +24,10 @@ interface HeroValueZoneProps {
   onCommitValue: (value: number) => void;
 }
 
-function buildWheelData(field: HeroValueField, options: number[]) {
+function buildWheelData(
+  field: HeroValueField,
+  options: number[],
+): Array<{ value: number; label: string }> {
   return options.map((value) => ({
     value,
     label: formatHeroValue(field, value),
@@ -67,7 +70,14 @@ export function HeroValueZone({
         }}
         renderItem={({ item }) => {
           return (
-            <View className="h-full items-center justify-center">
+            <View
+              testID={
+                item.value === value
+                  ? `hero-zone-${field}-option-current`
+                  : undefined
+              }
+              className="h-full items-center justify-center"
+            >
               <Text
                 style={{
                   color: tokens.textPrimary,
