@@ -19,6 +19,10 @@ export {
   buildRoutineTrendSummaries,
 } from './metrics/trends';
 export {
+  selectHomeExerciseHighlights,
+  selectHomePrimaryInsight,
+} from './selectors/home-surface';
+export {
   buildSessionClassifications,
   buildSessionRecordBadges,
 } from './classifiers/session-signals';
@@ -50,6 +54,8 @@ export type {
   ExerciseCapability,
   ExerciseClassification,
   ExerciseExposure,
+  HomeExerciseHighlight,
+  HomePrimaryInsight,
   ExerciseTrendSummary,
   GoalProgressSummary,
   IntelligenceBadge,

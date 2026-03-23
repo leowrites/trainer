@@ -19,7 +19,7 @@ import type {
   ProgressiveOverloadConfig,
 } from '../types';
 
-interface HistoryScreenProps {
+export interface HistoryScreenProps {
   navigation?: NativeStackNavigationProp<
     HistoryStackParamList,
     'HistoryOverview'

@@ -1,31 +1,44 @@
+/**
+ * Active workout content.
+ *
+ * CALLING SPEC:
+ * - coordinate the active-workout pager, overview modal, and exercise picker
+ * - derive focused workout state and route scene callbacks into child views
+ * - render an empty-workout fallback when no focusable sets exist yet
+ * - has no persistence side effects beyond invoking provided callbacks
+ */
+
 import { useHeaderHeight } from '@react-navigation/elements';
-import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, View, useWindowDimensions } from 'react-native';
 import type { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TabView } from 'react-native-tab-view';
 
 import {
-  Body,
   Button,
   Container,
-  ExerciseCard,
-  InteractivePressable,
+  Heading,
   Label,
   Muted,
+  Surface,
 } from '@shared/components';
 import { useReducedMotionPreference } from '@shared/hooks';
-import { configureInteractionLayoutAnimation } from '@shared/utils';
-import { DEFAULT_EXERCISE_TIMER_SECONDS } from '../store';
+import { triggerInteractionFeedback } from '@shared/utils';
+import {
+  buildFocusedWorkoutViewModel,
+  findInitialFocusedLocation,
+  getNextFocusedLocation,
+  resolveFocusedLocation,
+} from '../domain/focused-session';
 import type {
   ActiveWorkoutSession,
+  FocusedWorkoutLocation,
   PreviousExercisePerformance,
 } from '../types';
 import { ExercisePickerBottomSheet } from './exercise-picker-bottom-sheet';
-import { WorkoutSetRow } from './workout-set-row';
-import {
-  formatPreviousPerformance,
-  formatRestCountdown,
-  formatTimerDuration,
-} from '../utils/formatters';
+import { CompleteSetButton } from './complete-set-button';
+import { FocusedWorkoutScene } from './focused-workout-scene';
+import { WorkoutOverviewModal } from './workout-overview-modal';
 
 export interface ActiveWorkoutContentProps {
   activeSession: ActiveWorkoutSession;
@@ -62,11 +75,83 @@ export interface ActiveWorkoutContentProps {
   insets: ReturnType<typeof useSafeAreaInsets>;
 }
 
+interface FocusedSetRoute {
+  key: string;
+  location: FocusedWorkoutLocation;
+}
+
+const FOCUSED_SCENE_PRELOAD_DISTANCE = 1;
+
+function clampNumber(value: number, minimum = 0): number {
+  return Math.max(minimum, value);
+}
+
+function countCompletedSets(session: ActiveWorkoutSession): number {
+  return session.exercises.reduce(
+    (total, exercise) =>
+      total + exercise.sets.filter((setItem) => setItem.isCompleted).length,
+    0,
+  );
+}
+
+function countCompletedExercises(session: ActiveWorkoutSession): number {
+  return session.exercises.filter(
+    (exercise) =>
+      exercise.sets.length > 0 &&
+      exercise.sets.every((setItem) => setItem.isCompleted),
+  ).length;
+}
+
+function buildFocusedSetRoutes(
+  session: ActiveWorkoutSession,
+): FocusedSetRoute[] {
+  return session.exercises.flatMap((exercise, exerciseIndex) =>
+    exercise.sets.map((_, setIndex) => ({
+      key: `${exerciseIndex}:${setIndex}`,
+      location: { exerciseIndex, setIndex },
+    })),
+  );
+}
+
+function findFocusedRouteIndex(
+  routes: FocusedSetRoute[],
+  location: FocusedWorkoutLocation,
+): number {
+  const routeIndex = routes.findIndex(
+    (route) =>
+      route.location.exerciseIndex === location.exerciseIndex &&
+      route.location.setIndex === location.setIndex,
+  );
+
+  return routeIndex >= 0 ? routeIndex : 0;
+}
+
+function shouldRenderFocusedScene(
+  routes: FocusedSetRoute[],
+  routeKey: string,
+  focusedRouteIndex: number,
+): boolean {
+  const routeIndex = routes.findIndex((route) => route.key === routeKey);
+
+  if (routeIndex === -1) {
+    return false;
+  }
+
+  return (
+    Math.abs(routeIndex - focusedRouteIndex) <= FOCUSED_SCENE_PRELOAD_DISTANCE
+  );
+}
+
 export function ActiveWorkoutContent({
   activeSession,
   now,
+  setCount,
+  volume,
+  restLabel,
   onComplete,
   onDeleteWorkout,
+  startRestTimer,
+  clearRestTimer,
   onOpenExerciseDetails,
   onOpenExerciseTimerOptions,
   addSet,
@@ -85,185 +170,416 @@ export function ActiveWorkoutContent({
   insets,
 }: ActiveWorkoutContentProps): React.JSX.Element {
   const headerHeight = useHeaderHeight();
-  const dockOffset = Math.max(insets.bottom, 2);
-  const dockHeight = 70 + dockOffset;
+  const { width } = useWindowDimensions();
   const prefersReducedMotion = useReducedMotionPreference();
+  const [showOverview, setShowOverview] = useState(false);
+  const [completionRewardToken, setCompletionRewardToken] = useState(0);
+  const orderedRoutes = useMemo(
+    () => buildFocusedSetRoutes(activeSession),
+    [activeSession],
+  );
+  const [focusedIndex, setFocusedIndex] = useState(() =>
+    findFocusedRouteIndex(
+      orderedRoutes,
+      findInitialFocusedLocation(activeSession),
+    ),
+  );
+  const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const completedSetCount = useMemo(
+    () => countCompletedSets(activeSession),
+    [activeSession],
+  );
+  const completedExerciseCount = useMemo(
+    () => countCompletedExercises(activeSession),
+    [activeSession],
+  );
+
+  const hasFocusableSet = activeSession.exercises.some(
+    (exercise) => exercise.sets.length > 0,
+  );
+  const location =
+    orderedRoutes[focusedIndex]?.location ??
+    findInitialFocusedLocation(activeSession);
+
+  const focusedExercise = activeSession.exercises[location.exerciseIndex];
+  const focusedSet = focusedExercise?.sets[location.setIndex];
+  const [selectedReps, setSelectedReps] = useState(
+    focusedSet?.reps ?? focusedExercise?.targetRepsMin ?? 0,
+  );
+  const [selectedWeight, setSelectedWeight] = useState(focusedSet?.weight ?? 0);
+  const [selectedRir, setSelectedRir] = useState<number | null>(
+    focusedSet?.actualRir ?? null,
+  );
+
+  useEffect(() => {
+    setFocusedIndex((currentIndex) => {
+      const currentLocation = orderedRoutes[currentIndex]?.location;
+      const nextLocation = resolveFocusedLocation(
+        activeSession,
+        currentLocation ?? findInitialFocusedLocation(activeSession),
+      );
+
+      return findFocusedRouteIndex(orderedRoutes, nextLocation);
+    });
+  }, [activeSession, orderedRoutes]);
+
+  useEffect(() => {
+    const exercise = activeSession.exercises[location.exerciseIndex];
+    const setItem = exercise?.sets[location.setIndex];
+
+    if (!exercise || !setItem) {
+      return;
+    }
+
+    setSelectedReps(setItem.reps ?? exercise.targetRepsMin ?? 0);
+    setSelectedWeight(setItem.weight ?? 0);
+    setSelectedRir(setItem.actualRir ?? null);
+  }, [activeSession, location]);
+
+  useEffect(() => {
+    return () => {
+      if (completionTimeoutRef.current === null) {
+        return;
+      }
+
+      clearTimeout(completionTimeoutRef.current);
+    };
+  }, []);
+
+  const handleMoveFocus = (nextLocation: FocusedWorkoutLocation): void => {
+    setFocusedIndex(findFocusedRouteIndex(orderedRoutes, nextLocation));
+    setShowOverview(false);
+  };
+
+  const handlePreviewReps = (nextReps: number): void => {
+    setSelectedReps(clampNumber(nextReps));
+  };
+
+  const handlePreviewWeight = (nextWeight: number): void => {
+    setSelectedWeight(clampNumber(nextWeight));
+  };
+
+  const handleOpenExercisePickerFromOverview = (): void => {
+    setShowOverview(false);
+    setShowExerciseSheet(true);
+  };
+
+  const handleDeleteWorkoutFromOverview = (): void => {
+    setShowOverview(false);
+    onDeleteWorkout();
+  };
+
+  const handleAdjustReps = (
+    nextReps: number,
+    options?: { feedback?: boolean },
+  ): void => {
+    if (viewModel === null) {
+      return;
+    }
+
+    const normalizedReps = clampNumber(nextReps);
+    setSelectedReps(normalizedReps);
+    updateReps(viewModel.setId, normalizedReps);
+
+    if (options?.feedback !== false) {
+      triggerInteractionFeedback('set-adjust');
+    }
+  };
+
+  const handleAdjustWeight = (
+    nextWeight: number,
+    options?: { feedback?: boolean },
+  ): void => {
+    if (viewModel === null) {
+      return;
+    }
+
+    const normalizedWeight = clampNumber(nextWeight);
+    setSelectedWeight(normalizedWeight);
+    updateWeight(viewModel.setId, normalizedWeight);
+
+    if (options?.feedback !== false) {
+      triggerInteractionFeedback('set-adjust');
+    }
+  };
+
+  const commitFocusedSetValues = (): void => {
+    if (viewModel === null) {
+      return;
+    }
+
+    updateReps(viewModel.setId, selectedReps);
+    updateWeight(viewModel.setId, selectedWeight);
+  };
+
+  const handleAdjustRir = (nextRir: number | null): void => {
+    if (viewModel === null) {
+      return;
+    }
+
+    commitFocusedSetValues();
+    setSelectedRir(nextRir);
+    updateActualRir?.(viewModel.setId, nextRir);
+    triggerInteractionFeedback('set-adjust');
+  };
+
+  const handleCompleteSet = (): void => {
+    if (viewModel === null) {
+      return;
+    }
+
+    commitFocusedSetValues();
+    updateActualRir?.(viewModel.setId, selectedRir);
+    const didLogSet = !viewModel.isCompleted;
+
+    if (didLogSet) {
+      toggleSetLogged(viewModel.exerciseId, viewModel.setId, true);
+      triggerInteractionFeedback('set-log');
+      setCompletionRewardToken((currentToken) => currentToken + 1);
+    }
+
+    const advanceWorkoutFlow = (): void => {
+      const nextLocation = getNextFocusedLocation(activeSession, location);
+
+      if (
+        nextLocation.exerciseIndex === location.exerciseIndex &&
+        nextLocation.setIndex === location.setIndex
+      ) {
+        onComplete();
+        return;
+      }
+
+      handleMoveFocus(nextLocation);
+    };
+
+    if (!didLogSet || prefersReducedMotion) {
+      advanceWorkoutFlow();
+      return;
+    }
+
+    if (completionTimeoutRef.current !== null) {
+      clearTimeout(completionTimeoutRef.current);
+    }
+
+    completionTimeoutRef.current = setTimeout(() => {
+      completionTimeoutRef.current = null;
+      advanceWorkoutFlow();
+    }, 180);
+  };
+
+  const viewModel = useMemo(
+    () =>
+      hasFocusableSet
+        ? buildFocusedWorkoutViewModel({
+            session: activeSession,
+            location,
+            selectedReps,
+            selectedRir,
+            previousPerformance:
+              previousPerformanceByExerciseId[
+                activeSession.exercises[location.exerciseIndex]?.exerciseId ??
+                  ''
+              ] ?? null,
+          })
+        : null,
+    [
+      activeSession,
+      hasFocusableSet,
+      location,
+      previousPerformanceByExerciseId,
+      selectedReps,
+      selectedRir,
+    ],
+  );
+
+  const renderFocusedSetScene = ({
+    route,
+  }: {
+    route: FocusedSetRoute;
+  }): React.JSX.Element => {
+    if (!shouldRenderFocusedScene(orderedRoutes, route.key, focusedIndex)) {
+      return <View className="flex-1" />;
+    }
+
+    return (
+      <FocusedWorkoutScene
+        activeSession={activeSession}
+        routeLocation={route.location}
+        currentLocation={location}
+        now={now}
+        headerHeight={headerHeight}
+        bottomInset={insets.bottom}
+        restLabel={restLabel}
+        startRestTimer={() => startRestTimer()}
+        clearRestTimer={clearRestTimer}
+        selectedReps={selectedReps}
+        selectedWeight={selectedWeight}
+        selectedRir={selectedRir}
+        completionRewardToken={completionRewardToken}
+        previousPerformanceByExerciseId={previousPerformanceByExerciseId}
+        exerciseTimerEndsAtByExerciseId={exerciseTimerEndsAtByExerciseId}
+        exerciseTimerDurationByExerciseId={exerciseTimerDurationByExerciseId}
+        onOpenOverview={() => setShowOverview(true)}
+        onOpenExerciseDetails={onOpenExerciseDetails}
+        onOpenExerciseTimerOptions={onOpenExerciseTimerOptions}
+        onMoveFocus={handleMoveFocus}
+        onPreviewWeight={handlePreviewWeight}
+        onCommitWeight={(nextWeight) =>
+          handleAdjustWeight(nextWeight, { feedback: false })
+        }
+        onPreviewReps={handlePreviewReps}
+        onCommitReps={(nextReps) =>
+          handleAdjustReps(nextReps, { feedback: false })
+        }
+        onAdjustRir={handleAdjustRir}
+      />
+    );
+  };
+
+  if (!hasFocusableSet) {
+    return (
+      <Container className="px-0 pb-0" edges={['left', 'right']}>
+        <View className="flex-1">
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentInsetAdjustmentBehavior="never"
+            automaticallyAdjustContentInsets={false}
+            contentContainerStyle={{
+              paddingTop: headerHeight + 10,
+              paddingBottom: insets.bottom + 112,
+              gap: 14,
+            }}
+          >
+            <Surface className="rounded-[28px] px-6 py-6">
+              <Label>Ready</Label>
+              <Heading className="mt-3 text-4xl">{activeSession.title}</Heading>
+              <Muted className="mt-3">
+                Add an exercise to start the focused flow.
+              </Muted>
+            </Surface>
+          </ScrollView>
+
+          <View
+            className="absolute bottom-0 left-0 right-0 px-2 pb-2"
+            style={{ paddingBottom: Math.max(insets.bottom, 8) }}
+          >
+            <View className="rounded-[24px] border border-surface-border bg-surface-card p-2">
+              <Button onPress={() => setShowOverview(true)} className="flex-1">
+                Overview
+              </Button>
+            </View>
+          </View>
+
+          <WorkoutOverviewModal
+            visible={showOverview}
+            prefersReducedMotion={prefersReducedMotion}
+            bottomInset={insets.bottom}
+            activeSession={activeSession}
+            currentLocation={null}
+            completedExerciseCount={completedExerciseCount}
+            completedSetCount={completedSetCount}
+            setCount={setCount}
+            volume={volume}
+            onClose={() => setShowOverview(false)}
+            onAddExercise={handleOpenExercisePickerFromOverview}
+            onDeleteWorkout={handleDeleteWorkoutFromOverview}
+            onJumpToSet={handleMoveFocus}
+            addSet={addSet}
+            removeExercise={removeExercise}
+            deleteSet={deleteSet}
+          />
+
+          <ExercisePickerBottomSheet
+            visible={showExerciseSheet}
+            exerciseIdsInSession={activeSession.exercises.map(
+              (exercise) => exercise.exerciseId,
+            )}
+            onClose={() => setShowExerciseSheet(false)}
+            onAddExercise={addExercise}
+          />
+        </View>
+      </Container>
+    );
+  }
+
+  if (viewModel === null) {
+    return (
+      <Container>
+        <View />
+      </Container>
+    );
+  }
 
   return (
-    <Container
-      className="px-0 pb-0"
-      style={{ paddingBottom: 0 }}
-      edges={['left', 'right']}
-    >
+    <Container edges={['left', 'right']}>
       <View className="flex-1">
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentInsetAdjustmentBehavior="never"
-          automaticallyAdjustContentInsets={false}
-          contentContainerStyle={{
-            paddingTop: headerHeight + 8,
-            paddingBottom: dockHeight + 8,
+        <TabView
+          testID="focused-workout-tab-view"
+          navigationState={{
+            index: focusedIndex,
+            routes: orderedRoutes,
           }}
-        >
-          {activeSession.exercises.length > 0 ? (
-            activeSession.exercises.map((exercise) => (
-              <ExerciseCard
-                key={exercise.exerciseId}
-                title={exercise.exerciseName}
-                subtitle={formatPreviousPerformance(
-                  previousPerformanceByExerciseId[exercise.exerciseId] ?? null,
-                )}
-                isMetaActive={
-                  (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ?? 0) >
-                  now
-                }
-                metaLabel={
-                  (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ?? 0) >
-                  now
-                    ? `Timer ${formatRestCountdown(
-                        (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ??
-                          0) - now,
-                      )}`
-                    : `Timer ${formatTimerDuration(
-                        exerciseTimerDurationByExerciseId[
-                          exercise.exerciseId
-                        ] ?? DEFAULT_EXERCISE_TIMER_SECONDS,
-                      )}`
-                }
-                onPressTitle={() => onOpenExerciseDetails(exercise.exerciseId)}
-                titleAccessibilityLabel={`View details for ${exercise.exerciseName}`}
-                onPressMeta={() =>
-                  onOpenExerciseTimerOptions(exercise.exerciseId)
-                }
-                metaAccessibilityLabel={`${exercise.exerciseName} timer options`}
-                metaAccessibilityHint={`Choose the timer duration for ${exercise.exerciseName}. Current setting: ${
-                  (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ?? 0) >
-                  now
-                    ? `Timer ${formatRestCountdown(
-                        (exerciseTimerEndsAtByExerciseId[exercise.exerciseId] ??
-                          0) - now,
-                      )}`
-                    : `Timer ${formatTimerDuration(
-                        exerciseTimerDurationByExerciseId[
-                          exercise.exerciseId
-                        ] ?? DEFAULT_EXERCISE_TIMER_SECONDS,
-                      )}`
-                }.`}
-                menuActions={[
-                  {
-                    label: 'View Details',
-                    onPress: () => onOpenExerciseDetails(exercise.exerciseId),
-                  },
-                  {
-                    label: 'Delete Exercise',
-                    style: 'destructive',
-                    onPress: () => removeExercise(exercise.exerciseId),
-                  },
-                ]}
-              >
-                <View className="flex-row items-center gap-2 px-1 pb-3 pt-1">
-                  <Label className="w-8 text-center text-xs">Set</Label>
-                  <Label className="flex-1 text-xs">Reps</Label>
-                  <Label className="flex-1 text-xs">Weight</Label>
-                  <Label className="flex-1 text-xs">RIR</Label>
-                  <Label className="w-[58px] text-center text-xs">Log</Label>
-                </View>
-                {exercise.sets.map((setItem, index) => (
-                  <WorkoutSetRow
-                    key={setItem.id}
-                    exerciseName={exercise.exerciseName}
-                    setItem={setItem}
-                    index={index}
-                    onDelete={() => {
-                      configureInteractionLayoutAnimation(prefersReducedMotion);
-                      deleteSet(setItem.id);
-                    }}
-                    onUpdateReps={(reps) => updateReps(setItem.id, reps)}
-                    onUpdateWeight={(weight) =>
-                      updateWeight(setItem.id, weight)
-                    }
-                    onUpdateActualRir={(actualRir) =>
-                      updateActualRir?.(setItem.id, actualRir)
-                    }
-                    onToggleLogged={(isCompleted) =>
-                      toggleSetLogged(
-                        exercise.exerciseId,
-                        setItem.id,
-                        isCompleted,
-                      )
-                    }
-                  />
-                ))}
-
-                <InteractivePressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Add set to ${exercise.exerciseName}`}
-                  className="mt-1 self-start rounded-[12px]  bg-surface-elevated px-3 py-2"
-                  onPress={() => {
-                    configureInteractionLayoutAnimation(prefersReducedMotion);
-                    addSet(exercise.exerciseId);
-                  }}
-                >
-                  <Body className="text-sm font-semibold text-secondary">
-                    Add set
-                  </Body>
-                </InteractivePressable>
-              </ExerciseCard>
-            ))
-          ) : (
-            <View className="border-b border-t border-surface-border px-2 py-2">
-              <Muted className="text-xs">
-                {activeSession.isFreeWorkout
-                  ? 'No exercises in this free workout yet.'
-                  : 'No exercises in this session yet.'}
-              </Muted>
-            </View>
-          )}
-        </ScrollView>
+          onIndexChange={setFocusedIndex}
+          renderScene={renderFocusedSetScene}
+          renderTabBar={() => null}
+          initialLayout={{ width }}
+          lazy
+          lazyPreloadDistance={FOCUSED_SCENE_PRELOAD_DISTANCE}
+          animationEnabled={!prefersReducedMotion}
+          style={{ flex: 1, marginHorizontal: -16 }}
+        />
 
         <View
-          className="absolute left-0 right-0 px-2"
-          pointerEvents="box-none"
-          style={{ bottom: dockOffset }}
+          className="absolute bottom-0 left-0 right-0 pb-2"
+          style={{ paddingBottom: Math.max(insets.bottom, 8) }}
         >
-          <View className="flex-row items-center gap-1.5">
-            <InteractivePressable
-              accessibilityRole="button"
-              accessibilityLabel="Add exercise"
-              className="h-11 w-11 items-center justify-center rounded-[14px]  bg-surface-card"
-              onPress={() => setShowExerciseSheet(true)}
-            >
-              <Text className="font-mono text-xl text-foreground">+</Text>
-            </InteractivePressable>
-            <InteractivePressable
-              accessibilityRole="button"
-              accessibilityLabel="Delete workout"
-              className="h-11 w-11 items-center justify-center rounded-[14px]  bg-surface-card px-3"
-              onPress={onDeleteWorkout}
-            >
-              <Body className="text-sm font-semibold text-destructive">x</Body>
-            </InteractivePressable>
-
-            <Button
-              onPress={onComplete}
-              className="flex-1"
-              accessibilityLabel="Complete Workout"
-            >
-              Complete Workout
-            </Button>
+          <View className="flex-row items-center gap-2 rounded-[24px] border border-surface-border bg-surface-card p-2">
+            <CompleteSetButton
+              label={
+                viewModel.totalRemainingSets === 0 && viewModel.isCompleted
+                  ? 'Finish Workout'
+                  : 'Complete Set'
+              }
+              rewardToken={completionRewardToken}
+              onPress={
+                viewModel.totalRemainingSets === 0 && viewModel.isCompleted
+                  ? onComplete
+                  : handleCompleteSet
+              }
+            />
           </View>
         </View>
-
-        <ExercisePickerBottomSheet
-          visible={showExerciseSheet}
-          exerciseIdsInSession={activeSession.exercises.map(
-            (exercise) => exercise.exerciseId,
-          )}
-          onClose={() => setShowExerciseSheet(false)}
-          onAddExercise={addExercise}
-        />
       </View>
+
+      <WorkoutOverviewModal
+        visible={showOverview}
+        prefersReducedMotion={prefersReducedMotion}
+        bottomInset={insets.bottom}
+        activeSession={activeSession}
+        currentLocation={location}
+        completedExerciseCount={completedExerciseCount}
+        completedSetCount={completedSetCount}
+        setCount={setCount}
+        volume={volume}
+        onClose={() => setShowOverview(false)}
+        onAddExercise={handleOpenExercisePickerFromOverview}
+        onDeleteWorkout={handleDeleteWorkoutFromOverview}
+        onJumpToSet={handleMoveFocus}
+        addSet={addSet}
+        removeExercise={removeExercise}
+        deleteSet={deleteSet}
+      />
+
+      <ExercisePickerBottomSheet
+        visible={showExerciseSheet}
+        exerciseIdsInSession={activeSession.exercises.map(
+          (exercise) => exercise.exerciseId,
+        )}
+        onClose={() => setShowExerciseSheet(false)}
+        onAddExercise={addExercise}
+      />
     </Container>
   );
 }

@@ -157,6 +157,39 @@ function buildExerciseSummary(
   )}: ${trendMetric}, ${hitRateText}, ${rirText}, and ${cadenceText}.`;
 }
 
+function buildExerciseSignal(
+  exerciseName: string,
+  strengthChangeRatio: number | null,
+  volumeChangeRatio: number,
+): { direction: 'up' | 'down' | 'steady'; signal: string } {
+  const changeRatio = strengthChangeRatio ?? volumeChangeRatio;
+
+  if (changeRatio >= 0.03) {
+    return {
+      direction: 'up',
+      signal:
+        strengthChangeRatio !== null
+          ? `${exerciseName} ↑`
+          : `Volume ↑ ${Math.round(changeRatio * 100)}%`,
+    };
+  }
+
+  if (changeRatio <= -0.03) {
+    return {
+      direction: 'down',
+      signal:
+        strengthChangeRatio !== null
+          ? `${exerciseName} ↓`
+          : `Volume ↓ ${Math.round(Math.abs(changeRatio) * 100)}%`,
+    };
+  }
+
+  return {
+    direction: 'steady',
+    signal: `${exerciseName} steady`,
+  };
+}
+
 export function buildExerciseTrendSummaries(
   exposuresByExerciseId: Record<string, ExerciseExposure[]>,
   capabilitiesByExerciseId: Record<string, ExerciseCapability>,
@@ -215,6 +248,11 @@ export function buildExerciseTrendSummaries(
             .map((exposure) => exposure.performanceVariability)
             .filter((value): value is number => value !== null),
         ) ?? null;
+      const signal = buildExerciseSignal(
+        recentExposures[0]?.exerciseName ?? 'Exercise',
+        strengthChangeRatio,
+        volumeChangeRatio,
+      );
 
       return {
         exerciseId,
@@ -228,6 +266,8 @@ export function buildExerciseTrendSummaries(
           calculateAverage(gapDays),
           variability,
         ),
+        direction: signal.direction,
+        signal: signal.signal,
         quality: buildQuality(recentExposures, capability),
       };
     })

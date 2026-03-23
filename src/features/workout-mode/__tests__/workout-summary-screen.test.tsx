@@ -114,9 +114,9 @@ describe('WorkoutSummaryScreen', () => {
     expect(screen.getByText('No watchouts from this session.')).toBeTruthy();
     expect(screen.getByText('Upper Split')).toBeTruthy();
     expect(screen.getByText('Row')).toBeTruthy();
-    expect(screen.getByText('Back to home')).toBeTruthy();
+    expect(screen.getByText('Return Home')).toBeTruthy();
 
-    fireEvent.press(screen.getByText('Back to home'));
+    fireEvent.press(screen.getByText('Return Home'));
 
     expect(goBack).toHaveBeenCalledTimes(1);
     expect(navigate).not.toHaveBeenCalled();

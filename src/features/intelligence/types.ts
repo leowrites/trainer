@@ -68,6 +68,8 @@ export interface ExerciseTrendSummary {
   exerciseName: string;
   summary: string;
   quality: DataQuality;
+  direction?: 'up' | 'down' | 'steady';
+  signal?: string;
 }
 
 export interface RoutineTrendSummary {
@@ -144,6 +146,22 @@ export interface TrainingGoalViewModel {
   goal: TrainingGoal;
   title: string;
   progress: GoalProgressSummary;
+}
+
+export interface HomePrimaryInsight {
+  id: string;
+  text: string;
+  tone: 'positive' | 'neutral' | 'warning';
+  source: 'exercise' | 'routine' | 'goal' | 'adherence' | 'fallback';
+  quality: DataQuality;
+}
+
+export interface HomeExerciseHighlight {
+  exerciseId: string;
+  exerciseName: string;
+  text: string;
+  direction: 'up' | 'down' | 'steady';
+  quality: DataQuality;
 }
 
 export interface SessionIntelligenceOptions {

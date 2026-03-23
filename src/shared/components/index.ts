@@ -13,6 +13,7 @@
  *  - Heading, Body, Label, Caption, Muted, StatValue — typography scale
  *  - StatRow      — large metric display (value + unit + sub-label)
  *  - Badge        — semantic colour tag with optional pulse animation
+ *  - DayTile      — compact two-line day/status tile with semantic states
  *  - Button       — pressable CTA with variants (primary / secondary / ghost / danger)
  *  - ProgressBar  — horizontal fill indicator with variants
  *  - Input        — theme-aware text input field
@@ -59,6 +60,9 @@ export {
 // ── Interactive primitives ────────────────────────────────────────────────────
 export { Badge } from './badge';
 export type { BadgeProps, BadgeVariant } from './badge';
+
+export { DayTile } from './day-tile';
+export type { DayTileProps, DayTileTone } from './day-tile';
 
 export { Button } from './button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './button';

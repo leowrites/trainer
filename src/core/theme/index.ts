@@ -21,8 +21,8 @@ export const palette = {
   primary900: '#31468c',
   primary950: '#24325f',
 
-  primary: '#F3C66A',
-  primaryDark: '#E8B85A',
+  primary: '#FF6B00',
+  primaryDark: '#FF6B00',
   primarySubtle: '#FFD98A',
   primarySubtleDark: '#F3C978',
   primaryBorder: '#D9C69A',
@@ -37,7 +37,7 @@ export const palette = {
   error: '#F45B5B',
   errorDark: '#FF6B6B',
 
-  bg: '#F7F6F2',
+  bg: '#ffffff',
   bgAlt: '#F2F1EC',
   surface: '#FFFFFF',
   surface2: '#FBFAF7',

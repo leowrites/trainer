@@ -11,6 +11,7 @@ export interface ActiveWorkoutSet {
   position?: number | null;
   reps: number;
   weight: number;
+  targetWeight?: number;
   isCompleted: boolean;
   targetSets: number | null;
   targetReps?: number | null;
@@ -45,6 +46,40 @@ export interface PreviousExercisePerformance {
   reps: number;
   weight: number;
   completedAt: number;
+}
+
+export interface FocusedWorkoutGuidance {
+  targetLabel: string;
+  text: string;
+  tone: 'positive' | 'neutral' | 'warning';
+  quality: {
+    level: 'high' | 'medium' | 'low';
+    reasons: Array<
+      | 'too_few_exposures'
+      | 'missing_rir'
+      | 'inconsistent_logging'
+      | 'exercise_definition_changed'
+    >;
+  };
+}
+
+export interface FocusedWorkoutLocation {
+  exerciseIndex: number;
+  setIndex: number;
+}
+
+export interface FocusedWorkoutViewModel {
+  location: FocusedWorkoutLocation;
+  exerciseId: string;
+  exerciseName: string;
+  setId: string;
+  setNumber: number;
+  totalSetsForExercise: number;
+  totalRemainingSets: number;
+  selectedReps: number;
+  selectedRir: number | null;
+  isCompleted: boolean;
+  guidance: FocusedWorkoutGuidance;
 }
 
 export type WorkoutSessionRow = Pick<

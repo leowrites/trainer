@@ -1,4 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import WheelPicker from '@quidone/react-native-wheel-picker';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import React from 'react';
 import { ActionSheetIOS, Alert } from 'react-native';
 
@@ -6,6 +13,7 @@ import { useHistoryAnalytics } from '@features/analytics';
 import { useUserProfile } from '@features/health-tracking';
 import { triggerInteractionFeedback } from '@shared/utils';
 import { WorkoutActiveScreen, WorkoutScreen } from '../screens/workout-screen';
+import { ActiveWorkoutContent } from '../components/active-workout-content';
 import { useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
 import { useActiveWorkout } from '../hooks/use-active-workout';
@@ -22,7 +30,6 @@ jest.mock('@shared/hooks', () => ({
 
 jest.mock('@shared/utils', () => ({
   ...jest.requireActual('@shared/utils'),
-  configureInteractionLayoutAnimation: jest.fn(),
   triggerInteractionFeedback: jest.fn(),
 }));
 
@@ -40,6 +47,16 @@ jest.mock('@react-navigation/elements', () => ({
   useHeaderHeight: () => 96,
 }));
 
+jest.mock('@expo/vector-icons', () => {
+  const ReactNative = require('react-native');
+
+  return {
+    Feather: ({ name }: { name: string }) => (
+      <ReactNative.Text>{name}</ReactNative.Text>
+    ),
+  };
+});
+
 jest.mock('react-native-safe-area-context', () => {
   const ReactNative = require('react-native');
 
@@ -53,6 +70,63 @@ jest.mock('react-native-safe-area-context', () => {
       bottom: 34,
       left: 0,
     }),
+  };
+});
+
+jest.mock('react-native-tab-view', () => {
+  const ReactNative = require('react-native');
+
+  return {
+    TabView: ({
+      navigationState,
+      onIndexChange,
+      renderScene,
+      renderTabBar,
+      lazy,
+      lazyPreloadDistance,
+    }: {
+      navigationState: {
+        index: number;
+        routes: Array<{ key: string }>;
+      };
+      onIndexChange: (index: number) => void;
+      renderScene: (scene: { route: { key: string } }) => React.ReactNode;
+      renderTabBar?: () => React.ReactNode;
+      lazy?: boolean;
+      lazyPreloadDistance?: number;
+    }) => {
+      const preloadDistance = lazy
+        ? (lazyPreloadDistance ?? 0)
+        : Number.MAX_SAFE_INTEGER;
+
+      return (
+        <ReactNative.View
+          testID="focused-workout-tab-view"
+          navigationState={navigationState}
+          onIndexChange={onIndexChange}
+          lazy={lazy}
+          lazyPreloadDistance={lazyPreloadDistance}
+        >
+          {renderTabBar?.()}
+          {navigationState.routes.map((route, routeIndex) => {
+            if (
+              Math.abs(routeIndex - navigationState.index) > preloadDistance
+            ) {
+              return null;
+            }
+
+            return (
+              <ReactNative.View
+                key={route.key}
+                testID={`tab-scene-${route.key}`}
+              >
+                {renderScene({ route })}
+              </ReactNative.View>
+            );
+          })}
+        </ReactNative.View>
+      );
+    },
   };
 });
 
@@ -131,7 +205,19 @@ type WorkoutActiveScreenProps = React.ComponentProps<
   typeof WorkoutActiveScreen
 >;
 type WorkoutStoreState = ReturnType<typeof useWorkoutStore.getState>;
-
+type HeroWheelTestInstance = {
+  props: {
+    testID?: string;
+    onValueChanging: (event: {
+      item: { value: number; label: string };
+      index: number;
+    }) => void;
+    onValueChanged: (event: {
+      item: { value: number; label: string };
+      index: number;
+    }) => void;
+  };
+};
 function createWorkoutTabScreenProps(): WorkoutTabScreenProps {
   return {
     navigation: {
@@ -204,6 +290,40 @@ function getLatestHeaderOptions(
   }
 
   return latestCall[0] as Record<string, unknown>;
+}
+
+function getHeroWheelPicker(
+  view: ReturnType<typeof render>,
+  testID: string,
+): HeroWheelTestInstance {
+  const wheel = view
+    .UNSAFE_getAllByType(WheelPicker)
+    .find((candidate) => candidate.props.testID === testID);
+
+  if (!wheel) {
+    throw new Error(`Expected wheel picker with testID ${testID}`);
+  }
+
+  return wheel as HeroWheelTestInstance;
+}
+
+function getFocusedOverviewButton(
+  view: Pick<ReturnType<typeof render>, 'getAllByText' | 'queryByTestId'>,
+): ReturnType<ReturnType<typeof render>['getByText']> {
+  const focusedScene = view.queryByTestId('focused-workout-scene');
+
+  if (focusedScene) {
+    return within(focusedScene).getByText('Overview');
+  }
+
+  const overviewButtons = view.getAllByText('Overview');
+  const fallbackButton = overviewButtons.at(-1);
+
+  if (!fallbackButton) {
+    throw new Error('Expected an Overview button for the focused scene');
+  }
+
+  return fallbackButton;
 }
 
 describe('WorkoutScreen', () => {
@@ -315,16 +435,19 @@ describe('WorkoutScreen', () => {
     render(<WorkoutScreen {...props} />);
 
     expect(refreshPreview).not.toHaveBeenCalled();
-    expect(screen.getByText('Good morning, Alex')).toBeTruthy();
-    expect(screen.getByText('Workouts This Week')).toBeTruthy();
-    expect(screen.getByText('Weekly Streak')).toBeTruthy();
-    expect(screen.getByText('1 active days')).toBeTruthy();
-    expect(screen.getByText('1 week in a row')).toBeTruthy();
+    expect(screen.queryByText('Good morning, Alex')).toBeNull();
+    expect(screen.getByText('UP NEXT')).toBeTruthy();
+    expect(screen.getByText('This week')).toBeTruthy();
+    expect(screen.getByText('Streak')).toBeTruthy();
+    expect(screen.getByText('Active days')).toBeTruthy();
     expect(screen.getByText('Push A')).toBeTruthy();
-    expect(screen.getByText('6 exercises • ~40 mins')).toBeTruthy();
+    expect(screen.getByText('6 exercises • 40 min')).toBeTruthy();
+    expect(screen.queryByText('Signal')).toBeNull();
+    expect(screen.queryByText('fallback')).toBeNull();
+    expect(screen.queryByText('History')).toBeNull();
 
-    fireEvent.press(screen.getByText('Start Push A'));
-    fireEvent.press(screen.getByText('Start Free Workout'));
+    fireEvent.press(screen.getByText('Start now'));
+    fireEvent.press(screen.getByText('Free workout'));
 
     expect(startWorkoutFromSchedule).toHaveBeenCalledTimes(1);
     expect(startFreeWorkout).toHaveBeenCalledTimes(1);
@@ -374,12 +497,12 @@ describe('WorkoutScreen', () => {
 
     render(<WorkoutScreen {...props} />);
 
-    expect(screen.getByText('Current Workout')).toBeTruthy();
-    expect(screen.getByText('Continue')).toBeTruthy();
-    expect(screen.queryByText('Start Pull A')).toBeNull();
-    expect(screen.queryByText('Start Free Workout')).toBeNull();
+    expect(screen.getByText('IN PROGRESS')).toBeTruthy();
+    expect(screen.getByText('Continue now')).toBeTruthy();
+    expect(screen.queryByText('Start now')).toBeNull();
+    expect(screen.queryByText('Free workout')).toBeNull();
 
-    fireEvent.press(screen.getByText('Continue'));
+    fireEvent.press(screen.getByText('Continue now'));
 
     expect(expandWorkout).toHaveBeenCalledTimes(1);
   });
@@ -442,6 +565,7 @@ describe('WorkoutScreen', () => {
                 exerciseId: 'exercise-1',
                 reps: 8,
                 weight: 135,
+                targetWeight: 135,
                 isCompleted: false,
                 targetSets: 3,
                 targetReps: 8,
@@ -481,7 +605,7 @@ describe('WorkoutScreen', () => {
     const workoutRender = render(<WorkoutActiveScreen {...props} />);
 
     expect(workoutRender.getAllByText('Bench Press').length).toBeGreaterThan(0);
-    expect(workoutRender.getByText('Previous 8 x 130')).toBeTruthy();
+    expect(workoutRender.getByText('Last: 8 x 130')).toBeTruthy();
     expect(workoutRender.getByText('Timer 1:00')).toBeTruthy();
 
     const headerOptions = getLatestHeaderOptions(props);
@@ -494,41 +618,64 @@ describe('WorkoutScreen', () => {
     expect(titleElement.props.completedExerciseCount).toBe(0);
     expect(titleElement.props.totalExerciseCount).toBe(1);
     expect(rightElement.props.durationLabel).toBe('1m');
+    expect(workoutRender.getAllByText('135 lbs')).toHaveLength(1);
 
-    const repsInput = workoutRender.getByLabelText('Bench Press set 1 reps');
-    const weightInput = workoutRender.getByLabelText(
-      'Bench Press set 1 weight',
+    const weightWheel = getHeroWheelPicker(
+      workoutRender,
+      'hero-zone-weight-wheel',
     );
+    const repsWheel = getHeroWheelPicker(workoutRender, 'hero-zone-reps-wheel');
 
-    fireEvent.changeText(repsInput, '10');
-    fireEvent(repsInput, 'endEditing');
-    fireEvent.changeText(weightInput, '140.5');
-    fireEvent(weightInput, 'endEditing');
-    fireEvent.press(
-      workoutRender.getByLabelText('View details for Bench Press'),
-    );
-    fireEvent.press(workoutRender.getByLabelText('Bench Press timer options'));
-    fireEvent.press(workoutRender.getByLabelText('Log Bench Press set 1'));
-    fireEvent.press(workoutRender.getByText('Add set'));
-    fireEvent.press(
-      workoutRender.UNSAFE_getByProps({ testID: 'delete-set-set-1' }),
-    );
-    mockShowActionSheetWithOptions.mockImplementationOnce((_, callback) => {
-      callback(1);
+    act(() => {
+      weightWheel.props.onValueChanging({
+        item: { value: 140, label: '140 lbs' },
+        index: 28,
+      });
+      weightWheel.props.onValueChanged({
+        item: { value: 140, label: '140 lbs' },
+        index: 28,
+      });
+      repsWheel.props.onValueChanging({
+        item: { value: 10, label: '10' },
+        index: 10,
+      });
+      repsWheel.props.onValueChanged({
+        item: { value: 10, label: '10' },
+        index: 10,
+      });
     });
-    fireEvent.press(workoutRender.getByLabelText('Options for Bench Press'));
-    fireEvent.press(workoutRender.getByText('Complete Workout'));
 
+    expect(workoutRender.getByText('Target: 135 lbs x 8')).toBeTruthy();
+    expect(workoutRender.getByText('140 lbs')).toBeTruthy();
+    expect(workoutRender.getAllByText('10').length).toBeGreaterThan(0);
+
+    fireEvent.press(workoutRender.getByText('Detail'));
+    fireEvent.press(workoutRender.getByText('Timer 1:00'));
+    fireEvent.press(getFocusedOverviewButton(workoutRender));
+    expect(
+      workoutRender.getByText('0/1 exercises · 0/1 sets · 1080 volume'),
+    ).toBeTruthy();
+    expect(workoutRender.getByText('Add set')).toBeTruthy();
+    expect(workoutRender.getByText('Remove exercise')).toBeTruthy();
+    fireEvent.press(workoutRender.getByText('Add set'));
+    fireEvent.press(workoutRender.getByLabelText('Delete Set 1'));
+    fireEvent.press(workoutRender.getByText('Remove exercise'));
+    fireEvent.press(getFocusedOverviewButton(workoutRender));
+    fireEvent.press(workoutRender.getByLabelText('Jump to Set 1'));
+    fireEvent.press(workoutRender.getByText('Complete Set'));
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(updateReps).toHaveBeenCalledWith('set-1', 10);
+    expect(updateWeight).toHaveBeenCalledWith('set-1', 140);
     expect(navigate).toHaveBeenCalledWith('ExerciseDetail', {
       exerciseId: 'exercise-1',
     });
-    expect(updateReps).toHaveBeenCalledWith('set-1', 10);
-    expect(updateWeight).toHaveBeenCalledWith('set-1', 140.5);
     expect(toggleSetLogged).toHaveBeenCalledWith('set-1', true);
     expect(mockTriggerInteractionFeedback).toHaveBeenCalledWith('set-log');
     expect(setExerciseTimerDuration).toHaveBeenCalledWith('exercise-1', 90);
-    expect(startExerciseTimer).toHaveBeenNthCalledWith(1, 'exercise-1', 90);
-    expect(startExerciseTimer).toHaveBeenNthCalledWith(2, 'exercise-1', 60);
+    expect(startExerciseTimer).toHaveBeenCalledWith('exercise-1', 90);
     expect(addSet).toHaveBeenCalledWith('exercise-1');
     expect(deleteSet).toHaveBeenCalledWith('set-1');
     expect(removeExercise).toHaveBeenCalledWith('exercise-1');
@@ -563,7 +710,25 @@ describe('WorkoutScreen', () => {
         title: 'Push A',
         startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
         isFreeWorkout: false,
-        exercises: [],
+        exercises: [
+          {
+            exerciseId: 'exercise-1',
+            exerciseName: 'Bench Press',
+            sets: [
+              {
+                id: 'set-1',
+                exerciseId: 'exercise-1',
+                reps: 8,
+                weight: 135,
+                isCompleted: false,
+                targetSets: 3,
+                targetReps: 8,
+              },
+            ],
+            targetSets: 3,
+            targetReps: 8,
+          },
+        ],
       },
       addExercise: jest.fn(),
       removeExercise: jest.fn(),
@@ -600,6 +765,930 @@ describe('WorkoutScreen', () => {
     expect(collapseWorkout).not.toHaveBeenCalled();
   });
 
+  it('renders the focused pager on the initial incomplete set and responds to index changes', () => {
+    const activeSession = {
+      id: 'session-1',
+      title: 'Push A',
+      startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+      isFreeWorkout: false,
+      exercises: [
+        {
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          targetSets: 2,
+          targetReps: 8,
+          sets: [
+            {
+              id: 'set-1',
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 135,
+              isCompleted: true,
+              targetSets: 2,
+              targetReps: 8,
+            },
+            {
+              id: 'set-2',
+              exerciseId: 'exercise-1',
+              reps: 6,
+              weight: 135,
+              isCompleted: false,
+              targetSets: 2,
+              targetReps: 8,
+            },
+          ],
+        },
+      ],
+    };
+
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={activeSession}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={2}
+        volume={1890}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={jest.fn()}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const pager = view.getByTestId('focused-workout-tab-view');
+
+    expect(pager.props.navigationState.index).toBe(1);
+    expect(view.getAllByText(/Set 2 of 2/).length).toBeGreaterThan(0);
+
+    act(() => {
+      pager.props.onIndexChange(0);
+    });
+
+    expect(view.getAllByText(/Set 1 of 2/).length).toBeGreaterThan(0);
+  });
+
+  it('keeps the focused scene interactive after a tab change', () => {
+    const updateWeight = jest.fn();
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 1,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetReps: 8,
+                },
+              ],
+            },
+            {
+              exerciseId: 'exercise-2',
+              exerciseName: 'Incline Press',
+              targetSets: 1,
+              targetReps: 10,
+              sets: [
+                {
+                  id: 'set-2',
+                  exerciseId: 'exercise-2',
+                  reps: 10,
+                  weight: 95,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetReps: 10,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={2}
+        volume={2030}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={updateWeight}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{
+          'exercise-1': null,
+          'exercise-2': null,
+        }}
+        exerciseTimerDurationByExerciseId={{
+          'exercise-1': 60,
+          'exercise-2': 60,
+        }}
+        previousPerformanceByExerciseId={{
+          'exercise-1': null,
+          'exercise-2': null,
+        }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const pager = view.getByTestId('focused-workout-tab-view');
+
+    expect(pager.props.lazy).toBe(true);
+    expect(pager.props.lazyPreloadDistance).toBe(1);
+
+    act(() => {
+      pager.props.onIndexChange(1);
+    });
+
+    const weightWheel = getHeroWheelPicker(view, 'hero-zone-weight-wheel');
+
+    act(() => {
+      weightWheel.props.onValueChanged({
+        item: { value: 100, label: '100 lbs' },
+        index: 20,
+      });
+    });
+
+    expect(view.getAllByText(/Set 1 of 1/).length).toBeGreaterThan(0);
+    expect(view.getByText('Incline Press')).toBeTruthy();
+    expect(updateWeight).toHaveBeenCalledWith('set-2', 100);
+  });
+
+  it('preserves the jumped overview location after session updates', () => {
+    const activeSession = {
+      id: 'session-1',
+      title: 'Push A',
+      startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+      isFreeWorkout: false,
+      exercises: [
+        {
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          targetSets: 2,
+          targetReps: 8,
+          sets: [
+            {
+              id: 'set-1',
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 135,
+              isCompleted: false,
+              targetSets: 2,
+              targetReps: 8,
+            },
+            {
+              id: 'set-2',
+              exerciseId: 'exercise-1',
+              reps: 6,
+              weight: 135,
+              isCompleted: false,
+              targetSets: 2,
+              targetReps: 8,
+            },
+          ],
+        },
+      ],
+    };
+
+    const contentProps: React.ComponentProps<typeof ActiveWorkoutContent> = {
+      activeSession,
+      now: new Date(2026, 2, 18, 8, 1, 30).getTime(),
+      setCount: 2,
+      volume: 1890,
+      restLabel: null,
+      onComplete: jest.fn(),
+      onDeleteWorkout: jest.fn(),
+      startRestTimer: jest.fn(),
+      clearRestTimer: jest.fn(),
+      onOpenExerciseDetails: jest.fn(),
+      onOpenExerciseTimerOptions: jest.fn(),
+      addSet: jest.fn(),
+      addExercise: jest.fn(),
+      removeExercise: jest.fn(),
+      deleteSet: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      updateActualRir: jest.fn(),
+      toggleSetLogged: jest.fn(),
+      exerciseTimerEndsAtByExerciseId: { 'exercise-1': null },
+      exerciseTimerDurationByExerciseId: { 'exercise-1': 60 },
+      previousPerformanceByExerciseId: { 'exercise-1': null },
+      showExerciseSheet: false,
+      setShowExerciseSheet: jest.fn(),
+      insets: {
+        top: 0,
+        right: 0,
+        bottom: 34,
+        left: 0,
+      },
+    };
+
+    const view = render(<ActiveWorkoutContent {...contentProps} />);
+
+    fireEvent.press(getFocusedOverviewButton(view));
+    fireEvent.press(view.getByLabelText('Jump to Set 2'));
+
+    expect(view.getAllByText(/Set 2 of 2/).length).toBeGreaterThan(0);
+
+    view.rerender(
+      <ActiveWorkoutContent
+        {...contentProps}
+        activeSession={{
+          ...activeSession,
+          exercises: [
+            {
+              ...activeSession.exercises[0],
+              sets: [
+                activeSession.exercises[0].sets[0],
+                {
+                  ...activeSession.exercises[0].sets[1],
+                  reps: 7,
+                  weight: 140,
+                },
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(view.getAllByText(/Set 2 of 2/).length).toBeGreaterThan(0);
+  });
+
+  it('advances to the next page on completion and finishes on the final page', () => {
+    const onComplete = jest.fn();
+
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 2,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 2,
+                  targetReps: 8,
+                },
+                {
+                  id: 'set-2',
+                  exerciseId: 'exercise-1',
+                  reps: 6,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 2,
+                  targetReps: 8,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={2}
+        volume={1890}
+        restLabel={null}
+        onComplete={onComplete}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={jest.fn()}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    fireEvent.press(view.getByText('Complete Set'));
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(view.getAllByText(/Set 2 of 2/).length).toBeGreaterThan(0);
+
+    fireEvent.press(view.getByText('Complete Set'));
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the selected values in the hero and keeps target guidance separate', () => {
+    const activeSession = {
+      id: 'session-1',
+      title: 'Push A',
+      startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+      isFreeWorkout: false,
+      exercises: [
+        {
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          targetSets: 1,
+          targetReps: 12,
+          sets: [
+            {
+              id: 'set-1',
+              exerciseId: 'exercise-1',
+              reps: 12,
+              weight: 135,
+              isCompleted: false,
+              targetSets: 1,
+              targetReps: 12,
+            },
+          ],
+        },
+      ],
+    };
+
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={activeSession}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={1}
+        volume={1620}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={jest.fn()}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    expect(view.getByText('135 lbs')).toBeTruthy();
+    expect(view.getByText('12')).toBeTruthy();
+    expect(view.queryByText('135 lbs x 12')).toBeNull();
+    expect(view.getByText('Target: 135 lbs x 12')).toBeTruthy();
+  });
+
+  it('renders the compact overview hierarchy and highlights the current row', () => {
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 2,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 185,
+                  isCompleted: true,
+                  targetSets: 2,
+                  targetReps: 8,
+                },
+                {
+                  id: 'set-2',
+                  exerciseId: 'exercise-1',
+                  reps: 6,
+                  weight: 185,
+                  isCompleted: false,
+                  targetSets: 2,
+                  targetReps: 8,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={2}
+        volume={2590}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={jest.fn()}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    fireEvent.press(getFocusedOverviewButton(view));
+
+    expect(view.getByText('+ Add exercise')).toBeTruthy();
+    expect(
+      view.getByText('0/1 exercises · 1/2 sets · 2590 volume'),
+    ).toBeTruthy();
+    expect(
+      within(view.getByTestId('jump-set-1')).getByText('185 × 8'),
+    ).toBeTruthy();
+    expect(view.getByTestId('jump-set-2').props.className).toContain(
+      'border-accent',
+    );
+  });
+
+  it('settles hero wheel changes and commits the logged value', () => {
+    const updateWeight = jest.fn();
+    const activeSession = {
+      id: 'session-1',
+      title: 'Push A',
+      startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+      isFreeWorkout: false,
+      exercises: [
+        {
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          targetSets: 1,
+          targetReps: 8,
+          sets: [
+            {
+              id: 'set-1',
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 135,
+              targetWeight: 140,
+              isCompleted: false,
+              targetSets: 1,
+              targetReps: 8,
+            },
+          ],
+        },
+      ],
+    };
+
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={activeSession}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={1}
+        volume={1620}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={updateWeight}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const weightWheel = getHeroWheelPicker(view, 'hero-zone-weight-wheel');
+
+    expect(updateWeight).not.toHaveBeenCalled();
+
+    act(() => {
+      weightWheel.props.onValueChanging({
+        item: { value: 150, label: '150 lbs' },
+        index: 30,
+      });
+      weightWheel.props.onValueChanged({
+        item: { value: 150, label: '150 lbs' },
+        index: 30,
+      });
+    });
+
+    expect(view.getAllByText('150 lbs').length).toBeGreaterThan(0);
+    expect(updateWeight).toHaveBeenCalledWith('set-1', 150);
+  });
+
+  it('allows exact decimal weight entry from the focused hero', () => {
+    const updateWeight = jest.fn();
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 1,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetReps: 8,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={1}
+        volume={1080}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={updateWeight}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const weightInput = view.getByLabelText('Current set weight');
+
+    fireEvent.changeText(weightInput, '142.5');
+    fireEvent(weightInput, 'endEditing');
+
+    expect(updateWeight).toHaveBeenCalledWith('set-1', 142.5);
+    expect(view.getByDisplayValue('142.5')).toBeTruthy();
+  });
+
+  it('commits previewed hero values before updating RIR', () => {
+    const updateReps = jest.fn();
+    const updateWeight = jest.fn();
+    const updateActualRir = jest.fn();
+
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 1,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetReps: 8,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={1}
+        volume={1080}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={updateReps}
+        updateWeight={updateWeight}
+        updateActualRir={updateActualRir}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const weightWheel = getHeroWheelPicker(view, 'hero-zone-weight-wheel');
+    const repsWheel = getHeroWheelPicker(view, 'hero-zone-reps-wheel');
+
+    act(() => {
+      weightWheel.props.onValueChanging({
+        item: { value: 145, label: '145 lbs' },
+        index: 29,
+      });
+      repsWheel.props.onValueChanging({
+        item: { value: 9, label: '9' },
+        index: 9,
+      });
+    });
+
+    fireEvent.press(view.getByLabelText('Set RIR to 2'));
+
+    expect(updateWeight).toHaveBeenCalledWith('set-1', 145);
+    expect(updateReps).toHaveBeenCalledWith('set-1', 9);
+    expect(updateActualRir).toHaveBeenCalledWith('set-1', 2);
+  });
+
+  it('keeps both hero wheels visible at the same time', () => {
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 1,
+              targetRepsMin: 8,
+              targetRepsMax: 10,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetRepsMin: 8,
+                  targetRepsMax: 10,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={1}
+        volume={1080}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={jest.fn()}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    expect(view.getByTestId('hero-zone-weight-wheel')).toBeTruthy();
+    expect(view.getByTestId('hero-zone-reps-wheel')).toBeTruthy();
+  });
+
+  it('moves the focused wheel emphasis with the selected value', () => {
+    const updateWeight = jest.fn();
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 1,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  targetWeight: 140,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetReps: 8,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={1}
+        volume={1620}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={updateWeight}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const weightWheel = getHeroWheelPicker(view, 'hero-zone-weight-wheel');
+
+    expect(
+      within(view.getByTestId('hero-zone-weight-option-current')).getByText(
+        '135 lbs',
+      ),
+    ).toBeTruthy();
+
+    act(() => {
+      weightWheel.props.onValueChanging({
+        item: { value: 145, label: '145 lbs' },
+        index: 29,
+      });
+      weightWheel.props.onValueChanged({
+        item: { value: 145, label: '145 lbs' },
+        index: 29,
+      });
+    });
+
+    expect(
+      within(view.getByTestId('hero-zone-weight-option-current')).getByText(
+        '145 lbs',
+      ),
+    ).toBeTruthy();
+    expect(updateWeight).toHaveBeenCalledWith('set-1', 145);
+  });
+
   it('allows the summary transition to bypass the exit guard after completion', () => {
     const props = createWorkoutActiveScreenProps();
     const collapseWorkout = jest.fn();
@@ -625,7 +1714,25 @@ describe('WorkoutScreen', () => {
         title: 'Push A',
         startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
         isFreeWorkout: false,
-        exercises: [],
+        exercises: [
+          {
+            exerciseId: 'exercise-1',
+            exerciseName: 'Bench Press',
+            sets: [
+              {
+                id: 'set-1',
+                exerciseId: 'exercise-1',
+                reps: 8,
+                weight: 135,
+                isCompleted: false,
+                targetSets: 3,
+                targetReps: 8,
+              },
+            ],
+            targetSets: 3,
+            targetReps: 8,
+          },
+        ],
       },
       addExercise: jest.fn(),
       removeExercise: jest.fn(),
@@ -646,7 +1753,10 @@ describe('WorkoutScreen', () => {
       data: { action: { type: string; payload?: unknown } };
     }) => void;
 
-    fireEvent.press(workoutRender.getByText('Complete Workout'));
+    fireEvent.press(workoutRender.getByText('Complete Set'));
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
 
     const preventDefault = jest.fn();
     beforeRemoveHandler({
@@ -752,6 +1862,7 @@ describe('WorkoutScreen', () => {
 
     render(<WorkoutActiveScreen {...props} />);
 
+    fireEvent.press(getFocusedOverviewButton(screen));
     fireEvent.press(screen.getByLabelText('Add exercise'));
     fireEvent.changeText(screen.getByLabelText('Search exercises'), 'goblet');
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
@@ -827,6 +1938,7 @@ describe('WorkoutScreen', () => {
 
     const { rerender } = render(<WorkoutActiveScreen {...props} />);
 
+    fireEvent.press(getFocusedOverviewButton(screen));
     fireEvent.press(screen.getByLabelText('Add exercise'));
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
 
@@ -871,10 +1983,8 @@ describe('WorkoutScreen', () => {
 
     rerender(<WorkoutActiveScreen {...props} />);
 
-    mockShowActionSheetWithOptions.mockImplementationOnce((_, callback) => {
-      callback(1);
-    });
-    fireEvent.press(screen.getByLabelText('Options for Goblet Squat'));
+    fireEvent.press(getFocusedOverviewButton(screen));
+    fireEvent.press(screen.getByText('Remove exercise'));
 
     expect(removeExercise).toHaveBeenCalledWith('exercise-2');
   });
@@ -930,6 +2040,7 @@ describe('WorkoutScreen', () => {
 
     render(<WorkoutActiveScreen {...props} />);
 
+    fireEvent.press(getFocusedOverviewButton(screen));
     fireEvent.press(screen.getByLabelText('Delete workout'));
 
     expect(alertSpy).toHaveBeenCalled();

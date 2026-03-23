@@ -23,6 +23,7 @@ import {
   Card,
   Checkbox,
   Container,
+  DayTile,
   DisclosureCard,
   Grid,
   GridItem,
@@ -227,6 +228,86 @@ describe('Badge', () => {
       </Badge>,
     );
     expect(screen.getByRole('button')).toBeTruthy();
+  });
+});
+
+// ─── DayTile ──────────────────────────────────────────────────────────────────
+
+describe('DayTile', () => {
+  it('renders labels and accessibility text', () => {
+    render(
+      <DayTile
+        primaryLabel="M"
+        secondaryLabel="22"
+        accessibilityLabel="Monday 22, workout completed"
+      />,
+    );
+
+    expect(screen.getByText('M')).toBeTruthy();
+    expect(screen.getByText('22')).toBeTruthy();
+    expect(screen.getByLabelText('Monday 22, workout completed')).toBeTruthy();
+  });
+
+  it('renders accent state colors for completed days', () => {
+    render(
+      <DayTile
+        primaryLabel="T"
+        secondaryLabel="23"
+        tone="accent"
+        accessibilityLabel="Tuesday 23, workout completed"
+      />,
+    );
+
+    const tile = screen.getByLabelText('Tuesday 23, workout completed');
+    const primary = screen.getByText('T');
+    const secondary = screen.getByText('23');
+
+    expect(tile.props.style).toMatchObject({
+      backgroundColor: '#FF6B00',
+      borderWidth: 0,
+      borderColor: 'transparent',
+    });
+    expect(primary.props.style).toMatchObject({ color: '#171714' });
+    expect(secondary.props.style).toMatchObject({ color: '#171714' });
+  });
+
+  it('renders subtle outlined state for today tiles', () => {
+    render(
+      <DayTile
+        primaryLabel="W"
+        secondaryLabel="24"
+        tone="subtle"
+        outlined
+        accessibilityLabel="Wednesday 24, today"
+      />,
+    );
+
+    const tile = screen.getByLabelText('Wednesday 24, today');
+    const primary = screen.getByText('W');
+    const secondary = screen.getByText('24');
+
+    expect(tile.props.style).toMatchObject({
+      backgroundColor: '#2B2924',
+      borderWidth: 1,
+      borderColor: '#353229',
+    });
+    expect(primary.props.style).toMatchObject({ color: '#C2BAAA' });
+    expect(secondary.props.style).toMatchObject({ color: '#F3EFE6' });
+  });
+
+  it('renders as a button only when onPress is provided', () => {
+    const onPress = jest.fn();
+    render(
+      <DayTile
+        primaryLabel="F"
+        secondaryLabel="26"
+        accessibilityLabel="Friday 26"
+        onPress={onPress}
+      />,
+    );
+
+    fireEvent.press(screen.getByRole('button'));
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
 
