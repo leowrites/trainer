@@ -48,25 +48,6 @@ function formatRepRange(min: number | null, max: number | null): string {
   return String(max ?? min ?? 0);
 }
 
-function buildPreviousSetSummary(
-  session: ActiveWorkoutSession,
-  exerciseIndex: number,
-  setIndex: number,
-): string | null {
-  const previousSet = session.exercises[exerciseIndex]?.sets[setIndex - 1];
-
-  if (!previousSet) {
-    return null;
-  }
-
-  const rirLabel =
-    previousSet.actualRir === null || previousSet.actualRir === undefined
-      ? null
-      : ` RIR ${previousSet.actualRir}`;
-
-  return `${previousSet.weight} x ${previousSet.reps}${rirLabel ?? ''}`;
-}
-
 function buildGuidance(
   selectedReps: number,
   selectedRir: number | null,
@@ -263,26 +244,9 @@ export function buildFocusedWorkoutViewModel({
     setNumber: location.setIndex + 1,
     totalSetsForExercise: exercise.sets.length,
     totalRemainingSets,
-    target: {
-      weight: targetWeight,
-      repsLabel: formatRepRange(repsMin, repsMax),
-      repsMin,
-      repsMax,
-    },
-    previousSetSummary: buildPreviousSetSummary(
-      session,
-      location.exerciseIndex,
-      location.setIndex,
-    ),
     selectedReps,
     selectedRir,
     isCompleted: setItem.isCompleted,
-    actions: {
-      canComplete: selectedReps >= 0,
-      canSkip: true,
-      canOpenOverview: true,
-      canAdjustRir: true,
-    },
     guidance: buildGuidance(
       selectedReps,
       selectedRir,

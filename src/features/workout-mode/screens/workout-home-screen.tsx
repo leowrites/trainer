@@ -276,6 +276,9 @@ export function WorkoutHomeScreen({
             <View className="flex-row gap-2.5">
               <Surface className="flex-1 rounded-[16px] bg-surface px-3 py-2.5">
                 <Label>This week</Label>
+                <Heading className="mt-1.5 text-3xl">
+                  {dashboardMetrics.workoutsThisWeek}
+                </Heading>
               </Surface>
               <Surface className="flex-1 rounded-[16px] bg-surface px-3 py-2.5">
                 <Label>Streak</Label>

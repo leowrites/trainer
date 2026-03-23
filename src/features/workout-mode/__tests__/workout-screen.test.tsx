@@ -30,7 +30,6 @@ jest.mock('@shared/hooks', () => ({
 
 jest.mock('@shared/utils', () => ({
   ...jest.requireActual('@shared/utils'),
-  configureInteractionLayoutAnimation: jest.fn(),
   triggerInteractionFeedback: jest.fn(),
 }));
 
@@ -47,29 +46,6 @@ jest.mock('react-native-gifted-charts', () => {
 jest.mock('@react-navigation/elements', () => ({
   useHeaderHeight: () => 96,
 }));
-
-jest.mock('react-native-gesture-handler/Swipeable', () => {
-  const ReactNative = require('react-native');
-
-  return ({
-    children,
-    renderRightActions,
-    testID,
-  }: {
-    children?: React.ReactNode;
-    renderRightActions?: () => React.ReactNode;
-    testID?: string;
-  }) => (
-    <ReactNative.View testID={testID}>
-      {children}
-      {renderRightActions ? (
-        <ReactNative.View testID={`${testID}-actions`}>
-          {renderRightActions()}
-        </ReactNative.View>
-      ) : null}
-    </ReactNative.View>
-  );
-});
 
 jest.mock('@expo/vector-icons', () => {
   const ReactNative = require('react-native');
@@ -118,20 +94,39 @@ jest.mock('react-native-tab-view', () => {
       renderTabBar?: () => React.ReactNode;
       lazy?: boolean;
       lazyPreloadDistance?: number;
-    }) => (
-      <ReactNative.View
-        testID="focused-workout-tab-view"
-        navigationState={navigationState}
-        onIndexChange={onIndexChange}
-        lazy={lazy}
-        lazyPreloadDistance={lazyPreloadDistance}
-      >
-        {renderTabBar?.()}
-        {renderScene({
-          route: navigationState.routes[navigationState.index],
-        })}
-      </ReactNative.View>
-    ),
+    }) => {
+      const preloadDistance = lazy
+        ? (lazyPreloadDistance ?? 0)
+        : Number.MAX_SAFE_INTEGER;
+
+      return (
+        <ReactNative.View
+          testID="focused-workout-tab-view"
+          navigationState={navigationState}
+          onIndexChange={onIndexChange}
+          lazy={lazy}
+          lazyPreloadDistance={lazyPreloadDistance}
+        >
+          {renderTabBar?.()}
+          {navigationState.routes.map((route, routeIndex) => {
+            if (
+              Math.abs(routeIndex - navigationState.index) > preloadDistance
+            ) {
+              return null;
+            }
+
+            return (
+              <ReactNative.View
+                key={route.key}
+                testID={`tab-scene-${route.key}`}
+              >
+                {renderScene({ route })}
+              </ReactNative.View>
+            );
+          })}
+        </ReactNative.View>
+      );
+    },
   };
 });
 
@@ -310,6 +305,25 @@ function getHeroWheelPicker(
   }
 
   return wheel as HeroWheelTestInstance;
+}
+
+function getFocusedOverviewButton(
+  view: Pick<ReturnType<typeof render>, 'getAllByText' | 'queryByTestId'>,
+): ReturnType<ReturnType<typeof render>['getByText']> {
+  const focusedScene = view.queryByTestId('focused-workout-scene');
+
+  if (focusedScene) {
+    return within(focusedScene).getByText('Overview');
+  }
+
+  const overviewButtons = view.getAllByText('Overview');
+  const fallbackButton = overviewButtons.at(-1);
+
+  if (!fallbackButton) {
+    throw new Error('Expected an Overview button for the focused scene');
+  }
+
+  return fallbackButton;
 }
 
 describe('WorkoutScreen', () => {
@@ -635,19 +649,18 @@ describe('WorkoutScreen', () => {
     expect(workoutRender.getByText('140 lbs')).toBeTruthy();
     expect(workoutRender.getAllByText('10').length).toBeGreaterThan(0);
 
+    fireEvent.press(workoutRender.getByText('Detail'));
     fireEvent.press(workoutRender.getByText('Timer 1:00'));
-    fireEvent.press(workoutRender.getAllByText('Overview')[0]);
+    fireEvent.press(getFocusedOverviewButton(workoutRender));
     expect(
       workoutRender.getByText('0/1 exercises · 0/1 sets · 1080 volume'),
     ).toBeTruthy();
-    expect(workoutRender.queryByText('Detail')).toBeNull();
-    expect(workoutRender.queryByText('Timer')).toBeNull();
-    expect(workoutRender.queryByText('Logged')).toBeNull();
-    expect(workoutRender.queryByText('Pending')).toBeNull();
+    expect(workoutRender.getByText('Add set')).toBeTruthy();
+    expect(workoutRender.getByText('Remove exercise')).toBeTruthy();
     fireEvent.press(workoutRender.getByText('Add set'));
     fireEvent.press(workoutRender.getByLabelText('Delete Set 1'));
     fireEvent.press(workoutRender.getByText('Remove exercise'));
-    fireEvent.press(workoutRender.getAllByText('Overview')[0]);
+    fireEvent.press(getFocusedOverviewButton(workoutRender));
     fireEvent.press(workoutRender.getByLabelText('Jump to Set 1'));
     fireEvent.press(workoutRender.getByText('Complete Set'));
     act(() => {
@@ -656,6 +669,9 @@ describe('WorkoutScreen', () => {
 
     expect(updateReps).toHaveBeenCalledWith('set-1', 10);
     expect(updateWeight).toHaveBeenCalledWith('set-1', 140);
+    expect(navigate).toHaveBeenCalledWith('ExerciseDetail', {
+      exerciseId: 'exercise-1',
+    });
     expect(toggleSetLogged).toHaveBeenCalledWith('set-1', true);
     expect(mockTriggerInteractionFeedback).toHaveBeenCalledWith('set-log');
     expect(setExerciseTimerDuration).toHaveBeenCalledWith('exercise-1', 90);
@@ -1013,7 +1029,7 @@ describe('WorkoutScreen', () => {
 
     const view = render(<ActiveWorkoutContent {...contentProps} />);
 
-    fireEvent.press(view.getByText('Overview'));
+    fireEvent.press(getFocusedOverviewButton(view));
     fireEvent.press(view.getByLabelText('Jump to Set 2'));
 
     expect(view.getAllByText(/Set 2 of 2/).length).toBeGreaterThan(0);
@@ -1266,17 +1282,12 @@ describe('WorkoutScreen', () => {
       />,
     );
 
-    fireEvent.press(view.getByText('Overview'));
+    fireEvent.press(getFocusedOverviewButton(view));
 
     expect(view.getByText('+ Add exercise')).toBeTruthy();
     expect(
       view.getByText('0/1 exercises · 1/2 sets · 2590 volume'),
     ).toBeTruthy();
-    expect(view.queryByText('Jump')).toBeNull();
-    expect(view.queryByText('Logged')).toBeNull();
-    expect(view.queryByText('Pending')).toBeNull();
-    expect(view.queryByText('Detail')).toBeNull();
-    expect(view.queryByText('Timer')).toBeNull();
     expect(
       within(view.getByTestId('jump-set-1')).getByText('185 × 8'),
     ).toBeTruthy();
@@ -1366,6 +1377,76 @@ describe('WorkoutScreen', () => {
 
     expect(view.getAllByText('150 lbs').length).toBeGreaterThan(0);
     expect(updateWeight).toHaveBeenCalledWith('set-1', 150);
+  });
+
+  it('allows exact decimal weight entry from the focused hero', () => {
+    const updateWeight = jest.fn();
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 1,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetReps: 8,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={1}
+        volume={1080}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={jest.fn()}
+        updateWeight={updateWeight}
+        updateActualRir={jest.fn()}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const weightInput = view.getByLabelText('Current set weight');
+
+    fireEvent.changeText(weightInput, '142.5');
+    fireEvent(weightInput, 'endEditing');
+
+    expect(updateWeight).toHaveBeenCalledWith('set-1', 142.5);
+    expect(view.getByDisplayValue('142.5')).toBeTruthy();
   });
 
   it('commits previewed hero values before updating RIR', () => {
@@ -1781,7 +1862,7 @@ describe('WorkoutScreen', () => {
 
     render(<WorkoutActiveScreen {...props} />);
 
-    fireEvent.press(screen.getByText('Overview'));
+    fireEvent.press(getFocusedOverviewButton(screen));
     fireEvent.press(screen.getByLabelText('Add exercise'));
     fireEvent.changeText(screen.getByLabelText('Search exercises'), 'goblet');
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
@@ -1857,7 +1938,7 @@ describe('WorkoutScreen', () => {
 
     const { rerender } = render(<WorkoutActiveScreen {...props} />);
 
-    fireEvent.press(screen.getByText('Overview'));
+    fireEvent.press(getFocusedOverviewButton(screen));
     fireEvent.press(screen.getByLabelText('Add exercise'));
     fireEvent.press(screen.getByLabelText('Add Goblet Squat'));
 
@@ -1902,7 +1983,7 @@ describe('WorkoutScreen', () => {
 
     rerender(<WorkoutActiveScreen {...props} />);
 
-    fireEvent.press(screen.getByText('Overview'));
+    fireEvent.press(getFocusedOverviewButton(screen));
     fireEvent.press(screen.getByText('Remove exercise'));
 
     expect(removeExercise).toHaveBeenCalledWith('exercise-2');
@@ -1959,7 +2040,7 @@ describe('WorkoutScreen', () => {
 
     render(<WorkoutActiveScreen {...props} />);
 
-    fireEvent.press(screen.getByText('Overview'));
+    fireEvent.press(getFocusedOverviewButton(screen));
     fireEvent.press(screen.getByLabelText('Delete workout'));
 
     expect(alertSpy).toHaveBeenCalled();

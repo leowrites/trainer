@@ -22,6 +22,7 @@ interface HeroValueZoneProps {
   options: number[];
   onPreviewValue: (value: number) => void;
   onCommitValue: (value: number) => void;
+  children?: React.ReactNode;
 }
 
 function buildWheelData(
@@ -40,6 +41,7 @@ export function HeroValueZone({
   options,
   onPreviewValue,
   onCommitValue,
+  children,
 }: HeroValueZoneProps): React.JSX.Element {
   const { tokens } = useTheme();
 
@@ -91,6 +93,7 @@ export function HeroValueZone({
           );
         }}
       />
+      {children}
     </View>
   );
 }

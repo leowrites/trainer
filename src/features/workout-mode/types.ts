@@ -63,20 +63,6 @@ export interface FocusedWorkoutGuidance {
   };
 }
 
-export interface FocusedWorkoutActionAvailability {
-  canComplete: boolean;
-  canSkip: boolean;
-  canOpenOverview: boolean;
-  canAdjustRir: boolean;
-}
-
-export interface FocusedWorkoutSetTarget {
-  weight: number;
-  repsLabel: string;
-  repsMin: number | null;
-  repsMax: number | null;
-}
-
 export interface FocusedWorkoutLocation {
   exerciseIndex: number;
   setIndex: number;
@@ -90,12 +76,9 @@ export interface FocusedWorkoutViewModel {
   setNumber: number;
   totalSetsForExercise: number;
   totalRemainingSets: number;
-  target: FocusedWorkoutSetTarget;
-  previousSetSummary: string | null;
   selectedReps: number;
   selectedRir: number | null;
   isCompleted: boolean;
-  actions: FocusedWorkoutActionAvailability;
   guidance: FocusedWorkoutGuidance;
 }
 

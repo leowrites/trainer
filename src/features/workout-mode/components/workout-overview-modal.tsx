@@ -1,0 +1,212 @@
+/**
+ * Workout overview modal.
+ *
+ * CALLING SPEC:
+ * - render the active-workout overview modal for empty and populated sessions
+ * - exposes only presentation and callback wiring for overview actions
+ * - has no persistence side effects on its own
+ */
+
+import React from 'react';
+import { Modal, ScrollView, View } from 'react-native';
+
+import { Divider } from '@/shared/ui/divider';
+import { Body, Button, Heading, Muted } from '@shared/components';
+import type { ActiveWorkoutSession, FocusedWorkoutLocation } from '../types';
+import { WorkoutOverviewSetRow } from './workout-overview-set-row';
+
+interface WorkoutOverviewModalProps {
+  visible: boolean;
+  prefersReducedMotion: boolean;
+  bottomInset: number;
+  activeSession: ActiveWorkoutSession;
+  currentLocation: FocusedWorkoutLocation | null;
+  completedExerciseCount: number;
+  completedSetCount: number;
+  setCount: number;
+  volume: number;
+  onClose: () => void;
+  onAddExercise: () => void;
+  onDeleteWorkout: () => void;
+  onJumpToSet: (location: FocusedWorkoutLocation) => void;
+  addSet: (exerciseId: string) => void;
+  removeExercise: (exerciseId: string) => void;
+  deleteSet: (setId: string) => void;
+}
+
+export function WorkoutOverviewModal({
+  visible,
+  prefersReducedMotion,
+  bottomInset,
+  activeSession,
+  currentLocation,
+  completedExerciseCount,
+  completedSetCount,
+  setCount,
+  volume,
+  onClose,
+  onAddExercise,
+  onDeleteWorkout,
+  onJumpToSet,
+  addSet,
+  removeExercise,
+  deleteSet,
+}: WorkoutOverviewModalProps): React.JSX.Element {
+  const hasFocusableSet = activeSession.exercises.some(
+    (exercise) => exercise.sets.length > 0,
+  );
+
+  if (!hasFocusableSet) {
+    return (
+      <Modal
+        visible={visible}
+        animationType={prefersReducedMotion ? 'none' : 'slide'}
+        transparent
+        allowSwipeDismissal={true}
+        onRequestClose={onClose}
+      >
+        <View className="flex-1 justify-end bg-black/40">
+          <View
+            className="rounded-t-[28px] border border-surface-border bg-surface-card px-5 pt-5"
+            style={{ paddingBottom: bottomInset + 16 }}
+          >
+            <Heading className="text-2xl">Overview</Heading>
+            <Muted className="mt-2">
+              No exercises yet. Add one to begin logging.
+            </Muted>
+            <View className="mt-4 flex-row flex-wrap gap-2">
+              <Button
+                onPress={onAddExercise}
+                className="flex-1"
+                accessibilityLabel="Add exercise"
+              >
+                + Add exercise
+              </Button>
+              <Button
+                variant="danger"
+                onPress={onDeleteWorkout}
+                className="flex-1"
+                accessibilityLabel="Delete workout"
+              >
+                Delete workout
+              </Button>
+              <Button variant="secondary" onPress={onClose} className="flex-1">
+                Close
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      visible={visible}
+      animationType={prefersReducedMotion ? 'none' : 'slide'}
+      transparent
+      allowSwipeDismissal={true}
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-end bg-black/40">
+        <View className="max-h-[80%] rounded-t-[28px] border border-surface-border bg-surface-card px-5 pt-5">
+          <View className="flex-row items-center justify-between gap-3">
+            <Heading className="text-2xl">Overview</Heading>
+            <Button size="sm" variant="secondary" onPress={onClose}>
+              Close
+            </Button>
+          </View>
+
+          <View className="gap-3 pb-4">
+            <Muted className="text-sm">
+              {completedExerciseCount}/{activeSession.exercises.length}{' '}
+              exercises · {completedSetCount}/{setCount} sets · {volume} volume
+            </Muted>
+            <Button
+              size="sm"
+              variant="secondary"
+              onPress={onAddExercise}
+              accessibilityLabel="Add exercise"
+            >
+              + Add exercise
+            </Button>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View className="gap-4 pb-4">
+              {activeSession.exercises.map((exercise, exerciseIndex) => (
+                <View
+                  key={exercise.exerciseId}
+                  className="rounded-[20px] px-4 py-4"
+                >
+                  <View className="flex-row items-start justify-between gap-3">
+                    <View className="flex-1">
+                      <Body className="font-semibold">
+                        {exercise.exerciseName}
+                      </Body>
+                    </View>
+                  </View>
+
+                  <View className="mt-4 gap-2">
+                    {exercise.sets.map((setItem, setIndex) => {
+                      const isCurrent =
+                        currentLocation?.exerciseIndex === exerciseIndex &&
+                        currentLocation.setIndex === setIndex;
+
+                      return (
+                        <WorkoutOverviewSetRow
+                          key={setItem.id}
+                          setLabel={`Set ${setIndex + 1}`}
+                          reps={setItem.reps}
+                          weight={setItem.weight}
+                          isCompleted={setItem.isCompleted}
+                          isCurrent={isCurrent}
+                          onJump={() =>
+                            onJumpToSet({
+                              exerciseIndex,
+                              setIndex,
+                            })
+                          }
+                          onDelete={() => deleteSet(setItem.id)}
+                        />
+                      );
+                    })}
+                  </View>
+
+                  <View className="mt-4 flex-row gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onPress={() => addSet(exercise.exerciseId)}
+                    >
+                      Add set
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onPress={() => removeExercise(exercise.exerciseId)}
+                    >
+                      Remove exercise
+                    </Button>
+                  </View>
+                  <Divider className="mt-4" />
+                </View>
+              ))}
+
+              <View className="pt-2">
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onPress={onDeleteWorkout}
+                  accessibilityLabel="Delete workout"
+                >
+                  Delete workout
+                </Button>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}

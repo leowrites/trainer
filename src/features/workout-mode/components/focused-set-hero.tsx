@@ -10,14 +10,15 @@
  */
 
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Animated, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
-import { Body, Label } from '@shared/components';
+import { Body, Input, Label } from '@shared/components';
 import { useReducedMotionPreference } from '@shared/hooks';
 import { HeroValueZone } from './hero-value-zone';
 import { buildHeroWheelOptions } from './focused-set-hero-helpers';
+import { parseDecimalNumber } from '../utils/formatters';
 
 export interface FocusedSetHeroProps {
   weightValue: number;
@@ -44,6 +45,7 @@ export function FocusedSetHero({
   const prefersReducedMotion = useReducedMotionPreference();
   const heroScale = React.useRef(new Animated.Value(1)).current;
   const heroFlashOpacity = React.useRef(new Animated.Value(0)).current;
+  const [weightText, setWeightText] = useState(String(weightValue));
 
   const weightOptions = useMemo(
     () => buildHeroWheelOptions(weightValue, 500, 5),
@@ -53,6 +55,10 @@ export function FocusedSetHero({
     () => buildHeroWheelOptions(repsValue, 30, 1),
     [repsValue],
   );
+
+  useEffect(() => {
+    setWeightText(String(weightValue));
+  }, [weightValue]);
 
   useEffect(() => {
     if (rewardToken === 0) {
@@ -97,6 +103,14 @@ export function FocusedSetHero({
     ]).start();
   }, [heroFlashOpacity, heroScale, prefersReducedMotion, rewardToken]);
 
+  const commitWeightText = (): void => {
+    const normalizedWeight = Math.max(0, parseDecimalNumber(weightText));
+
+    setWeightText(String(normalizedWeight));
+    onPreviewWeight(normalizedWeight);
+    onCommitWeight(normalizedWeight);
+  };
+
   return (
     <Animated.View
       style={{ transform: [{ scale: heroScale }] }}
@@ -115,7 +129,19 @@ export function FocusedSetHero({
           options={weightOptions}
           onPreviewValue={onPreviewWeight}
           onCommitValue={onCommitWeight}
-        />
+        >
+          <Input
+            testID="hero-zone-weight-input"
+            accessibilityLabel="Current set weight"
+            className="mt-3 text-center text-lg"
+            value={weightText}
+            onChangeText={setWeightText}
+            onEndEditing={commitWeightText}
+            onSubmitEditing={commitWeightText}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+          />
+        </HeroValueZone>
         <View
           accessible={false}
           className="h-11 w-11 items-center justify-center rounded-full"
