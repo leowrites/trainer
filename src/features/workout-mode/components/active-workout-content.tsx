@@ -218,11 +218,21 @@ export function ActiveWorkoutContent({
     }
   };
 
+  const commitFocusedSetValues = (): void => {
+    if (viewModel === null) {
+      return;
+    }
+
+    updateReps(viewModel.setId, selectedReps);
+    updateWeight(viewModel.setId, selectedWeight);
+  };
+
   const handleAdjustRir = (nextRir: number | null): void => {
     if (viewModel === null) {
       return;
     }
 
+    commitFocusedSetValues();
     setSelectedRir(nextRir);
     updateActualRir?.(viewModel.setId, nextRir);
     triggerInteractionFeedback('set-adjust');
@@ -233,8 +243,7 @@ export function ActiveWorkoutContent({
       return;
     }
 
-    updateReps(viewModel.setId, selectedReps);
-    updateWeight(viewModel.setId, selectedWeight);
+    commitFocusedSetValues();
     updateActualRir?.(viewModel.setId, selectedRir);
     const didLogSet = !viewModel.isCompleted;
 

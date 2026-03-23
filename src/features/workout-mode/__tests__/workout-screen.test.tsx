@@ -943,6 +943,91 @@ describe('WorkoutScreen', () => {
     expect(updateWeight).toHaveBeenCalledWith('set-1', 150);
   });
 
+  it('commits previewed hero values before updating RIR', () => {
+    const updateReps = jest.fn();
+    const updateWeight = jest.fn();
+    const updateActualRir = jest.fn();
+
+    const view = render(
+      <ActiveWorkoutContent
+        activeSession={{
+          id: 'session-1',
+          title: 'Push A',
+          startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
+          isFreeWorkout: false,
+          exercises: [
+            {
+              exerciseId: 'exercise-1',
+              exerciseName: 'Bench Press',
+              targetSets: 1,
+              targetReps: 8,
+              sets: [
+                {
+                  id: 'set-1',
+                  exerciseId: 'exercise-1',
+                  reps: 8,
+                  weight: 135,
+                  isCompleted: false,
+                  targetSets: 1,
+                  targetReps: 8,
+                },
+              ],
+            },
+          ],
+        }}
+        now={new Date(2026, 2, 18, 8, 1, 30).getTime()}
+        setCount={1}
+        volume={1080}
+        restLabel={null}
+        onComplete={jest.fn()}
+        onDeleteWorkout={jest.fn()}
+        startRestTimer={jest.fn()}
+        clearRestTimer={jest.fn()}
+        onOpenExerciseDetails={jest.fn()}
+        onOpenExerciseTimerOptions={jest.fn()}
+        addSet={jest.fn()}
+        addExercise={jest.fn()}
+        removeExercise={jest.fn()}
+        deleteSet={jest.fn()}
+        updateReps={updateReps}
+        updateWeight={updateWeight}
+        updateActualRir={updateActualRir}
+        toggleSetLogged={jest.fn()}
+        exerciseTimerEndsAtByExerciseId={{ 'exercise-1': null }}
+        exerciseTimerDurationByExerciseId={{ 'exercise-1': 60 }}
+        previousPerformanceByExerciseId={{ 'exercise-1': null }}
+        showExerciseSheet={false}
+        setShowExerciseSheet={jest.fn()}
+        insets={{
+          top: 0,
+          right: 0,
+          bottom: 34,
+          left: 0,
+        }}
+      />,
+    );
+
+    const weightWheel = getHeroWheelPicker(view, 'hero-zone-weight-wheel');
+    const repsWheel = getHeroWheelPicker(view, 'hero-zone-reps-wheel');
+
+    act(() => {
+      weightWheel.props.onValueChanging({
+        item: { value: 145, label: '145 lbs' },
+        index: 29,
+      });
+      repsWheel.props.onValueChanging({
+        item: { value: 9, label: '9' },
+        index: 9,
+      });
+    });
+
+    fireEvent.press(view.getByLabelText('Set RIR to 2'));
+
+    expect(updateWeight).toHaveBeenCalledWith('set-1', 145);
+    expect(updateReps).toHaveBeenCalledWith('set-1', 9);
+    expect(updateActualRir).toHaveBeenCalledWith('set-1', 2);
+  });
+
   it('keeps both hero wheels visible at the same time', () => {
     const view = render(
       <ActiveWorkoutContent
