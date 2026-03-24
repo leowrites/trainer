@@ -3,66 +3,66 @@ import React from 'react';
 
 import { HeroValueZone } from '../components/hero-value-zone';
 
+void React;
+
 jest.mock('@quidone/react-native-wheel-picker', () => {
+  const React = require('react');
   const ReactNative = require('react-native');
+
+  const MockWheelPicker = ({
+    value,
+    onValueChanging,
+    onValueChanged,
+    testID,
+  }: {
+    value: number;
+    onValueChanging?: (event: { item: { value: number } }) => void;
+    onValueChanged?: (event: { item: { value: number } }) => void;
+    testID?: string;
+  }) => {
+    React.useEffect(() => {
+      onValueChanging?.({ item: { value: value + 1 } });
+    }, [onValueChanging, value]);
+
+    return (
+      <ReactNative.Pressable
+        testID={`${testID}-commit`}
+        onPress={() => onValueChanged?.({ item: { value } })}
+      />
+    );
+  };
 
   return {
     __esModule: true,
-    default: ({
-      onValueChanging,
-      onValueChanged,
-      _onScrollStart,
-      _onScrollEnd,
-    }: {
-      onValueChanging?: (event: { item: { value: number } }) => void;
-      onValueChanged?: (event: { item: { value: number } }) => void;
-      _onScrollStart?: () => void;
-      _onScrollEnd?: () => void;
-    }) => (
-      <ReactNative.View>
-        <ReactNative.Pressable
-          testID="wheel-programmatic-change"
-          onPress={() => onValueChanging?.({ item: { value: 95 } })}
-        />
-        <ReactNative.Pressable
-          testID="wheel-user-change"
-          onPress={() => {
-            _onScrollStart?.();
-            onValueChanging?.({ item: { value: 100 } });
-            _onScrollEnd?.();
-          }}
-        />
-        <ReactNative.Pressable
-          testID="wheel-value-changed"
-          onPress={() => onValueChanged?.({ item: { value: 100 } })}
-        />
-      </ReactNative.View>
-    ),
+    default: MockWheelPicker,
   };
 });
 
 describe('HeroValueZone', () => {
-  it('ignores non-user preview events while still committing value changes', () => {
-    const onPreviewValue = jest.fn();
+  it('ignores programmatic sync change events and commits only settled values', () => {
     const onCommitValue = jest.fn();
 
-    render(
+    const { rerender } = render(
       <HeroValueZone
         field="weight"
         value={90}
         options={[85, 90, 95, 100]}
-        onPreviewValue={onPreviewValue}
         onCommitValue={onCommitValue}
       />,
     );
 
-    fireEvent.press(screen.getByTestId('wheel-programmatic-change'));
-    expect(onPreviewValue).not.toHaveBeenCalled();
+    rerender(
+      <HeroValueZone
+        field="weight"
+        value={95}
+        options={[90, 95, 100, 105]}
+        onCommitValue={onCommitValue}
+      />,
+    );
 
-    fireEvent.press(screen.getByTestId('wheel-user-change'));
-    expect(onPreviewValue).toHaveBeenCalledWith(100);
+    expect(onCommitValue).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId('wheel-value-changed'));
-    expect(onCommitValue).toHaveBeenCalledWith(100);
+    fireEvent.press(screen.getByTestId('hero-zone-weight-wheel-commit'));
+    expect(onCommitValue).toHaveBeenCalledWith(95);
   });
 });

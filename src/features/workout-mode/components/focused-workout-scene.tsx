@@ -3,12 +3,12 @@
  *
  * CALLING SPEC:
  * - render one focused set without pager infrastructure
- * - own only draft state and explicit previous/next/skip navigation for the current set
+ * - update guidance from settled set values and explicit previous/next/skip navigation
  * - subscribe only to the current focused set and its timer state
  * - side effects: invokes optimistic workout actions supplied by the parent
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Alert, ScrollView, View, unstable_batchedUpdates } from 'react-native';
 
 import {
@@ -49,11 +49,6 @@ interface FocusedWorkoutSceneProps {
   toggleSetLogged: (setId: string, isCompleted: boolean) => void;
 }
 
-interface FocusedSetDraft {
-  reps: number;
-  weight: number;
-}
-
 function buildRirOptions(): Array<number | null> {
   return [null, 0, 1, 2, 3, 4];
 }
@@ -86,13 +81,13 @@ export function FocusedWorkoutScene({
   const { restTimerEndsAt, exerciseTimerEndsAt, exerciseTimerDuration } =
     useExerciseTimerState(sceneState?.exerciseId ?? '');
   const currentSet = sceneState?.set ?? null;
-  const [draftBySetId, setDraftBySetId] = useState<
-    Record<string, FocusedSetDraft>
-  >({});
-  const currentDraft =
-    currentSet === null ? null : (draftBySetId[currentSet.id] ?? null);
-  const selectedReps = currentDraft?.reps ?? currentSet?.reps ?? 0;
-  const selectedWeight = currentDraft?.weight ?? currentSet?.weight ?? 0;
+  const selectedReps = currentSet?.reps ?? 0;
+  const selectedWeight = currentSet?.weight ?? 0;
+  const activeFocusedSetIdRef = useRef<string | null>(focusedSetId);
+
+  useEffect(() => {
+    activeFocusedSetIdRef.current = focusedSetId;
+  }, [focusedSetId]);
 
   const sceneViewModel = useMemo(() => {
     if (sceneState === null) {
@@ -122,67 +117,25 @@ export function FocusedWorkoutScene({
     return <View className="flex-1" />;
   }
 
-  const updateDraft = (changes: Partial<FocusedSetDraft>): void => {
-    setDraftBySetId((currentDraftState) => {
-      const existingDraft = currentDraftState[sceneState.set.id] ?? {
-        reps: sceneState.set.reps,
-        weight: sceneState.set.weight,
-      };
-      const nextDraft = {
-        ...existingDraft,
-        ...changes,
-      };
-
-      if (
-        nextDraft.reps === sceneState.set.reps &&
-        nextDraft.weight === sceneState.set.weight
-      ) {
-        if (!(sceneState.set.id in currentDraftState)) {
-          return currentDraftState;
-        }
-
-        const { [sceneState.set.id]: _removedDraft, ...remainingDrafts } =
-          currentDraftState;
-        return remainingDrafts;
-      }
-
-      return {
-        ...currentDraftState,
-        [sceneState.set.id]: nextDraft,
-      };
-    });
-  };
-
-  const clearDraft = (setId: string): void => {
-    setDraftBySetId((currentDraftState) => {
-      if (!(setId in currentDraftState)) {
-        return currentDraftState;
-      }
-
-      const { [setId]: _removedDraft, ...remainingDrafts } = currentDraftState;
-      return remainingDrafts;
-    });
-  };
-
-  const handlePreviewReps = (nextReps: number): void => {
-    updateDraft({ reps: clampNumber(nextReps) });
-  };
-
-  const handlePreviewWeight = (nextWeight: number): void => {
-    updateDraft({ weight: clampNumber(nextWeight) });
-  };
-
   const handleAdjustReps = (
+    setId: string,
     nextReps: number,
     options?: { feedback?: boolean },
   ): void => {
-    const normalizedReps = clampNumber(nextReps);
-    updateDraft({ reps: normalizedReps });
+    if (activeFocusedSetIdRef.current !== setId) {
+      return;
+    }
 
-    if (normalizedReps !== sceneState.set.reps) {
-      updateReps(sceneState.set.id, normalizedReps);
-    } else {
-      clearDraft(sceneState.set.id);
+    const latestSet = useWorkoutStore.getState().activeSetsById[setId];
+
+    if (!latestSet) {
+      return;
+    }
+
+    const normalizedReps = clampNumber(nextReps);
+
+    if (normalizedReps !== latestSet.reps) {
+      updateReps(setId, normalizedReps);
     }
 
     if (options?.feedback !== false) {
@@ -191,16 +144,24 @@ export function FocusedWorkoutScene({
   };
 
   const handleAdjustWeight = (
+    setId: string,
     nextWeight: number,
     options?: { feedback?: boolean },
   ): void => {
-    const normalizedWeight = clampNumber(nextWeight);
-    updateDraft({ weight: normalizedWeight });
+    if (activeFocusedSetIdRef.current !== setId) {
+      return;
+    }
 
-    if (normalizedWeight !== sceneState.set.weight) {
-      updateWeight(sceneState.set.id, normalizedWeight);
-    } else {
-      clearDraft(sceneState.set.id);
+    const latestSet = useWorkoutStore.getState().activeSetsById[setId];
+
+    if (!latestSet) {
+      return;
+    }
+
+    const normalizedWeight = clampNumber(nextWeight);
+
+    if (normalizedWeight !== latestSet.weight) {
+      updateWeight(setId, normalizedWeight);
     }
 
     if (options?.feedback !== false) {
@@ -208,25 +169,7 @@ export function FocusedWorkoutScene({
     }
   };
 
-  const commitFocusedSetValues = (): void => {
-    if (selectedReps !== sceneState.set.reps) {
-      updateReps(sceneState.set.id, selectedReps);
-    }
-
-    if (selectedWeight !== sceneState.set.weight) {
-      updateWeight(sceneState.set.id, selectedWeight);
-    }
-
-    if (currentDraft !== null) {
-      clearDraft(sceneState.set.id);
-    }
-  };
-
   const handleAdjustRir = (nextRir: number | null): void => {
-    if (currentDraft !== null) {
-      commitFocusedSetValues();
-    }
-
     if ((sceneState.set.actualRir ?? null) !== nextRir) {
       updateActualRir(sceneState.set.id, nextRir);
     }
@@ -239,7 +182,6 @@ export function FocusedWorkoutScene({
       return;
     }
 
-    commitFocusedSetValues();
     onMoveFocus(sceneState.previousSetId);
   };
 
@@ -251,7 +193,6 @@ export function FocusedWorkoutScene({
       return;
     }
 
-    commitFocusedSetValues();
     onMoveFocus(sceneState.nextSetId);
   };
 
@@ -268,8 +209,6 @@ export function FocusedWorkoutScene({
   };
 
   const handleCompleteSet = (): void => {
-    commitFocusedSetValues();
-
     const didLogSet = !sceneState.set.isCompleted;
 
     if (didLogSet) {
@@ -325,13 +264,15 @@ export function FocusedWorkoutScene({
             weightValue={selectedWeight}
             repsValue={selectedReps}
             previousSetSummary={formatPreviousPerformance(previousPerformance)}
-            onPreviewWeight={handlePreviewWeight}
             onCommitWeight={(nextWeight) =>
-              handleAdjustWeight(nextWeight, { feedback: false })
+              handleAdjustWeight(sceneState.set.id, nextWeight, {
+                feedback: false,
+              })
             }
-            onPreviewReps={handlePreviewReps}
             onCommitReps={(nextReps) =>
-              handleAdjustReps(nextReps, { feedback: false })
+              handleAdjustReps(sceneState.set.id, nextReps, {
+                feedback: false,
+              })
             }
           />
 
