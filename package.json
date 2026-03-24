@@ -17,6 +17,10 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
     "type-check": "tsc --noEmit",
     "test": "jest",
+    "test:perf": "jest src/core/performance/__tests__ src/features/schedule/__tests__/schedule-screens.perf.test.tsx src/features/workout-mode/__tests__/active-workout-profiler.test.tsx src/features/workout-mode/__tests__/workout-screen.test.tsx src/features/workout-mode/__tests__/workout-summary-screen.test.tsx src/features/routines/__tests__/routines-screen.test.tsx src/features/analytics/__tests__/history-screen.test.tsx src/features/analytics/__tests__/history-session-detail-screen.test.tsx src/features/intelligence/__tests__/goals-screen.test.tsx src/features/health-tracking/__tests__/profile-screen.test.tsx src/core/navigation/__tests__/root-navigator.test.tsx",
+    "test:perf:ci": "npm run test:perf -- --runInBand --ci",
+    "perf:ios:nightly": "node ./scripts/perf/ios-nightly.mjs",
+    "perf:baseline:update": "node ./scripts/perf/update-baseline.mjs",
     "prepare": "husky"
   },
   "dependencies": {

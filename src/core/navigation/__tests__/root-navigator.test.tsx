@@ -1,6 +1,8 @@
 import { render } from '@testing-library/react-native';
 import React from 'react';
 
+import { buildProfilerCapture } from '@core/performance/testing';
+
 const mockStackScreen = jest.fn();
 const mockBottomTabScreen = jest.fn();
 const mockNativeTabScreen = jest.fn();
@@ -191,5 +193,17 @@ describe('RootNavigator', () => {
     render(<TabNavigatorComponent navigation={{ navigate: jest.fn() }} />);
 
     expect(getTabScreen('History').name).toBe('History');
+  });
+
+  it('keeps root navigator mount within a minimal commit budget', () => {
+    const capture = buildProfilerCapture('RootNavigator');
+
+    render(
+      <capture.Harness>
+        <RootNavigator />
+      </capture.Harness>,
+    );
+
+    expect(capture.commits().length).toBeLessThanOrEqual(1);
   });
 });

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 
+import { buildProfilerCapture } from '@core/performance/testing';
 import type { GoalsScreenProps } from '../screens/goals-screen';
 import { GoalsScreen } from '../screens/goals-screen';
 import { useHistoryAnalytics } from '@features/analytics';
@@ -223,5 +224,52 @@ describe('GoalsScreen', () => {
         targetReps: 5,
       }),
     );
+  });
+
+  it('keeps goal-type toggles within a small commit budget', () => {
+    const capture = buildProfilerCapture('GoalsScreen');
+
+    mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
+      isLoadingMore: false,
+      hasMore: false,
+      allSessions: [],
+      sessions: [],
+      trendSeriesByMetric: {
+        volume: [],
+        hours: [],
+        reps: [],
+        sets: [],
+      },
+      loadMore: jest.fn(),
+      refresh: jest.fn(),
+    });
+    mockUseExercises.mockReturnValue({
+      exercises: [],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+    mockUseTrainingGoals.mockReturnValue({
+      goals: [],
+      goalViewModels: [],
+      createGoal: jest.fn(),
+      updateGoal: jest.fn(),
+      deleteGoal: jest.fn(),
+      refresh: jest.fn(),
+    });
+
+    render(
+      <capture.Harness>
+        <GoalsScreen {...({} as GoalsScreenProps)} />
+      </capture.Harness>,
+    );
+
+    capture.reset();
+    fireEvent.press(screen.getByText('volume'));
+
+    expect(capture.commits().length).toBeLessThanOrEqual(2);
   });
 });

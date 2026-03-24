@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "generatedAt": "2026-03-24T00:00:00.000Z",
+  "platform": "ios-simulator",
+  "device": "iPhone 16e",
+  "scenarios": {
+    "startup": {
+      "scenarioId": "startup",
+      "timestamp": "2026-03-24T00:00:00.000Z",
+      "device": "ios-simulator",
+      "sampleCount": 12,
+      "p50Ms": 1.5,
+      "p95Ms": 3.2,
+      "maxMs": 4.5,
+      "mainThreadLongTaskCount": 0
+    },
+    "start-now": {
+      "scenarioId": "start-now",
+      "timestamp": "2026-03-24T00:00:00.000Z",
+      "device": "ios-simulator",
+      "sampleCount": 12,
+      "p50Ms": 1.8,
+      "p95Ms": 3.8,
+      "maxMs": 5.2,
+      "mainThreadLongTaskCount": 0
+    },
+    "active-set-edit": {
+      "scenarioId": "active-set-edit",
+      "timestamp": "2026-03-24T00:00:00.000Z",
+      "device": "ios-simulator",
+      "sampleCount": 12,
+      "p50Ms": 1.2,
+      "p95Ms": 2.9,
+      "maxMs": 3.7,
+      "mainThreadLongTaskCount": 0
+    },
+    "overview-open": {
+      "scenarioId": "overview-open",
+      "timestamp": "2026-03-24T00:00:00.000Z",
+      "device": "ios-simulator",
+      "sampleCount": 12,
+      "p50Ms": 2.1,
+      "p95Ms": 4.2,
+      "maxMs": 5.6,
+      "mainThreadLongTaskCount": 0
+    },
+    "history-load": {
+      "scenarioId": "history-load",
+      "timestamp": "2026-03-24T00:00:00.000Z",
+      "device": "ios-simulator",
+      "sampleCount": 12,
+      "p50Ms": 2.4,
+      "p95Ms": 4.8,
+      "maxMs": 6,
+      "mainThreadLongTaskCount": 0
+    },
+    "library-switch": {
+      "scenarioId": "library-switch",
+      "timestamp": "2026-03-24T00:00:00.000Z",
+      "device": "ios-simulator",
+      "sampleCount": 12,
+      "p50Ms": 1.7,
+      "p95Ms": 3.6,
+      "maxMs": 4.9,
+      "mainThreadLongTaskCount": 0
+    },
+    "profile-save": {
+      "scenarioId": "profile-save",
+      "timestamp": "2026-03-24T00:00:00.000Z",
+      "device": "ios-simulator",
+      "sampleCount": 12,
+      "p50Ms": 1.4,
+      "p95Ms": 3,
+      "maxMs": 4.1,
+      "mainThreadLongTaskCount": 0
+    }
+  }
+}

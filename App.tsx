@@ -7,6 +7,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DatabaseProvider } from '@core/database';
 import { RootNavigator } from '@core/navigation';
 import { WorkoutTimerNotificationCoordinator } from '@core/notifications';
+import { isPerfLabEnabled } from '@core/performance';
+import { PerfLabScreen } from '@core/performance/screens/perf-lab-screen';
 import { ThemeProvider, useTheme } from '@core/theme/theme-context';
 import { GluestackUIProvider } from '@shared/components';
 
@@ -20,6 +22,8 @@ function ThemedStatusBar(): React.JSX.Element {
 }
 
 export default function App(): React.JSX.Element {
+  const perfLabEnabled = isPerfLabEnabled();
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -27,7 +31,7 @@ export default function App(): React.JSX.Element {
           <GluestackUIProvider>
             <DatabaseProvider>
               <ThemedStatusBar />
-              <RootNavigator />
+              {perfLabEnabled ? <PerfLabScreen /> : <RootNavigator />}
               <WorkoutTimerNotificationCoordinator />
             </DatabaseProvider>
           </GluestackUIProvider>

@@ -9,10 +9,12 @@
  */
 
 import { useHeaderHeight } from '@react-navigation/elements';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import type { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { isPerfLabEnabled } from '@core/performance/perf-lab-env';
+import { subscribePerfLabCommand } from '@core/performance/perf-lab-command-bus';
 import {
   Button,
   Container,
@@ -120,6 +122,7 @@ export function ActiveWorkoutContent({
   flushPendingWrites,
   insets,
 }: ActiveWorkoutContentProps): React.JSX.Element {
+  const perfLabEnabled = isPerfLabEnabled();
   const headerHeight = useHeaderHeight();
   const prefersReducedMotion = useReducedMotionPreference();
   const sessionMeta = useActiveWorkoutSessionMeta();
@@ -140,6 +143,10 @@ export function ActiveWorkoutContent({
     showOverview && isOverviewContentReady,
   );
   const previousFocusedSetIdRef = useRef<string | null>(null);
+  const openOverview = useCallback((): void => {
+    setIsOverviewContentReady(false);
+    setShowOverview(true);
+  }, []);
 
   useEffect(() => {
     if (setIds.length === 0) {
@@ -191,11 +198,23 @@ export function ActiveWorkoutContent({
     };
   }, [flushPendingWrites]);
 
+  useEffect(() => {
+    if (!perfLabEnabled) {
+      return;
+    }
+
+    return subscribePerfLabCommand((command) => {
+      if (command.type === 'active-workout/open-overview') {
+        openOverview();
+      }
+
+      if (command.type === 'active-workout/close-overview') {
+        setShowOverview(false);
+      }
+    });
+  }, [openOverview, perfLabEnabled]);
+
   const hasFocusableSet = setIds.length > 0;
-  const openOverview = (): void => {
-    setIsOverviewContentReady(false);
-    setShowOverview(true);
-  };
 
   if (!hasFocusableSet) {
     return (

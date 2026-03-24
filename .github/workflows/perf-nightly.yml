@@ -1,0 +1,36 @@
+name: Perf Nightly
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  ios-perf:
+    name: iOS Simulator Performance
+    runs-on: macos-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: rm package-lock.json && npm install
+
+      - name: Run iOS nightly perf harness
+        run: npm run perf:ios:nightly
+
+      - name: Upload perf artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-perf-nightly
+          path: perf/artifacts/nightly

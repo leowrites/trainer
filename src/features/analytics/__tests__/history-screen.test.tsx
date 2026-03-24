@@ -3,6 +3,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React from 'react';
 import { FlatList } from 'react-native';
 
+import { buildProfilerCapture } from '@core/performance/testing';
 import type { HistoryStackParamList } from '../navigation-types';
 import { HistoryScreen } from '../screens/history-screen';
 import { useHistoryAnalytics } from '../hooks/use-history-analytics';
@@ -238,5 +239,31 @@ describe('HistoryScreen', () => {
     view.UNSAFE_getByType(FlatList).props.onEndReached();
 
     expect(loadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps trend metric toggles within a small screen commit budget', () => {
+    const capture = buildProfilerCapture('HistoryScreen');
+
+    mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
+      isLoadingMore: false,
+      hasMore: true,
+      allSessions: [buildSession()],
+      sessions: [buildSession()],
+      trendSeriesByMetric: buildTrendSeries(),
+      loadMore: jest.fn(),
+      refresh: jest.fn(),
+    });
+
+    render(
+      <capture.Harness>
+        <HistoryScreen />
+      </capture.Harness>,
+    );
+
+    capture.reset();
+    fireEvent.press(screen.getByLabelText('Show Hours'));
+
+    expect(capture.commits().length).toBeLessThanOrEqual(2);
   });
 });

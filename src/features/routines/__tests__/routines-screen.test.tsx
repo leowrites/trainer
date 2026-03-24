@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import React, { type ForwardedRef, type PropsWithChildren } from 'react';
 
+import { buildProfilerCapture } from '@core/performance/testing';
 import type { ScheduleEntry } from '@core/database/types';
 import { RoutineDetailScreen } from '../screens/routine-detail-screen';
 import { LibraryScreen } from '../screens/library-screen';
@@ -917,5 +918,62 @@ describe('RoutinesScreen', () => {
       routineId: 'routine-1',
     });
     expect(rootNavigate).not.toHaveBeenCalled();
+  });
+
+  it('keeps library section switches within a small commit budget', () => {
+    const capture = buildProfilerCapture('LibraryScreen');
+
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-1',
+          name: 'Bench Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          strength_estimation_mode: 'limited',
+          is_deleted: 0,
+        },
+      ],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+    mockUseRoutines.mockReturnValue(
+      buildRoutinesHookState({
+        routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      }),
+    );
+    mockUseRoutineExerciseCounts.mockReturnValue(
+      buildRoutineExerciseCountsHookState({
+        'routine-1': 1,
+      }),
+    );
+
+    render(
+      <capture.Harness>
+        <LibraryScreen
+          route={{ key: 'library', name: 'Library' } as never}
+          navigation={
+            {
+              navigate: jest.fn(),
+              getParent: () => ({
+                getParent: () => ({
+                  navigate: jest.fn(),
+                }),
+              }),
+            } as never
+          }
+        />
+      </capture.Harness>,
+    );
+
+    capture.reset();
+    fireEvent.press(screen.getByLabelText('routines'));
+    fireEvent.press(screen.getByLabelText('exercises'));
+
+    expect(capture.commits().length).toBeLessThanOrEqual(4);
   });
 });
