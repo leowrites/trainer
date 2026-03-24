@@ -9,7 +9,7 @@
  */
 
 import WheelPicker from '@quidone/react-native-wheel-picker';
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Text, View } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
@@ -44,6 +44,7 @@ export function HeroValueZone({
   children,
 }: HeroValueZoneProps): React.JSX.Element {
   const { tokens } = useTheme();
+  const isUserScrollActiveRef = useRef(false);
 
   const wheelData = useMemo(
     () => buildWheelData(field, options),
@@ -60,7 +61,17 @@ export function HeroValueZone({
         visibleItemCount={3}
         width="100%"
         enableScrollByTapOnItem
+        _onScrollStart={() => {
+          isUserScrollActiveRef.current = true;
+        }}
+        _onScrollEnd={() => {
+          isUserScrollActiveRef.current = false;
+        }}
         onValueChanging={({ item }) => {
+          if (!isUserScrollActiveRef.current) {
+            return;
+          }
+
           onPreviewValue(item.value);
         }}
         onValueChanged={({ item }) => {

@@ -177,13 +177,23 @@ export function WorkoutActiveScreen({
           style: 'destructive',
           onPress: () => {
             void (async () => {
-              if (await deleteWorkout()) {
-                allowExitRef.current = true;
-                if (navigation.canGoBack()) {
-                  navigation.goBack();
-                } else {
-                  navigation.navigate('Tabs', { screen: 'Workout' });
+              allowExitRef.current = true;
+
+              try {
+                if (!(await deleteWorkout())) {
+                  allowExitRef.current = false;
+                  return;
                 }
+              } catch (error: unknown) {
+                allowExitRef.current = false;
+                console.error('[Workout] Failed to delete workout:', error);
+                return;
+              }
+
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Tabs', { screen: 'Workout' });
               }
             })();
           },
@@ -200,14 +210,22 @@ export function WorkoutActiveScreen({
       <ActiveWorkoutContent
         onCompleteWorkout={() => {
           void (async () => {
-            await flushPendingWrites();
-            const completedSessionId = await completeWorkout();
+            allowExitRef.current = true;
+            try {
+              await flushPendingWrites();
+              const completedSessionId = await completeWorkout();
 
-            if (completedSessionId) {
-              allowExitRef.current = true;
+              if (!completedSessionId) {
+                allowExitRef.current = false;
+                return;
+              }
+
               navigation.replace('WorkoutSummary', {
                 sessionId: completedSessionId,
               });
+            } catch (error: unknown) {
+              allowExitRef.current = false;
+              console.error('[Workout] Failed to complete workout:', error);
             }
           })();
         }}

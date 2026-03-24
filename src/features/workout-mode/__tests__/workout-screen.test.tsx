@@ -385,6 +385,57 @@ describe('workout screens', () => {
     expect(screen.getByText(/Set 1 of 2/)).toBeTruthy();
   });
 
+  it('keeps completion navigation on summary when completion clears workout state', async () => {
+    const props = createWorkoutActiveScreenProps();
+    const completeWorkout = jest.fn().mockImplementation(async () => {
+      useWorkoutStore.getState().endWorkout();
+      return 'completed-session-1';
+    });
+
+    mockUseActiveWorkoutActions.mockReturnValue({
+      addExercise: jest.fn(),
+      removeExercise: jest.fn(),
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateExerciseRestSeconds: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      updateActualRir: jest.fn(),
+      toggleSetLogged: jest.fn(),
+      flushPendingWrites: jest.fn().mockResolvedValue(undefined),
+      isCriticalMutationPending: false,
+      completeWorkout,
+      deleteWorkout: jest.fn().mockResolvedValue(true),
+    });
+
+    seedActiveWorkout({
+      ...activeSession,
+      exercises: [
+        {
+          ...activeSession.exercises[0],
+          sets: [activeSession.exercises[0].sets[0]],
+        },
+      ],
+    });
+
+    render(<WorkoutActiveScreen {...props} />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Complete Set'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(completeWorkout).toHaveBeenCalledTimes(1);
+    expect(props.navigation.replace).toHaveBeenCalledWith('WorkoutSummary', {
+      sessionId: 'completed-session-1',
+    });
+    expect(props.navigation.goBack).not.toHaveBeenCalled();
+    expect(props.navigation.navigate).not.toHaveBeenCalledWith('Tabs', {
+      screen: 'Workout',
+    });
+  });
+
   it('opens the workout overview without triggering a selector loop', () => {
     const props = createWorkoutActiveScreenProps();
 

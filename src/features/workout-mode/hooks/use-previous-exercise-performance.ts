@@ -8,7 +8,7 @@
  * - side effects: sqlite reads
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';
 import { loadPreviousExercisePerformanceMap } from '../session-repository';
@@ -25,20 +25,26 @@ export function usePreviousExercisePerformance(
   const cacheRef = useRef<Record<string, PreviousExercisePerformance | null>>(
     {},
   );
-  const exerciseKey = exerciseIds.join('|');
+  const requestIdRef = useRef(0);
+  const exerciseKey = exerciseIds.filter(Boolean).join('|');
+  const requestedExerciseIds = useMemo(
+    () => (exerciseKey.length === 0 ? [] : exerciseKey.split('|')),
+    [exerciseKey],
+  );
 
   useEffect(() => {
     let isCancelled = false;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
 
     async function hydratePreviousPerformance(): Promise<void> {
-      if (!currentSessionId || exerciseIds.length === 0) {
-        if (!isCancelled) {
+      if (!currentSessionId || requestedExerciseIds.length === 0) {
+        if (!isCancelled && requestId === requestIdRef.current) {
           setPerformanceByExerciseId({});
         }
         return;
       }
 
-      const requestedExerciseIds = exerciseIds.filter(Boolean);
       const missingExerciseIds = requestedExerciseIds.filter(
         (exerciseId) =>
           cacheRef.current[`${currentSessionId}:${exerciseId}`] === undefined,
@@ -50,6 +56,10 @@ export function usePreviousExercisePerformance(
           currentSessionId,
           missingExerciseIds,
         );
+
+        if (isCancelled || requestId !== requestIdRef.current) {
+          return;
+        }
 
         missingExerciseIds.forEach((exerciseId) => {
           cacheRef.current[`${currentSessionId}:${exerciseId}`] =
@@ -64,7 +74,7 @@ export function usePreviousExercisePerformance(
         ]),
       );
 
-      if (isCancelled) {
+      if (isCancelled || requestId !== requestIdRef.current) {
         return;
       }
 
@@ -91,7 +101,7 @@ export function usePreviousExercisePerformance(
     return () => {
       isCancelled = true;
     };
-  }, [currentSessionId, db, exerciseIds, exerciseKey]);
+  }, [currentSessionId, db, requestedExerciseIds]);
 
   return performanceByExerciseId;
 }
