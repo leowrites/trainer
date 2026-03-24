@@ -4,7 +4,7 @@ import {
   useFocusEffect,
 } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -126,7 +126,7 @@ export function WorkoutHomeScreen({
   const { allSessions, refresh: refreshHistory } = useHistoryAnalytics({
     includeSessionPage: false,
   });
-  const [starting, setStarting] = useState(false);
+  const isStartingRef = useRef(false);
   const [dashboardNow] = useState(() => Date.now());
   const dashboardMetrics = useMemo(
     () => buildDashboardMetrics(allSessions, { now: dashboardNow }),
@@ -160,11 +160,11 @@ export function WorkoutHomeScreen({
   );
 
   const handleStartScheduled = (): void => {
-    if (starting) {
+    if (isStartingRef.current) {
       return;
     }
 
-    setStarting(true);
+    isStartingRef.current = true;
 
     try {
       const sessionId = startWorkoutFromSchedule();
@@ -172,22 +172,22 @@ export function WorkoutHomeScreen({
         navigation.navigate('ActiveWorkout');
       }
     } finally {
-      setStarting(false);
+      isStartingRef.current = false;
     }
   };
 
   const handleStartFree = (): void => {
-    if (starting) {
+    if (isStartingRef.current) {
       return;
     }
 
-    setStarting(true);
+    isStartingRef.current = true;
 
     try {
       startFreeWorkout();
       navigation.navigate('ActiveWorkout');
     } finally {
-      setStarting(false);
+      isStartingRef.current = false;
     }
   };
 
@@ -231,21 +231,11 @@ export function WorkoutHomeScreen({
                 Continue now
               </Button>
             ) : nextRoutine ? (
-              <Button
-                onPress={handleStartScheduled}
-                disabled={starting}
-                loading={starting}
-                className="w-full"
-              >
+              <Button onPress={handleStartScheduled} className="w-full">
                 Start now
               </Button>
             ) : (
-              <Button
-                onPress={handleStartFree}
-                disabled={starting}
-                loading={starting}
-                className="w-full"
-              >
+              <Button onPress={handleStartFree} className="w-full">
                 Start now
               </Button>
             )}

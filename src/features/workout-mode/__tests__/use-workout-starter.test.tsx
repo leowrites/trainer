@@ -7,11 +7,6 @@ import {
 import { selectActiveWorkoutSnapshot, useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
 import type { ActiveWorkoutSession } from '../types';
-import { loadActiveWorkoutSession } from '../session-repository';
-
-jest.mock('../session-repository', () => ({
-  loadActiveWorkoutSession: jest.fn(),
-}));
 
 jest.mock('@lodev09/react-native-true-sheet', () => {
   const React = require('react');
@@ -37,67 +32,9 @@ jest.mock('@lodev09/react-native-true-sheet', () => {
   };
 });
 
-const mockLoadActiveWorkoutSession = jest.mocked(loadActiveWorkoutSession);
-const baseHydratedSession: ActiveWorkoutSession = {
-  id: 'session-template',
-  title: 'Push A',
-  startTime: 1_700_000_000_000,
-  isFreeWorkout: false,
-  exercises: [
-    {
-      exerciseId: 'exercise-1',
-      exerciseName: 'Bench Press',
-      sets: [
-        {
-          id: 'set-1',
-          exerciseId: 'exercise-1',
-          reps: 8,
-          weight: 0,
-          isCompleted: false,
-          targetSets: 2,
-          targetReps: 8,
-        },
-        {
-          id: 'set-2',
-          exerciseId: 'exercise-1',
-          reps: 8,
-          weight: 0,
-          isCompleted: false,
-          targetSets: 2,
-          targetReps: 8,
-        },
-      ],
-      targetSets: 2,
-      targetReps: 8,
-    },
-    {
-      exerciseId: 'exercise-2',
-      exerciseName: 'Incline Press',
-      sets: [
-        {
-          id: 'set-3',
-          exerciseId: 'exercise-2',
-          reps: 10,
-          weight: 0,
-          isCompleted: false,
-          targetSets: 1,
-          targetReps: 10,
-        },
-      ],
-      targetSets: 1,
-      targetReps: 10,
-    },
-  ],
-};
-
 describe('useWorkoutStarter', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
     useWorkoutStore.getState().endWorkout();
-    mockLoadActiveWorkoutSession.mockImplementation((_, sessionId) => ({
-      ...baseHydratedSession,
-      id: sessionId,
-    }));
   });
 
   it('creates a session snapshot, placeholder sets, and hydrates the active store state', () => {
@@ -158,6 +95,13 @@ describe('useWorkoutStarter', () => {
             target_sets: 1,
             target_reps: 10,
           },
+        ];
+      }
+
+      if (query.includes('FROM exercises')) {
+        return [
+          { id: 'exercise-1', name: 'Bench Press' },
+          { id: 'exercise-2', name: 'Incline Press' },
         ];
       }
 
@@ -236,10 +180,64 @@ describe('useWorkoutStarter', () => {
       'UPDATE schedules SET current_position = ? WHERE id = ?',
       [0, 'schedule-1'],
     );
-    expect(mockLoadActiveWorkoutSession).toHaveBeenCalledWith(db, sessionId);
-    expect(selectActiveWorkoutSnapshot(useWorkoutStore.getState())).toEqual({
-      ...baseHydratedSession,
-      id: sessionId,
+    expect(
+      db.getAllSync.mock.calls.some(([query]) =>
+        (query as string).includes('FROM workout_session_exercises'),
+      ),
+    ).toBe(false);
+    expect(
+      db.getAllSync.mock.calls.some(([query]) =>
+        (query as string).includes('FROM workout_sets ws'),
+      ),
+    ).toBe(false);
+    const snapshot = selectActiveWorkoutSnapshot(useWorkoutStore.getState());
+    expect(snapshot).toMatchObject<ActiveWorkoutSession>({
+      id: sessionId!,
+      title: 'Push A',
+      startTime: 1_700_000_000_000,
+      isFreeWorkout: false,
+      exercises: [
+        {
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          targetSets: 2,
+          targetReps: 8,
+          sets: [
+            expect.objectContaining({
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 0,
+              isCompleted: false,
+              targetSets: 2,
+              targetReps: 8,
+            }),
+            expect.objectContaining({
+              exerciseId: 'exercise-1',
+              reps: 8,
+              weight: 0,
+              isCompleted: false,
+              targetSets: 2,
+              targetReps: 8,
+            }),
+          ],
+        },
+        {
+          exerciseId: 'exercise-2',
+          exerciseName: 'Incline Press',
+          targetSets: 1,
+          targetReps: 10,
+          sets: [
+            expect.objectContaining({
+              exerciseId: 'exercise-2',
+              reps: 10,
+              weight: 0,
+              isCompleted: false,
+              targetSets: 1,
+              targetReps: 10,
+            }),
+          ],
+        },
+      ],
     });
 
     jest.useRealTimers();

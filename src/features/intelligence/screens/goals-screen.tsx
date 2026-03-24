@@ -26,6 +26,7 @@ import {
 import type { HistoryStackParamList } from '@features/analytics';
 import { useTrainingGoals } from '../hooks/use-training-goals';
 import type { TrainingGoalInput } from '../types';
+import { GoalExercisePickerModal } from '../components/goal-exercise-picker-modal';
 
 export type GoalsScreenProps = NativeStackScreenProps<
   HistoryStackParamList,
@@ -35,7 +36,7 @@ export type GoalsScreenProps = NativeStackScreenProps<
 interface GoalFormState {
   id: string | null;
   goalType: TrainingGoalInput['goalType'];
-  exerciseName: string;
+  exerciseId: string | null;
   muscleGroup: string;
   targetLoad: string;
   targetReps: string;
@@ -47,7 +48,7 @@ interface GoalFormState {
 const EMPTY_FORM: GoalFormState = {
   id: null,
   goalType: 'strength',
-  exerciseName: '',
+  exerciseId: null,
   muscleGroup: '',
   targetLoad: '',
   targetReps: '',
@@ -78,22 +79,24 @@ export function GoalsScreen({}: GoalsScreenProps): React.JSX.Element {
   const { goalViewModels, createGoal, updateGoal, deleteGoal } =
     useTrainingGoals(allSessions);
   const [form, setForm] = useState<GoalFormState>(EMPTY_FORM);
-  const exercisesByName = useMemo(
+  const [showExercisePicker, setShowExercisePicker] = useState(false);
+  const exerciseNameById = useMemo(
     () =>
       exercises.reduce<Record<string, string>>((index, exercise) => {
-        index[exercise.name.toLowerCase()] = exercise.id;
+        index[exercise.id] = exercise.name;
         return index;
       }, {}),
     [exercises],
   );
+  const selectedExerciseName =
+    form.exerciseId === null
+      ? null
+      : (exerciseNameById[form.exerciseId] ?? null);
 
   const handleSubmit = (): void => {
     const input: TrainingGoalInput = {
       goalType: form.goalType,
-      exerciseId:
-        form.exerciseName.trim() === ''
-          ? null
-          : (exercisesByName[form.exerciseName.trim().toLowerCase()] ?? null),
+      exerciseId: form.exerciseId,
       muscleGroup: form.muscleGroup.trim() || null,
       targetLoad: parseOptionalNumber(form.targetLoad),
       targetReps: parseOptionalInteger(form.targetReps),
@@ -147,15 +150,23 @@ export function GoalsScreen({}: GoalsScreenProps): React.JSX.Element {
 
           {form.goalType === 'strength' || form.goalType === 'performance' ? (
             <>
-              <Label className="mt-4">Exercise name</Label>
-              <Input
-                className="mt-2"
-                value={form.exerciseName}
-                onChangeText={(exerciseName) =>
-                  setForm((current) => ({ ...current, exerciseName }))
-                }
-                placeholder="Barbell Bench Press"
-              />
+              <Label className="mt-4">Exercise</Label>
+              <Button
+                className="mt-2 w-full justify-start"
+                variant="secondary"
+                onPress={() => setShowExercisePicker(true)}
+              >
+                {selectedExerciseName ?? 'Select exercise'}
+              </Button>
+              {selectedExerciseName ? (
+                <Muted className="mt-2 text-sm">
+                  Goal progress will map exactly to {selectedExerciseName}.
+                </Muted>
+              ) : (
+                <Muted className="mt-2 text-sm">
+                  Choose one exercise so the goal matches local history exactly.
+                </Muted>
+              )}
               <View className="mt-3 flex-row gap-3">
                 <View className="flex-1">
                   <Label>Target load</Label>
@@ -291,11 +302,7 @@ export function GoalsScreen({}: GoalsScreenProps): React.JSX.Element {
                       setForm({
                         id: goalViewModel.goal.id,
                         goalType: goalViewModel.goal.goal_type,
-                        exerciseName:
-                          exercises.find(
-                            (exercise) =>
-                              exercise.id === goalViewModel.goal.exercise_id,
-                          )?.name ?? '',
+                        exerciseId: goalViewModel.goal.exercise_id ?? null,
                         muscleGroup: goalViewModel.goal.muscle_group ?? '',
                         targetLoad:
                           goalViewModel.goal.target_load === null
@@ -337,6 +344,16 @@ export function GoalsScreen({}: GoalsScreenProps): React.JSX.Element {
           )}
         </View>
       </ScrollView>
+
+      <GoalExercisePickerModal
+        visible={showExercisePicker}
+        exercises={exercises}
+        selectedExerciseId={form.exerciseId}
+        onClose={() => setShowExercisePicker(false)}
+        onSelectExercise={(exerciseId) =>
+          setForm((current) => ({ ...current, exerciseId }))
+        }
+      />
     </Container>
   );
 }

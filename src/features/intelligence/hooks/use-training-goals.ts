@@ -25,6 +25,10 @@ import {
   listTrainingGoals,
   updateTrainingGoal,
 } from '../goals/repository';
+import {
+  notifyTrainingGoalsChanged,
+  useTrainingGoalSyncVersion,
+} from './training-goal-sync-store';
 
 export function useTrainingGoals(
   allSessions: HistorySession[] = [],
@@ -42,6 +46,7 @@ export function useTrainingGoals(
   refresh: () => void;
 } {
   const db = useOptionalDatabase();
+  const sharedGoalVersion = useTrainingGoalSyncVersion();
   const { capabilitiesByExerciseId: loadedCapabilitiesByExerciseId } =
     useExerciseCapabilities();
   const [goals, setGoals] = useState<TrainingGoal[]>([]);
@@ -49,6 +54,7 @@ export function useTrainingGoals(
 
   const refresh = useCallback((): void => {
     setRefreshKey((current) => current + 1);
+    notifyTrainingGoalsChanged();
   }, []);
 
   useEffect(() => {
@@ -57,7 +63,7 @@ export function useTrainingGoals(
     }
 
     setGoals(listTrainingGoals(db));
-  }, [db, refreshKey]);
+  }, [db, refreshKey, sharedGoalVersion]);
 
   const capabilitiesByExerciseId =
     options.capabilitiesByExerciseId ?? loadedCapabilitiesByExerciseId;
@@ -87,7 +93,7 @@ export function useTrainingGoals(
       }
 
       const goal = createTrainingGoal(db, input);
-      refresh();
+      notifyTrainingGoalsChanged();
       return goal;
     },
     updateGoal: (id, input) => {
@@ -96,7 +102,7 @@ export function useTrainingGoals(
       }
 
       updateTrainingGoal(db, id, input);
-      refresh();
+      notifyTrainingGoalsChanged();
     },
     deleteGoal: (id) => {
       if (!db || typeof db.runSync !== 'function') {
@@ -104,7 +110,7 @@ export function useTrainingGoals(
       }
 
       deleteTrainingGoal(db, id);
-      refresh();
+      notifyTrainingGoalsChanged();
     },
     refresh,
   };

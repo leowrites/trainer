@@ -116,6 +116,22 @@ describe('Card', () => {
     const pressable = screen.getByRole('button');
     expect(pressable).toBeTruthy();
   });
+
+  it('does not trigger the card press when a nested action handles the tap', () => {
+    const cardHandler = jest.fn();
+    const childHandler = jest.fn();
+
+    render(
+      <Card onPress={cardHandler} accessibilityLabel="My card">
+        <Button onPress={childHandler}>Nested Action</Button>
+      </Card>,
+    );
+
+    fireEvent.press(screen.getByText('Nested Action'));
+
+    expect(childHandler).toHaveBeenCalledTimes(1);
+    expect(cardHandler).not.toHaveBeenCalled();
+  });
 });
 
 // ─── Typography ───────────────────────────────────────────────────────────────

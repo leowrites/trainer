@@ -6,4 +6,5 @@
  */
 export { RootNavigator } from './root-navigator';
 export { navigateToActiveWorkoutScreen } from './root-navigator';
+export { rootNavigationRef } from './root-navigator';
 export type { RootStackParamList, RootTabParamList } from './root-navigator';

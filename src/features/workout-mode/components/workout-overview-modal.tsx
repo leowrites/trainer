@@ -12,14 +12,15 @@ import { Modal, ScrollView, View } from 'react-native';
 
 import { Divider } from '@/shared/ui/divider';
 import { Body, Button, Heading, Muted } from '@shared/components';
-import type { ActiveWorkoutOverview } from '../types';
+import type { ActiveWorkoutOverview, ActiveWorkoutSummary } from '../types';
 import { WorkoutOverviewSetRow } from './workout-overview-set-row';
 
 interface WorkoutOverviewModalProps {
   visible: boolean;
   prefersReducedMotion: boolean;
   bottomInset: number;
-  overview: ActiveWorkoutOverview;
+  summary: ActiveWorkoutSummary;
+  overview: ActiveWorkoutOverview | null;
   currentSetId: string | null;
   onClose: () => void;
   onAddExercise: () => void;
@@ -34,6 +35,7 @@ export function WorkoutOverviewModal({
   visible,
   prefersReducedMotion,
   bottomInset,
+  summary,
   overview,
   currentSetId,
   onClose,
@@ -44,7 +46,7 @@ export function WorkoutOverviewModal({
   removeExercise,
   deleteSet,
 }: WorkoutOverviewModalProps): React.JSX.Element {
-  const hasFocusableSet = overview.summary.setCount > 0;
+  const hasFocusableSet = summary.setCount > 0;
 
   if (!hasFocusableSet) {
     return (
@@ -109,10 +111,9 @@ export function WorkoutOverviewModal({
 
           <View className="gap-3 pb-4">
             <Muted className="text-sm">
-              {overview.summary.completedExerciseCount}/
-              {overview.summary.exerciseCount} exercises ·{' '}
-              {overview.summary.completedSetCount}/{overview.summary.setCount}{' '}
-              sets · {overview.summary.volume} volume
+              {summary.completedExerciseCount}/{summary.exerciseCount} exercises
+              · {summary.completedSetCount}/{summary.setCount} sets ·{' '}
+              {summary.volume} volume
             </Muted>
             <Button
               size="sm"
@@ -126,55 +127,61 @@ export function WorkoutOverviewModal({
 
           <ScrollView showsVerticalScrollIndicator={false}>
             <View className="gap-4 pb-4">
-              {overview.exercises.map((exercise) => (
-                <View
-                  key={exercise.exerciseId}
-                  className="rounded-[20px] px-4 py-4"
-                >
-                  <View className="flex-row items-start justify-between gap-3">
-                    <View className="flex-1">
-                      <Body className="font-semibold">
-                        {exercise.exerciseName}
-                      </Body>
-                    </View>
-                  </View>
-
-                  <View className="mt-4 gap-2">
-                    {exercise.sets.map((setItem) => {
-                      return (
-                        <WorkoutOverviewSetRow
-                          key={setItem.setId}
-                          setLabel={setItem.setLabel}
-                          reps={setItem.reps}
-                          weight={setItem.weight}
-                          isCompleted={setItem.isCompleted}
-                          isCurrent={currentSetId === setItem.setId}
-                          onJump={() => onJumpToSet(setItem.setId)}
-                          onDelete={() => deleteSet(setItem.setId)}
-                        />
-                      );
-                    })}
-                  </View>
-
-                  <View className="mt-4 flex-row gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onPress={() => addSet(exercise.exerciseId)}
-                    >
-                      Add set
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onPress={() => removeExercise(exercise.exerciseId)}
-                    >
-                      Remove exercise
-                    </Button>
-                  </View>
-                  <Divider className="mt-4" />
+              {overview === null ? (
+                <View className="rounded-[20px] px-4 py-4">
+                  <Muted className="text-sm">Loading workout details...</Muted>
                 </View>
-              ))}
+              ) : (
+                overview.exercises.map((exercise) => (
+                  <View
+                    key={exercise.exerciseId}
+                    className="rounded-[20px] px-4 py-4"
+                  >
+                    <View className="flex-row items-start justify-between gap-3">
+                      <View className="flex-1">
+                        <Body className="font-semibold">
+                          {exercise.exerciseName}
+                        </Body>
+                      </View>
+                    </View>
+
+                    <View className="mt-4 gap-2">
+                      {exercise.sets.map((setItem) => {
+                        return (
+                          <WorkoutOverviewSetRow
+                            key={setItem.setId}
+                            setLabel={setItem.setLabel}
+                            reps={setItem.reps}
+                            weight={setItem.weight}
+                            isCompleted={setItem.isCompleted}
+                            isCurrent={currentSetId === setItem.setId}
+                            onJump={() => onJumpToSet(setItem.setId)}
+                            onDelete={() => deleteSet(setItem.setId)}
+                          />
+                        );
+                      })}
+                    </View>
+
+                    <View className="mt-4 flex-row gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onPress={() => addSet(exercise.exerciseId)}
+                      >
+                        Add set
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onPress={() => removeExercise(exercise.exerciseId)}
+                      >
+                        Remove exercise
+                      </Button>
+                    </View>
+                    <Divider className="mt-4" />
+                  </View>
+                ))
+              )}
 
               <View className="pt-2">
                 <Button

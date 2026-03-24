@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 
+import { buildProfilerCapture } from '@core/performance/testing';
 import { HistorySessionDetailScreen } from '../screens/history-session-detail-screen';
 import { useHistorySessionDetail } from '../hooks/use-history-session-detail';
 import type { HistorySession } from '../types';
@@ -178,5 +179,29 @@ describe('HistorySessionDetailScreen', () => {
 
     expect(screen.getAllByText('Upper A').length).toBeGreaterThan(0);
     expect(screen.queryByText('Loading session')).toBeNull();
+  });
+
+  it('keeps detail-screen mount within a minimal commit budget', () => {
+    const capture = buildProfilerCapture('HistorySessionDetailScreen');
+
+    mockUseHistorySessionDetail.mockReturnValue({
+      isLoading: false,
+      session: buildSession(),
+    });
+
+    render(
+      <capture.Harness>
+        <HistorySessionDetailScreen
+          navigation={jest.fn() as never}
+          route={{
+            key: 'HistorySessionDetail-key',
+            name: 'HistorySessionDetail',
+            params: { sessionId: 'session-1' },
+          }}
+        />
+      </capture.Harness>,
+    );
+
+    expect(capture.commits().length).toBeLessThanOrEqual(2);
   });
 });

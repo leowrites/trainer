@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { Alert } from 'react-native';
 
+import { buildProfilerCapture } from '@core/performance/testing';
 import { WorkoutSummaryScreen } from '../screens/workout-summary-screen';
 import { useWorkoutSummary } from '../hooks/use-workout-summary';
 
@@ -251,6 +252,68 @@ describe('WorkoutSummaryScreen', () => {
 
     expect(saveFeedback).toHaveBeenNthCalledWith(1, 'effort', 4);
     expect(saveFeedback).toHaveBeenNthCalledWith(2, 'fatigue', 5);
+  });
+
+  it('keeps feedback taps within a small commit budget', () => {
+    const capture = buildProfilerCapture('WorkoutSummaryScreen');
+    const saveFeedback = jest.fn();
+
+    mockUseWorkoutSummary.mockReturnValue({
+      isLoading: false,
+      saveFeedback,
+      summary: {
+        unit: 'kg',
+        completedAtLabel: '8:42 AM',
+        dateLabel: 'Mar 21, 2026',
+        durationLabel: '42m',
+        volumeLabel: '5,240 kg',
+        streakLabel: '3 week streak',
+        weeklyProgressLabel: '2 workouts completed this week',
+        effortLevel: null,
+        fatigueLevel: null,
+        scheduleContext: null,
+        recordBadges: [],
+        session: {
+          id: 'session-1',
+          routineId: null,
+          routineName: 'Free Workout',
+          startTime: 1,
+          endTime: 2,
+          durationMinutes: 42,
+          totalSets: 6,
+          totalCompletedSets: 6,
+          totalReps: 48,
+          totalVolume: 3000,
+          exerciseCount: 2,
+          exercises: [],
+        },
+      },
+    });
+
+    render(
+      <capture.Harness>
+        <WorkoutSummaryScreen
+          navigation={
+            {
+              canGoBack: jest.fn(() => true),
+              goBack: jest.fn(),
+              navigate: jest.fn(),
+              setOptions: jest.fn(),
+            } as never
+          }
+          route={{
+            key: 'WorkoutSummary-key',
+            name: 'WorkoutSummary',
+            params: { sessionId: 'session-1' },
+          }}
+        />
+      </capture.Harness>,
+    );
+
+    capture.reset();
+    fireEvent.press(screen.getByLabelText('Effort level 4 Hard'));
+
+    expect(capture.commits().length).toBeLessThanOrEqual(2);
   });
 
   it('shows a loading state while the summary is resolving', () => {

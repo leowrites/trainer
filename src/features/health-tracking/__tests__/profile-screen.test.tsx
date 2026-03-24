@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 
+import { buildProfilerCapture } from '@core/performance/testing';
 import { buildLoggedAtTimestamp } from '../domain/body-weight';
 import { useBodyWeightEntries } from '../hooks/use-body-weight-entries';
 import { useUserProfile } from '../hooks/use-user-profile';
@@ -242,5 +243,33 @@ describe('ProfileScreen', () => {
     expect(
       screen.getByText('Unable to delete this body-weight entry.'),
     ).toBeTruthy();
+  });
+
+  it('keeps profile-save interactions within a small commit budget', () => {
+    const capture = buildProfilerCapture('ProfileScreen');
+
+    mockUseBodyWeightEntries.mockReturnValue({
+      entries: [],
+      error: null,
+      refresh: jest.fn(),
+      createEntry: jest.fn(),
+      updateEntry: jest.fn(),
+      deleteEntry: jest.fn(),
+    });
+
+    render(
+      <capture.Harness>
+        <ProfileScreen />
+      </capture.Harness>,
+    );
+
+    capture.reset();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Name shown on home screen'),
+      'Perf Tester',
+    );
+    fireEvent.press(screen.getByText('Save profile'));
+
+    expect(capture.commits().length).toBeLessThanOrEqual(3);
   });
 });

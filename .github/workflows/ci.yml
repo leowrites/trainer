@@ -38,6 +38,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Performance Contracts
+        run: npm run test:perf:ci
+
       - name: Build (iOS)
         run: npx expo export --platform ios
 

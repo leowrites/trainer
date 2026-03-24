@@ -87,7 +87,15 @@ describe('useActiveWorkoutActions', () => {
 
     expect(db.runSync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO workout_session_exercises'),
-      ['new-set-1', 'session-2', 'exercise-2', 0, 60],
+      [
+        'new-set-1',
+        'session-2',
+        'exercise-2',
+        0,
+        60,
+        'double_progression',
+        null,
+      ],
     );
     expect(
       selectActiveWorkoutSnapshot(useWorkoutStore.getState())?.exercises,
