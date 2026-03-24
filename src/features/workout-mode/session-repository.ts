@@ -70,22 +70,22 @@ function mergeSessionExerciseRows(
   );
 }
 
-function loadExerciseRows(
+async function loadExerciseRows(
   db: SQLiteDatabase,
   sessionId: string,
-): {
+): Promise<{
   exerciseRows: ExerciseNameRow[];
   sessionExerciseRows: WorkoutSessionExerciseRow[];
   setRows: WorkoutSetRow[];
-} {
-  const sessionExerciseRows = db.getAllSync<WorkoutSessionExerciseRow>(
+}> {
+  const sessionExerciseRows = await db.getAllAsync<WorkoutSessionExerciseRow>(
     `SELECT id, session_id, exercise_id, position, rest_seconds, progression_policy, target_rir
      FROM workout_session_exercises
      WHERE session_id = ?
      ORDER BY position ASC`,
     [sessionId],
   );
-  const setRows = db.getAllSync<WorkoutSetRow>(
+  const setRows = await db.getAllAsync<WorkoutSetRow>(
     `SELECT ws.id, ws.session_id, ws.exercise_id, ws.position, ws.weight, ws.reps, ws.is_completed, ws.target_sets, ws.target_reps, ws.target_reps_min, ws.target_reps_max, ws.actual_rir, ws.set_role
      FROM workout_sets ws
      WHERE ws.session_id = ?
@@ -103,7 +103,7 @@ function loadExerciseRows(
   const exerciseIds = orderedSessionExerciseRows.map((row) => row.exercise_id);
   const exerciseRows =
     exerciseIds.length > 0
-      ? db.getAllSync<ExerciseNameRow>(
+      ? await db.getAllAsync<ExerciseNameRow>(
           `SELECT id, name FROM exercises WHERE id IN (${exerciseIds.map(() => '?').join(', ')})`,
           exerciseIds,
         )
@@ -174,11 +174,11 @@ function buildActiveWorkoutSession(
   };
 }
 
-export function loadActiveWorkoutSession(
+export async function loadActiveWorkoutSession(
   db: SQLiteDatabase,
   sessionId: string,
-): ActiveWorkoutSession | null {
-  const sessionRow = db.getFirstSync<WorkoutSessionRow>(
+): Promise<ActiveWorkoutSession | null> {
+  const sessionRow = await db.getFirstAsync<WorkoutSessionRow>(
     'SELECT id, snapshot_name, start_time FROM workout_sessions WHERE id = ? LIMIT 1',
     [sessionId],
   );
@@ -187,7 +187,7 @@ export function loadActiveWorkoutSession(
     return null;
   }
 
-  const { exerciseRows, sessionExerciseRows, setRows } = loadExerciseRows(
+  const { exerciseRows, sessionExerciseRows, setRows } = await loadExerciseRows(
     db,
     sessionId,
   );
@@ -200,11 +200,11 @@ export function loadActiveWorkoutSession(
   );
 }
 
-export function loadInProgressWorkoutSession(
+export async function loadInProgressWorkoutSession(
   db: SQLiteDatabase,
   sessionId: string,
-): ActiveWorkoutSession | null {
-  const sessionRow = db.getFirstSync<WorkoutSessionRow>(
+): Promise<ActiveWorkoutSession | null> {
+  const sessionRow = await db.getFirstAsync<WorkoutSessionRow>(
     'SELECT id, snapshot_name, start_time FROM workout_sessions WHERE id = ? AND end_time IS NULL LIMIT 1',
     [sessionId],
   );
@@ -213,7 +213,7 @@ export function loadInProgressWorkoutSession(
     return null;
   }
 
-  const { exerciseRows, sessionExerciseRows, setRows } = loadExerciseRows(
+  const { exerciseRows, sessionExerciseRows, setRows } = await loadExerciseRows(
     db,
     sessionId,
   );
@@ -226,10 +226,10 @@ export function loadInProgressWorkoutSession(
   );
 }
 
-export function loadLatestInProgressWorkoutSession(
+export async function loadLatestInProgressWorkoutSession(
   db: SQLiteDatabase,
-): ActiveWorkoutSession | null {
-  const sessionRow = db.getFirstSync<WorkoutSessionRow>(
+): Promise<ActiveWorkoutSession | null> {
+  const sessionRow = await db.getFirstAsync<WorkoutSessionRow>(
     'SELECT id, snapshot_name, start_time FROM workout_sessions WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1',
   );
 
@@ -237,7 +237,7 @@ export function loadLatestInProgressWorkoutSession(
     return null;
   }
 
-  const { exerciseRows, sessionExerciseRows, setRows } = loadExerciseRows(
+  const { exerciseRows, sessionExerciseRows, setRows } = await loadExerciseRows(
     db,
     sessionRow.id,
   );
@@ -250,7 +250,7 @@ export function loadLatestInProgressWorkoutSession(
   );
 }
 
-export function createWorkoutSessionExerciseRecord(
+export async function createWorkoutSessionExerciseRecord(
   db: SQLiteDatabase,
   sessionId: string,
   exerciseId: string,
@@ -260,9 +260,9 @@ export function createWorkoutSessionExerciseRecord(
     WorkoutSessionExerciseRow['progression_policy']
   >,
   targetRir: number | null,
-): WorkoutSessionExerciseRow {
+): Promise<WorkoutSessionExerciseRow> {
   const sessionExerciseId = generateId();
-  db.runSync(
+  await db.runAsync(
     `INSERT INTO workout_session_exercises (
       id,
       session_id,
@@ -294,36 +294,40 @@ export function createWorkoutSessionExerciseRecord(
   };
 }
 
-export function getNextWorkoutSessionExercisePosition(
+export async function getNextWorkoutSessionExercisePosition(
   db: SQLiteDatabase,
   sessionId: string,
-): number {
+): Promise<number> {
   return (
-    (db.getFirstSync<{ max_position: number | null }>(
-      `SELECT MAX(position) AS max_position
+    ((
+      await db.getFirstAsync<{ max_position: number | null }>(
+        `SELECT MAX(position) AS max_position
        FROM workout_session_exercises
        WHERE session_id = ?`,
-      [sessionId],
+        [sessionId],
+      )
     )?.max_position ?? -1) + 1
   );
 }
 
-function getNextWorkoutSetPosition(
+async function getNextWorkoutSetPosition(
   db: SQLiteDatabase,
   sessionId: string,
   exerciseId: string,
-): number {
+): Promise<number> {
   return (
-    (db.getFirstSync<{ max_position: number | null }>(
-      `SELECT MAX(position) AS max_position
+    ((
+      await db.getFirstAsync<{ max_position: number | null }>(
+        `SELECT MAX(position) AS max_position
        FROM workout_sets
        WHERE session_id = ? AND exercise_id = ?`,
-      [sessionId, exerciseId],
+        [sessionId, exerciseId],
+      )
     )?.max_position ?? -1) + 1
   );
 }
 
-export function createWorkoutSetRecord(
+export async function createWorkoutSetRecord(
   db: SQLiteDatabase,
   sessionId: string,
   exerciseId: string,
@@ -333,11 +337,11 @@ export function createWorkoutSetRecord(
   targetRepsMin: number | null,
   targetRepsMax: number | null,
   setRole: ActiveWorkoutSet['setRole'] = 'optional',
-): ActiveWorkoutSet {
+): Promise<ActiveWorkoutSet> {
   const setId = generateId();
-  const position = getNextWorkoutSetPosition(db, sessionId, exerciseId);
+  const position = await getNextWorkoutSetPosition(db, sessionId, exerciseId);
   const targetReps = targetRepsMin;
-  db.runSync(
+  await db.runAsync(
     `INSERT INTO workout_sets (
       id,
       session_id,
@@ -385,57 +389,57 @@ export function createWorkoutSetRecord(
   };
 }
 
-export function updateWorkoutSetReps(
+export async function updateWorkoutSetReps(
   db: SQLiteDatabase,
   setId: string,
   reps: number,
-): void {
-  db.runSync(
+): Promise<void> {
+  await db.runAsync(
     'UPDATE workout_sets SET reps = ?, is_completed = 1 WHERE id = ?',
     [reps, setId],
   );
 }
 
-export function updateWorkoutSetWeight(
+export async function updateWorkoutSetWeight(
   db: SQLiteDatabase,
   setId: string,
   weight: number,
-): void {
-  db.runSync(
+): Promise<void> {
+  await db.runAsync(
     'UPDATE workout_sets SET weight = ?, is_completed = 1 WHERE id = ?',
     [weight, setId],
   );
 }
 
-export function updateWorkoutSetCompletion(
+export async function updateWorkoutSetCompletion(
   db: SQLiteDatabase,
   setId: string,
   isCompleted: boolean,
-): void {
-  db.runSync('UPDATE workout_sets SET is_completed = ? WHERE id = ?', [
+): Promise<void> {
+  await db.runAsync('UPDATE workout_sets SET is_completed = ? WHERE id = ?', [
     isCompleted ? 1 : 0,
     setId,
   ]);
 }
 
-export function updateWorkoutSetActualRir(
+export async function updateWorkoutSetActualRir(
   db: SQLiteDatabase,
   setId: string,
   actualRir: number | null,
-): void {
-  db.runSync('UPDATE workout_sets SET actual_rir = ? WHERE id = ?', [
+): Promise<void> {
+  await db.runAsync('UPDATE workout_sets SET actual_rir = ? WHERE id = ?', [
     actualRir,
     setId,
   ]);
 }
 
-export function updateWorkoutSetFields(
+export async function updateWorkoutSetFields(
   db: SQLiteDatabase,
   setId: string,
   changes: Partial<
     Pick<ActiveWorkoutSet, 'reps' | 'weight' | 'isCompleted' | 'actualRir'>
   >,
-): void {
+): Promise<void> {
   const assignments: string[] = [];
   const values: Array<number | null | string> = [];
 
@@ -463,7 +467,7 @@ export function updateWorkoutSetFields(
     return;
   }
 
-  db.runSync(
+  await db.runAsync(
     `UPDATE workout_sets
      SET ${assignments.join(', ')}
      WHERE id = ?`,
@@ -471,35 +475,35 @@ export function updateWorkoutSetFields(
   );
 }
 
-export function deleteWorkoutSetRecord(
+export async function deleteWorkoutSetRecord(
   db: SQLiteDatabase,
   setId: string,
-): void {
-  db.runSync('DELETE FROM workout_sets WHERE id = ?', [setId]);
+): Promise<void> {
+  await db.runAsync('DELETE FROM workout_sets WHERE id = ?', [setId]);
 }
 
-export function deleteWorkoutExerciseRecords(
+export async function deleteWorkoutExerciseRecords(
   db: SQLiteDatabase,
   sessionId: string,
   exerciseId: string,
-): void {
-  db.runSync(
+): Promise<void> {
+  await db.runAsync(
     'DELETE FROM workout_sets WHERE session_id = ? AND exercise_id = ?',
     [sessionId, exerciseId],
   );
-  db.runSync(
+  await db.runAsync(
     'DELETE FROM workout_session_exercises WHERE session_id = ? AND exercise_id = ?',
     [sessionId, exerciseId],
   );
 }
 
-export function updateWorkoutSessionExerciseRest(
+export async function updateWorkoutSessionExerciseRest(
   db: SQLiteDatabase,
   sessionId: string,
   exerciseId: string,
   restSeconds: number,
-): void {
-  db.runSync(
+): Promise<void> {
+  await db.runAsync(
     `UPDATE workout_session_exercises
      SET rest_seconds = ?
      WHERE session_id = ? AND exercise_id = ?`,
@@ -507,18 +511,18 @@ export function updateWorkoutSessionExerciseRest(
   );
 }
 
-export function completeWorkoutSessionRecord(
+export async function completeWorkoutSessionRecord(
   db: SQLiteDatabase,
   sessionId: string,
   endTime: number,
-): void {
-  db.withTransactionSync(() => {
-    db.runSync('UPDATE workout_sessions SET end_time = ? WHERE id = ?', [
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE workout_sessions SET end_time = ? WHERE id = ?', [
       endTime,
       sessionId,
     ]);
 
-    const sessionRow = db.getFirstSync<
+    const sessionRow = await db.getFirstAsync<
       Pick<WorkoutSession, 'id' | 'schedule_id'>
     >('SELECT id, schedule_id FROM workout_sessions WHERE id = ? LIMIT 1', [
       sessionId,
@@ -528,16 +532,17 @@ export function completeWorkoutSessionRecord(
       return;
     }
 
-    const schedule = db.getFirstSync<Pick<Schedule, 'id' | 'current_position'>>(
-      'SELECT id, current_position FROM schedules WHERE id = ? LIMIT 1',
-      [sessionRow.schedule_id],
-    );
+    const schedule = await db.getFirstAsync<
+      Pick<Schedule, 'id' | 'current_position'>
+    >('SELECT id, current_position FROM schedules WHERE id = ? LIMIT 1', [
+      sessionRow.schedule_id,
+    ]);
 
     if (!schedule) {
       return;
     }
 
-    const entries = db.getAllSync<Pick<ScheduleEntry, 'position'>>(
+    const entries = await db.getAllAsync<Pick<ScheduleEntry, 'position'>>(
       'SELECT position FROM schedule_entries WHERE schedule_id = ? ORDER BY position ASC',
       [sessionRow.schedule_id],
     );
@@ -551,36 +556,39 @@ export function completeWorkoutSessionRecord(
       entries.length,
     );
 
-    db.runSync('UPDATE schedules SET current_position = ? WHERE id = ?', [
-      nextCompletedPosition,
-      sessionRow.schedule_id,
-    ]);
+    await db.runAsync(
+      'UPDATE schedules SET current_position = ? WHERE id = ?',
+      [nextCompletedPosition, sessionRow.schedule_id],
+    );
   });
 }
 
-export function deleteWorkoutSessionRecord(
+export async function deleteWorkoutSessionRecord(
   db: SQLiteDatabase,
   sessionId: string,
-): void {
-  db.withTransactionSync(() => {
-    db.runSync('DELETE FROM workout_session_exercises WHERE session_id = ?', [
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      'DELETE FROM workout_session_exercises WHERE session_id = ?',
+      [sessionId],
+    );
+    await db.runAsync('DELETE FROM workout_sets WHERE session_id = ?', [
       sessionId,
     ]);
-    db.runSync('DELETE FROM workout_sets WHERE session_id = ?', [sessionId]);
-    db.runSync('DELETE FROM workout_sessions WHERE id = ?', [sessionId]);
+    await db.runAsync('DELETE FROM workout_sessions WHERE id = ?', [sessionId]);
   });
 }
 
-export function loadPreviousExercisePerformanceMap(
+export async function loadPreviousExercisePerformanceMap(
   db: SQLiteDatabase,
   currentSessionId: string,
   exerciseIds: string[],
-): Record<string, PreviousExercisePerformance | null> {
+): Promise<Record<string, PreviousExercisePerformance | null>> {
   if (exerciseIds.length === 0) {
     return {};
   }
 
-  const rows = db.getAllSync<PreviousExercisePerformanceRow>(
+  const rows = await db.getAllAsync<PreviousExercisePerformanceRow>(
     `WITH latest_completed_sessions AS (
         SELECT
           workout_sets.exercise_id,

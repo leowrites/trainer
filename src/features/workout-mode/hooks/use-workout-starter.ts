@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { useDatabase } from '@core/database/provider';
@@ -12,7 +12,7 @@ import { generateId } from '@core/database/utils';
 import { selectNextRoutineId } from '@features/schedule';
 import {
   buildRoutineSnapshot,
-  loadRoutineExerciseTemplates,
+  loadRoutineExerciseTemplatesAsync,
 } from '@features/routines';
 import type { WorkoutSnapshotInput } from '@features/routines';
 import type { ActiveWorkoutSession } from '../types';
@@ -30,15 +30,15 @@ export interface NextRoutinePreview {
 
 interface ExerciseNameRow extends Pick<Exercise, 'id' | 'name'> {}
 
-function loadExerciseNameIndex(
-  db: Pick<SQLiteDatabase, 'getAllSync'>,
+async function loadExerciseNameIndex(
+  db: Pick<SQLiteDatabase, 'getAllAsync'>,
   exerciseIds: string[],
-): Record<string, string> {
+): Promise<Record<string, string>> {
   if (exerciseIds.length === 0) {
     return {};
   }
 
-  const exerciseRows = db.getAllSync<ExerciseNameRow>(
+  const exerciseRows = await db.getAllAsync<ExerciseNameRow>(
     `SELECT id, name
      FROM exercises
      WHERE id IN (${exerciseIds.map(() => '?').join(', ')})`,
@@ -114,8 +114,9 @@ function buildStartedWorkoutSession(
  */
 export function useWorkoutStarter(): {
   nextRoutine: NextRoutinePreview | null;
-  startWorkoutFromSchedule: () => string | null;
-  startFreeWorkout: () => string;
+  isStarting: boolean;
+  startWorkoutFromSchedule: () => Promise<string | null>;
+  startFreeWorkout: () => Promise<string>;
   refreshPreview: () => void;
 } {
   const db = useDatabase();
@@ -124,6 +125,8 @@ export function useWorkoutStarter(): {
     null,
   );
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [isStarting, setIsStarting] = useState(false);
+  const isStartingRef = useRef(false);
 
   const refreshPreview = useCallback((): void => {
     setRefreshKey((k: number) => k + 1);
@@ -132,75 +135,21 @@ export function useWorkoutStarter(): {
   // Compute the next-routine preview from the active schedule whenever
   // the db reference or refreshKey changes.
   useEffect(() => {
-    const activeSchedule = db.getFirstSync<Schedule>(
-      'SELECT id, name, is_active, current_position FROM schedules WHERE is_active = 1 AND is_deleted = 0 LIMIT 1',
-    );
+    let isCancelled = false;
 
-    if (!activeSchedule) {
-      setNextRoutine(null);
-      return;
-    }
-
-    const entries = db.getAllSync<ScheduleEntry>(
-      'SELECT id, schedule_id, routine_id, position FROM schedule_entries WHERE schedule_id = ? ORDER BY position ASC',
-      [activeSchedule.id],
-    );
-
-    const routineId = selectNextRoutineId(
-      entries.map((e: ScheduleEntry) => ({
-        position: e.position,
-        routineId: e.routine_id,
-      })),
-      activeSchedule.current_position,
-    );
-
-    if (!routineId) {
-      setNextRoutine(null);
-      return;
-    }
-
-    const routine = db.getFirstSync<Routine>(
-      'SELECT id, name, notes FROM routines WHERE id = ? AND is_deleted = 0 LIMIT 1',
-      [routineId],
-    );
-
-    if (!routine) {
-      setNextRoutine(null);
-      return;
-    }
-
-    const routineExercises = loadRoutineExerciseTemplates(db, routineId);
-    const exerciseCount = routineExercises.length;
-    const totalSets = routineExercises.reduce(
-      (sum: number, exercise) => sum + exercise.sets.length,
-      0,
-    );
-    const estimatedMinutes = Math.max(
-      20,
-      Math.ceil((exerciseCount * 4 + totalSets * 2.5) / 5) * 5,
-    );
-
-    setNextRoutine({
-      routineId,
-      routineName: routine.name,
-      scheduleName: activeSchedule.name,
-      exerciseCount,
-      estimatedMinutes,
-    });
-  }, [db, refreshKey]);
-
-  const startWorkoutFromSchedule = useCallback((): string | null => {
-    let sessionId: string | null = null;
-    let startedSession: ActiveWorkoutSession | null = null;
-
-    db.withTransactionSync(() => {
-      // Re-fetch the active schedule inside the transaction.
-      const activeSchedule = db.getFirstSync<Schedule>(
+    async function loadPreview(): Promise<void> {
+      const activeSchedule = await db.getFirstAsync<Schedule>(
         'SELECT id, name, is_active, current_position FROM schedules WHERE is_active = 1 AND is_deleted = 0 LIMIT 1',
       );
-      if (!activeSchedule) return;
 
-      const entries = db.getAllSync<ScheduleEntry>(
+      if (!activeSchedule) {
+        if (!isCancelled) {
+          setNextRoutine(null);
+        }
+        return;
+      }
+
+      const entries = await db.getAllAsync<ScheduleEntry>(
         'SELECT id, schedule_id, routine_id, position FROM schedule_entries WHERE schedule_id = ? ORDER BY position ASC',
         [activeSchedule.id],
       );
@@ -212,155 +161,263 @@ export function useWorkoutStarter(): {
         })),
         activeSchedule.current_position,
       );
-      if (!routineId) return;
 
-      const routine = db.getFirstSync<Routine>(
+      if (!routineId) {
+        if (!isCancelled) {
+          setNextRoutine(null);
+        }
+        return;
+      }
+
+      const routine = await db.getFirstAsync<Routine>(
         'SELECT id, name, notes FROM routines WHERE id = ? AND is_deleted = 0 LIMIT 1',
         [routineId],
       );
-      if (!routine) return;
 
-      const routineExercises = loadRoutineExerciseTemplates(db, routineId);
-
-      // Build the snapshot — captures routine name + exercises at this instant.
-      const snapshot: WorkoutSnapshotInput = buildRoutineSnapshot(
-        routine.name,
-        routineExercises.map((exercise) => ({
-          exerciseId: exercise.exerciseId,
-          position: exercise.position,
-          restSeconds: exercise.restSeconds,
-          progressionPolicy: exercise.progressionPolicy,
-          targetRir: exercise.targetRir,
-          sets: exercise.sets.map((setEntry) => ({
-            position: setEntry.position,
-            targetRepsMin: setEntry.targetRepsMin,
-            targetRepsMax: setEntry.targetRepsMax,
-            plannedWeight: setEntry.plannedWeight,
-            setRole: setEntry.setRole,
-          })),
-        })),
-      );
-      const startedAt = Date.now();
-      const nextSessionId = generateId();
-      const exerciseNamesById = loadExerciseNameIndex(
-        db,
-        snapshot.exercises.map((exercise) => exercise.exerciseId),
-      );
-      const nextSession = buildStartedWorkoutSession(
-        nextSessionId,
-        startedAt,
-        snapshot,
-        exerciseNamesById,
-      );
-
-      // Create the workout session with snapshot data.
-      sessionId = nextSessionId;
-      startedSession = nextSession;
-      db.runSync(
-        'INSERT INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
-        [
-          sessionId,
-          routineId,
-          activeSchedule.id,
-          snapshot.snapshotName,
-          startedAt,
-          null,
-        ],
-      );
-
-      // Eagerly create placeholder WorkoutSets from the snapshot so that
-      // routine edits cannot affect this session.
-      nextSession.exercises.forEach((exercise, exerciseIndex) => {
-        const snapshotExercise = snapshot.exercises[exerciseIndex];
-
-        if (!snapshotExercise) {
-          return;
+      if (!routine) {
+        if (!isCancelled) {
+          setNextRoutine(null);
         }
+        return;
+      }
 
-        const sessionExerciseId = generateId();
-        db.runSync(
-          `INSERT INTO workout_session_exercises (
-            id,
-            session_id,
-            exercise_id,
-            position,
-            rest_seconds,
-            progression_policy,
-            target_rir
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      const routineExercises = await loadRoutineExerciseTemplatesAsync(
+        db,
+        routineId,
+      );
+      const exerciseCount = routineExercises.length;
+      const totalSets = routineExercises.reduce(
+        (sum: number, exercise) => sum + exercise.sets.length,
+        0,
+      );
+      const estimatedMinutes = Math.max(
+        20,
+        Math.ceil((exerciseCount * 4 + totalSets * 2.5) / 5) * 5,
+      );
+
+      if (!isCancelled) {
+        setNextRoutine({
+          routineId,
+          routineName: routine.name,
+          scheduleName: activeSchedule.name,
+          exerciseCount,
+          estimatedMinutes,
+        });
+      }
+    }
+
+    void loadPreview();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [db, refreshKey]);
+
+  const startWorkoutFromSchedule = useCallback(async (): Promise<
+    string | null
+  > => {
+    if (isStartingRef.current) {
+      return null;
+    }
+
+    isStartingRef.current = true;
+    setIsStarting(true);
+
+    let sessionId: string | null = null;
+    let startedSession: ActiveWorkoutSession | null = null;
+
+    try {
+      await db.withTransactionAsync(async () => {
+        // Re-fetch the active schedule inside the transaction.
+        const activeSchedule = await db.getFirstAsync<Schedule>(
+          'SELECT id, name, is_active, current_position FROM schedules WHERE is_active = 1 AND is_deleted = 0 LIMIT 1',
+        );
+        if (!activeSchedule) return;
+
+        const entries = await db.getAllAsync<ScheduleEntry>(
+          'SELECT id, schedule_id, routine_id, position FROM schedule_entries WHERE schedule_id = ? ORDER BY position ASC',
+          [activeSchedule.id],
+        );
+
+        const routineId = selectNextRoutineId(
+          entries.map((e: ScheduleEntry) => ({
+            position: e.position,
+            routineId: e.routine_id,
+          })),
+          activeSchedule.current_position,
+        );
+        if (!routineId) return;
+
+        const routine = await db.getFirstAsync<Routine>(
+          'SELECT id, name, notes FROM routines WHERE id = ? AND is_deleted = 0 LIMIT 1',
+          [routineId],
+        );
+        if (!routine) return;
+
+        const routineExercises = await loadRoutineExerciseTemplatesAsync(
+          db,
+          routineId,
+        );
+
+        // Build the snapshot — captures routine name + exercises at this instant.
+        const snapshot: WorkoutSnapshotInput = buildRoutineSnapshot(
+          routine.name,
+          routineExercises.map((exercise) => ({
+            exerciseId: exercise.exerciseId,
+            position: exercise.position,
+            restSeconds: exercise.restSeconds,
+            progressionPolicy: exercise.progressionPolicy,
+            targetRir: exercise.targetRir,
+            sets: exercise.sets.map((setEntry) => ({
+              position: setEntry.position,
+              targetRepsMin: setEntry.targetRepsMin,
+              targetRepsMax: setEntry.targetRepsMax,
+              plannedWeight: setEntry.plannedWeight,
+              setRole: setEntry.setRole,
+            })),
+          })),
+        );
+        const startedAt = Date.now();
+        const nextSessionId = generateId();
+        const exerciseNamesById = await loadExerciseNameIndex(
+          db,
+          snapshot.exercises.map((exercise) => exercise.exerciseId),
+        );
+        const nextSession = buildStartedWorkoutSession(
+          nextSessionId,
+          startedAt,
+          snapshot,
+          exerciseNamesById,
+        );
+
+        // Create the workout session with snapshot data.
+        sessionId = nextSessionId;
+        startedSession = nextSession;
+        await db.runAsync(
+          'INSERT INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
           [
-            sessionExerciseId,
             sessionId,
-            exercise.exerciseId,
-            snapshotExercise.position,
-            exercise.restSeconds ?? null,
-            exercise.progressionPolicy ?? 'double_progression',
-            exercise.targetRir ?? null,
+            routineId,
+            activeSchedule.id,
+            snapshot.snapshotName,
+            startedAt,
+            null,
           ],
         );
 
-        for (const setEntry of exercise.sets) {
-          db.runSync(
-            `INSERT INTO workout_sets (
+        // Eagerly create placeholder WorkoutSets from the snapshot so that
+        // routine edits cannot affect this session.
+        for (const [
+          exerciseIndex,
+          exercise,
+        ] of nextSession.exercises.entries()) {
+          const snapshotExercise = snapshot.exercises[exerciseIndex];
+
+          if (!snapshotExercise) {
+            continue;
+          }
+
+          const sessionExerciseId = generateId();
+          await db.runAsync(
+            `INSERT INTO workout_session_exercises (
               id,
               session_id,
               exercise_id,
               position,
-              weight,
-              reps,
-              is_completed,
-              target_sets,
-              target_reps,
-              target_reps_min,
-              target_reps_max,
-              set_role
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              rest_seconds,
+              progression_policy,
+              target_rir
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
-              setEntry.id,
+              sessionExerciseId,
               sessionId,
               exercise.exerciseId,
-              setEntry.position ?? 0,
-              setEntry.weight,
-              setEntry.reps,
-              0,
-              exercise.sets.length,
-              setEntry.targetRepsMin ?? null,
-              setEntry.targetRepsMin ?? null,
-              setEntry.targetRepsMax ?? null,
-              setEntry.setRole ?? 'work',
+              snapshotExercise.position,
+              exercise.restSeconds ?? null,
+              exercise.progressionPolicy ?? 'double_progression',
+              exercise.targetRir ?? null,
             ],
           );
+
+          for (const setEntry of exercise.sets) {
+            await db.runAsync(
+              `INSERT INTO workout_sets (
+                id,
+                session_id,
+                exercise_id,
+                position,
+                weight,
+                reps,
+                is_completed,
+                target_sets,
+                target_reps,
+                target_reps_min,
+                target_reps_max,
+                set_role
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                setEntry.id,
+                sessionId,
+                exercise.exerciseId,
+                setEntry.position ?? 0,
+                setEntry.weight,
+                setEntry.reps,
+                0,
+                exercise.sets.length,
+                setEntry.targetRepsMin ?? null,
+                setEntry.targetRepsMin ?? null,
+                setEntry.targetRepsMax ?? null,
+                setEntry.setRole ?? 'work',
+              ],
+            );
+          }
         }
       });
-    });
 
-    if (sessionId && startedSession) {
-      startWorkout(startedSession);
-      refreshPreview();
+      if (sessionId && startedSession) {
+        startWorkout(startedSession);
+        refreshPreview();
+      }
+
+      return sessionId;
+    } finally {
+      isStartingRef.current = false;
+      setIsStarting(false);
+    }
+  }, [db, refreshPreview, startWorkout]);
+
+  const startFreeWorkout = useCallback(async (): Promise<string> => {
+    if (isStartingRef.current) {
+      return '';
     }
 
-    return sessionId;
-  }, [db, startWorkout, refreshPreview]);
+    isStartingRef.current = true;
+    setIsStarting(true);
 
-  const startFreeWorkout = useCallback((): string => {
-    const sessionId = generateId();
-    const now = Date.now();
-    db.runSync(
-      'INSERT INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
-      [sessionId, null, null, null, now, null],
-    );
-    startWorkout({
-      id: sessionId,
-      title: 'Free Workout',
-      startTime: now,
-      isFreeWorkout: true,
-      exercises: [],
-    });
-    return sessionId;
+    try {
+      const sessionId = generateId();
+      const now = Date.now();
+      await db.runAsync(
+        'INSERT INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
+        [sessionId, null, null, null, now, null],
+      );
+      startWorkout({
+        id: sessionId,
+        title: 'Free Workout',
+        startTime: now,
+        isFreeWorkout: true,
+        exercises: [],
+      });
+      return sessionId;
+    } finally {
+      isStartingRef.current = false;
+      setIsStarting(false);
+    }
   }, [db, startWorkout]);
 
   return {
     nextRoutine,
+    isStarting,
     startWorkoutFromSchedule,
     startFreeWorkout,
     refreshPreview,

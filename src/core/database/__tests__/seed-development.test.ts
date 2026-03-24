@@ -17,9 +17,9 @@ interface TableRow {
 }
 
 interface DevelopmentSeedDbMock extends Partial<SQLiteDatabase> {
-  getAllSync: jest.Mock;
-  runSync: jest.Mock;
-  withTransactionSync: jest.Mock;
+  getAllAsync: jest.Mock;
+  runAsync: jest.Mock;
+  withTransactionAsync: jest.Mock;
 }
 
 function createDevelopmentSeedDbMock(): DevelopmentSeedDbMock {
@@ -57,7 +57,7 @@ function createDevelopmentSeedDbMock(): DevelopmentSeedDbMock {
   }
 
   return {
-    getAllSync: jest.fn((sql: string, params?: unknown[]) => {
+    getAllAsync: jest.fn(async (sql: string, params?: unknown[]) => {
       if (sql.startsWith('SELECT id, name FROM exercises WHERE name IN')) {
         const names = (params ?? []) as string[];
         return names
@@ -70,7 +70,7 @@ function createDevelopmentSeedDbMock(): DevelopmentSeedDbMock {
 
       return [];
     }),
-    runSync: jest.fn((sql: string, params?: unknown[]) => {
+    runAsync: jest.fn(async (sql: string, params?: unknown[]) => {
       const values = (params ?? []) as unknown[];
 
       if (sql.startsWith('INSERT OR REPLACE INTO routines')) {
@@ -140,7 +140,7 @@ function createDevelopmentSeedDbMock(): DevelopmentSeedDbMock {
         });
       }
     }),
-    withTransactionSync: jest.fn((fn: () => void) => fn()),
+    withTransactionAsync: jest.fn(async (fn: () => Promise<void>) => fn()),
   };
 }
 
@@ -149,31 +149,31 @@ describe('seedDevelopmentDatabase', () => {
     jest.clearAllMocks();
   });
 
-  it('seeds a repeatable development dataset using the current exercise ids', () => {
+  it('seeds a repeatable development dataset using the current exercise ids', async () => {
     const db = createDevelopmentSeedDbMock();
 
-    seedDevelopmentDatabase(db as SQLiteDatabase);
-    seedDevelopmentDatabase(db as SQLiteDatabase);
+    await seedDevelopmentDatabase(db as SQLiteDatabase);
+    await seedDevelopmentDatabase(db as SQLiteDatabase);
 
     expect(mockSeedDefaultExercises).toHaveBeenCalledTimes(2);
-    expect(db.withTransactionSync).toHaveBeenCalledTimes(2);
+    expect(db.withTransactionAsync).toHaveBeenCalledTimes(2);
 
-    const routines = db.runSync.mock.calls.filter(([sql]) =>
+    const routines = db.runAsync.mock.calls.filter(([sql]) =>
       String(sql).startsWith('INSERT OR REPLACE INTO routines'),
     );
-    const schedules = db.runSync.mock.calls.filter(([sql]) =>
+    const schedules = db.runAsync.mock.calls.filter(([sql]) =>
       String(sql).startsWith('INSERT OR REPLACE INTO schedules'),
     );
-    const workoutSessions = db.runSync.mock.calls.filter(([sql]) =>
+    const workoutSessions = db.runAsync.mock.calls.filter(([sql]) =>
       String(sql).startsWith('INSERT OR REPLACE INTO workout_sessions'),
     );
-    const workoutSets = db.runSync.mock.calls.filter(([sql]) =>
+    const workoutSets = db.runAsync.mock.calls.filter(([sql]) =>
       String(sql).startsWith('INSERT OR REPLACE INTO workout_sets'),
     );
-    const bodyWeightEntries = db.runSync.mock.calls.filter(([sql]) =>
+    const bodyWeightEntries = db.runAsync.mock.calls.filter(([sql]) =>
       String(sql).startsWith('INSERT OR REPLACE INTO body_weight_entries'),
     );
-    const userProfile = db.runSync.mock.calls.filter(([sql]) =>
+    const userProfile = db.runAsync.mock.calls.filter(([sql]) =>
       String(sql).startsWith('INSERT OR REPLACE INTO user_profile'),
     );
 
@@ -194,14 +194,14 @@ describe('seedDevelopmentDatabase', () => {
     expect(userProfile).toHaveLength(2);
   });
 
-  it('seeds the default exercise catalog before resolving required exercise ids', () => {
+  it('seeds the default exercise catalog before resolving required exercise ids', async () => {
     const db = createDevelopmentSeedDbMock();
 
-    seedDevelopmentDatabase(db as SQLiteDatabase);
+    await seedDevelopmentDatabase(db as SQLiteDatabase);
 
     expect(mockSeedDefaultExercises).toHaveBeenCalledWith(db);
     expect(mockSeedDefaultExercises.mock.invocationCallOrder[0]).toBeLessThan(
-      db.getAllSync.mock.invocationCallOrder[0],
+      db.getAllAsync.mock.invocationCallOrder[0],
     );
   });
 

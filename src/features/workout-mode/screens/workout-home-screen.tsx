@@ -4,8 +4,8 @@ import {
   useFocusEffect,
 } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { RootStackParamList, RootTabParamList } from '@core/navigation';
@@ -118,6 +118,7 @@ export function WorkoutHomeScreen({
   const {
     refreshPreview,
     nextRoutine,
+    isStarting,
     startWorkoutFromSchedule,
     startFreeWorkout,
   } = useWorkoutStarter();
@@ -126,7 +127,6 @@ export function WorkoutHomeScreen({
   const { allSessions, refresh: refreshHistory } = useHistoryAnalytics({
     includeSessionPage: false,
   });
-  const isStartingRef = useRef(false);
   const [dashboardNow] = useState(() => Date.now());
   const dashboardMetrics = useMemo(
     () => buildDashboardMetrics(allSessions, { now: dashboardNow }),
@@ -159,37 +159,19 @@ export function WorkoutHomeScreen({
     }, [refreshExerciseCapabilities, refreshHistory, refreshPreview]),
   );
 
-  const handleStartScheduled = (): void => {
-    if (isStartingRef.current) {
-      return;
-    }
-
-    isStartingRef.current = true;
-
-    try {
-      const sessionId = startWorkoutFromSchedule();
-      if (sessionId) {
-        navigation.navigate('ActiveWorkout');
-      }
-    } finally {
-      isStartingRef.current = false;
-    }
-  };
-
-  const handleStartFree = (): void => {
-    if (isStartingRef.current) {
-      return;
-    }
-
-    isStartingRef.current = true;
-
-    try {
-      startFreeWorkout();
+  const handleStartScheduled = useCallback(async (): Promise<void> => {
+    const sessionId = await startWorkoutFromSchedule();
+    if (sessionId) {
       navigation.navigate('ActiveWorkout');
-    } finally {
-      isStartingRef.current = false;
     }
-  };
+  }, [navigation, startWorkoutFromSchedule]);
+
+  const handleStartFree = useCallback(async (): Promise<void> => {
+    const sessionId = await startFreeWorkout();
+    if (sessionId) {
+      navigation.navigate('ActiveWorkout');
+    }
+  }, [navigation, startFreeWorkout]);
 
   const handleContinueWorkout = (): void => {
     expandWorkout();
@@ -231,11 +213,25 @@ export function WorkoutHomeScreen({
                 Continue now
               </Button>
             ) : nextRoutine ? (
-              <Button onPress={handleStartScheduled} className="w-full">
+              <Button
+                onPress={() => {
+                  void handleStartScheduled();
+                }}
+                className="w-full"
+                loading={isStarting}
+                disabled={isStarting}
+              >
                 Start now
               </Button>
             ) : (
-              <Button onPress={handleStartFree} className="w-full">
+              <Button
+                onPress={() => {
+                  void handleStartFree();
+                }}
+                className="w-full"
+                loading={isStarting}
+                disabled={isStarting}
+              >
                 Start now
               </Button>
             )}
@@ -243,8 +239,12 @@ export function WorkoutHomeScreen({
             {!hasCurrentWorkout && nextRoutine ? (
               <Button
                 accessibilityLabel="Free workout"
-                onPress={handleStartFree}
+                onPress={() => {
+                  void handleStartFree();
+                }}
                 className="mt-2 self-start px-4 py-1 button-ghost"
+                loading={isStarting}
+                disabled={isStarting}
               >
                 Free workout
               </Button>
@@ -361,6 +361,14 @@ export function WorkoutHomeScreen({
           </View>
         </View>
       </ScrollView>
+      {isStarting ? (
+        <View className="absolute inset-0 items-center justify-center bg-black/35">
+          <View className="rounded-2xl border border-surface-border bg-surface-card px-5 py-4">
+            <ActivityIndicator />
+            <Body className="mt-2 font-medium">Starting workout...</Body>
+          </View>
+        </View>
+      ) : null}
     </Container>
   );
 }

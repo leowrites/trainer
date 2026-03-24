@@ -4,9 +4,9 @@ import defaultExercises from '../seed-data/default-exercises.json';
 import { seedDefaultExercises } from '../seed-exercises';
 
 interface SeedExercisesDbMock extends Partial<SQLiteDatabase> {
-  getAllSync: jest.Mock;
-  runSync: jest.Mock;
-  withTransactionSync: jest.Mock;
+  getAllAsync: jest.Mock;
+  runAsync: jest.Mock;
+  withTransactionAsync: jest.Mock;
 }
 
 interface SeedExerciseRow {
@@ -35,7 +35,7 @@ function createSeedExercisesDbMock(
   );
 
   return {
-    getAllSync: jest.fn((sql: string, params?: unknown[]) => {
+    getAllAsync: jest.fn(async (sql: string, params?: unknown[]) => {
       if (
         sql ===
         `SELECT id, name, how_to, equipment FROM exercises WHERE name IN (${defaultExerciseNames
@@ -51,7 +51,7 @@ function createSeedExercisesDbMock(
 
       return [];
     }),
-    runSync: jest.fn((sql: string, params?: unknown[]) => {
+    runAsync: jest.fn(async (sql: string, params?: unknown[]) => {
       if (
         sql ===
           'INSERT INTO exercises (id, name, muscle_group, how_to, equipment) VALUES (?, ?, ?, ?, ?)' &&
@@ -80,38 +80,38 @@ function createSeedExercisesDbMock(
         }
       }
     }),
-    withTransactionSync: jest.fn((fn: () => void) => fn()),
+    withTransactionAsync: jest.fn(async (fn: () => Promise<void>) => fn()),
   };
 }
 
 describe('seedDefaultExercises', () => {
-  it('inserts only missing exercises and becomes a no-op on repeat runs', () => {
+  it('inserts only missing exercises and becomes a no-op on repeat runs', async () => {
     const existingNames = [defaultExercises[0].name, defaultExercises[1].name];
     const db = createSeedExercisesDbMock(existingNames);
     const totalExercises = defaultExercises.length;
 
-    seedDefaultExercises(db as SQLiteDatabase);
+    await seedDefaultExercises(db as SQLiteDatabase);
 
-    expect(db.withTransactionSync).toHaveBeenCalledTimes(1);
-    expect(db.runSync).toHaveBeenCalledTimes(
+    expect(db.withTransactionAsync).toHaveBeenCalledTimes(1);
+    expect(db.runAsync).toHaveBeenCalledTimes(
       totalExercises - existingNames.length,
     );
 
-    db.runSync.mockClear();
-    db.withTransactionSync.mockClear();
+    db.runAsync.mockClear();
+    db.withTransactionAsync.mockClear();
 
-    seedDefaultExercises(db as SQLiteDatabase);
+    await seedDefaultExercises(db as SQLiteDatabase);
 
-    expect(db.withTransactionSync).not.toHaveBeenCalled();
-    expect(db.runSync).not.toHaveBeenCalled();
+    expect(db.withTransactionAsync).not.toHaveBeenCalled();
+    expect(db.runAsync).not.toHaveBeenCalled();
   });
 
-  it('queries only the default catalog names instead of scanning all exercises', () => {
+  it('queries only the default catalog names instead of scanning all exercises', async () => {
     const db = createSeedExercisesDbMock([]);
 
-    seedDefaultExercises(db as SQLiteDatabase);
+    await seedDefaultExercises(db as SQLiteDatabase);
 
-    expect(db.getAllSync).toHaveBeenCalledWith(
+    expect(db.getAllAsync).toHaveBeenCalledWith(
       `SELECT id, name, how_to, equipment FROM exercises WHERE name IN (${defaultExercises
         .map(() => '?')
         .join(', ')})`,
@@ -119,12 +119,12 @@ describe('seedDefaultExercises', () => {
     );
   });
 
-  it('backfills metadata for existing default exercises after a schema upgrade', () => {
+  it('backfills metadata for existing default exercises after a schema upgrade', async () => {
     const db = createSeedExercisesDbMock(['Barbell Bench Press']);
 
-    seedDefaultExercises(db as SQLiteDatabase);
+    await seedDefaultExercises(db as SQLiteDatabase);
 
-    expect(db.runSync).toHaveBeenCalledWith(
+    expect(db.runAsync).toHaveBeenCalledWith(
       'UPDATE exercises SET how_to = COALESCE(how_to, ?), equipment = COALESCE(equipment, ?) WHERE id = ?',
       expect.arrayContaining(['Barbell and bench']),
     );

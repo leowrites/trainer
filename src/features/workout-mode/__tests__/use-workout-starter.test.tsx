@@ -37,12 +37,12 @@ describe('useWorkoutStarter', () => {
     useWorkoutStore.getState().endWorkout();
   });
 
-  it('creates a session snapshot, placeholder sets, and hydrates the active store state', () => {
+  it('creates a session snapshot, placeholder sets, and hydrates the active store state', async () => {
     jest.useFakeTimers();
     jest.setSystemTime(1_700_000_000_000);
 
     const db = createMockDb();
-    db.getFirstSync.mockImplementation((query: string, params?: unknown[]) => {
+    db.getFirstAsync.mockImplementation((query: string, params?: unknown[]) => {
       if (
         query.includes('FROM schedules WHERE is_active = 1 AND is_deleted = 0')
       ) {
@@ -65,7 +65,7 @@ describe('useWorkoutStarter', () => {
 
       return null;
     });
-    db.getAllSync.mockImplementation((query: string) => {
+    db.getAllAsync.mockImplementation((query: string) => {
       if (query.includes('FROM schedule_entries')) {
         return [
           {
@@ -110,27 +110,28 @@ describe('useWorkoutStarter', () => {
 
     const wrapper = createDatabaseWrapper(db);
     const { result } = renderHook(() => useWorkoutStarter(), { wrapper });
-    db.runSync.mockClear();
-    db.withTransactionSync.mockClear();
+    db.runAsync.mockClear();
+    db.withTransactionAsync.mockClear();
 
     let sessionId: string | null = null;
-    act(() => {
-      sessionId = result.current.startWorkoutFromSchedule();
+    await act(async () => {
+      sessionId = await result.current.startWorkoutFromSchedule();
     });
 
     expect(typeof sessionId).toBe('string');
     expect(sessionId).not.toHaveLength(0);
-    expect(db.withTransactionSync).toHaveBeenCalledTimes(1);
-    expect(db.runSync).toHaveBeenCalledWith(
+    expect(db.withTransactionAsync).toHaveBeenCalledTimes(1);
+    expect(db.runAsync).toHaveBeenCalledWith(
       'INSERT INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
       [sessionId, 'routine-1', 'schedule-1', 'Push A', 1_700_000_000_000, null],
     );
 
-    const setInsertCalls = db.runSync.mock.calls.filter(([query]) =>
+    const setInsertCalls = db.runAsync.mock.calls.filter(([query]) =>
       (query as string).includes('INSERT INTO workout_sets'),
     );
-    const sessionExerciseInsertCalls = db.runSync.mock.calls.filter(([query]) =>
-      (query as string).includes('INSERT INTO workout_session_exercises'),
+    const sessionExerciseInsertCalls = db.runAsync.mock.calls.filter(
+      ([query]) =>
+        (query as string).includes('INSERT INTO workout_session_exercises'),
     );
     expect(sessionExerciseInsertCalls).toHaveLength(2);
     expect(setInsertCalls).toHaveLength(3);
@@ -176,17 +177,17 @@ describe('useWorkoutStarter', () => {
       10,
       'work',
     ]);
-    expect(db.runSync).not.toHaveBeenCalledWith(
+    expect(db.runAsync).not.toHaveBeenCalledWith(
       'UPDATE schedules SET current_position = ? WHERE id = ?',
       [0, 'schedule-1'],
     );
     expect(
-      db.getAllSync.mock.calls.some(([query]) =>
+      db.getAllAsync.mock.calls.some(([query]) =>
         (query as string).includes('FROM workout_session_exercises'),
       ),
     ).toBe(false);
     expect(
-      db.getAllSync.mock.calls.some(([query]) =>
+      db.getAllAsync.mock.calls.some(([query]) =>
         (query as string).includes('FROM workout_sets ws'),
       ),
     ).toBe(false);

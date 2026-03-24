@@ -28,53 +28,69 @@ export function usePreviousExercisePerformance(
   const exerciseKey = exerciseIds.join('|');
 
   useEffect(() => {
-    if (!currentSessionId || exerciseIds.length === 0) {
-      setPerformanceByExerciseId({});
-      return;
-    }
+    let isCancelled = false;
 
-    const requestedExerciseIds = exerciseIds.filter(Boolean);
-    const missingExerciseIds = requestedExerciseIds.filter(
-      (exerciseId) =>
-        cacheRef.current[`${currentSessionId}:${exerciseId}`] === undefined,
-    );
+    async function hydratePreviousPerformance(): Promise<void> {
+      if (!currentSessionId || exerciseIds.length === 0) {
+        if (!isCancelled) {
+          setPerformanceByExerciseId({});
+        }
+        return;
+      }
 
-    if (missingExerciseIds.length > 0) {
-      const loadedPerformance = loadPreviousExercisePerformanceMap(
-        db,
-        currentSessionId,
-        missingExerciseIds,
+      const requestedExerciseIds = exerciseIds.filter(Boolean);
+      const missingExerciseIds = requestedExerciseIds.filter(
+        (exerciseId) =>
+          cacheRef.current[`${currentSessionId}:${exerciseId}`] === undefined,
       );
 
-      missingExerciseIds.forEach((exerciseId) => {
-        cacheRef.current[`${currentSessionId}:${exerciseId}`] =
-          loadedPerformance[exerciseId] ?? null;
+      if (missingExerciseIds.length > 0) {
+        const loadedPerformance = await loadPreviousExercisePerformanceMap(
+          db,
+          currentSessionId,
+          missingExerciseIds,
+        );
+
+        missingExerciseIds.forEach((exerciseId) => {
+          cacheRef.current[`${currentSessionId}:${exerciseId}`] =
+            loadedPerformance[exerciseId] ?? null;
+        });
+      }
+
+      const nextPerformanceByExerciseId = Object.fromEntries(
+        requestedExerciseIds.map((exerciseId) => [
+          exerciseId,
+          cacheRef.current[`${currentSessionId}:${exerciseId}`] ?? null,
+        ]),
+      );
+
+      if (isCancelled) {
+        return;
+      }
+
+      setPerformanceByExerciseId((currentPerformanceByExerciseId) => {
+        const currentKeys = Object.keys(currentPerformanceByExerciseId);
+
+        if (
+          currentKeys.length === requestedExerciseIds.length &&
+          requestedExerciseIds.every(
+            (exerciseId) =>
+              currentPerformanceByExerciseId[exerciseId] ===
+              nextPerformanceByExerciseId[exerciseId],
+          )
+        ) {
+          return currentPerformanceByExerciseId;
+        }
+
+        return nextPerformanceByExerciseId;
       });
     }
 
-    const nextPerformanceByExerciseId = Object.fromEntries(
-      requestedExerciseIds.map((exerciseId) => [
-        exerciseId,
-        cacheRef.current[`${currentSessionId}:${exerciseId}`] ?? null,
-      ]),
-    );
+    void hydratePreviousPerformance();
 
-    setPerformanceByExerciseId((currentPerformanceByExerciseId) => {
-      const currentKeys = Object.keys(currentPerformanceByExerciseId);
-
-      if (
-        currentKeys.length === requestedExerciseIds.length &&
-        requestedExerciseIds.every(
-          (exerciseId) =>
-            currentPerformanceByExerciseId[exerciseId] ===
-            nextPerformanceByExerciseId[exerciseId],
-        )
-      ) {
-        return currentPerformanceByExerciseId;
-      }
-
-      return nextPerformanceByExerciseId;
-    });
+    return () => {
+      isCancelled = true;
+    };
   }, [currentSessionId, db, exerciseIds, exerciseKey]);
 
   return performanceByExerciseId;

@@ -69,7 +69,7 @@ describe('useActiveWorkoutActions', () => {
     useWorkoutStore.getState().startWorkout(activeSession);
   });
 
-  it('adds and removes ad hoc exercises without subscribing to the full session tree', () => {
+  it('adds and removes ad hoc exercises without subscribing to the full session tree', async () => {
     const db = createMockDb();
     const wrapper = createDatabaseWrapper(db);
     useWorkoutStore.getState().endWorkout();
@@ -81,8 +81,9 @@ describe('useActiveWorkoutActions', () => {
 
     const { result } = renderHook(() => useActiveWorkoutActions(), { wrapper });
 
-    act(() => {
+    await act(async () => {
       result.current.addExercise('exercise-2', 'Goblet Squat');
+      await Promise.resolve();
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
@@ -130,8 +131,9 @@ describe('useActiveWorkoutActions', () => {
       },
     ]);
 
-    act(() => {
+    await act(async () => {
       result.current.removeExercise('exercise-2');
+      await Promise.resolve();
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
@@ -143,7 +145,7 @@ describe('useActiveWorkoutActions', () => {
     ).toEqual([]);
   });
 
-  it('persists set edits, additions, and deletions while keeping store selectors in sync', () => {
+  it('persists set edits, additions, and deletions while keeping store selectors in sync', async () => {
     jest.useFakeTimers();
 
     const db = createMockDb();
@@ -174,8 +176,8 @@ describe('useActiveWorkoutActions', () => {
       ),
     ).toBe(false);
 
-    act(() => {
-      result.current.flushPendingWrites();
+    await act(async () => {
+      await result.current.flushPendingWrites();
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
@@ -183,9 +185,10 @@ describe('useActiveWorkoutActions', () => {
       [10, 145.5, 'set-1'],
     );
 
-    act(() => {
+    await act(async () => {
       result.current.addSet('exercise-1');
       result.current.deleteSet('set-1');
+      await Promise.resolve();
     });
 
     expect(
@@ -213,7 +216,7 @@ describe('useActiveWorkoutActions', () => {
     jest.useRealTimers();
   });
 
-  it('batches rapid RIR updates before flushing', () => {
+  it('batches rapid RIR updates before flushing', async () => {
     jest.useFakeTimers();
 
     const db = createMockDb();
@@ -238,8 +241,9 @@ describe('useActiveWorkoutActions', () => {
       ),
     ).toBe(false);
 
-    act(() => {
+    await act(async () => {
       jest.advanceTimersByTime(180);
+      await Promise.resolve();
     });
 
     const rirUpdateCalls = db.runSync.mock.calls.filter(([sql]) =>
@@ -255,7 +259,7 @@ describe('useActiveWorkoutActions', () => {
     jest.useRealTimers();
   });
 
-  it('flushes queued set changes before completing and deleting workouts', () => {
+  it('flushes queued set changes before completing and deleting workouts', async () => {
     jest.useFakeTimers();
     jest.setSystemTime(1_700_000_123_000);
 
@@ -296,8 +300,8 @@ describe('useActiveWorkoutActions', () => {
       result.current.updateReps('set-1', 10);
     });
 
-    act(() => {
-      expect(result.current.completeWorkout()).toBe('session-1');
+    await act(async () => {
+      expect(await result.current.completeWorkout()).toBe('session-1');
     });
 
     const completedSetFlushIndex = db.runSync.mock.calls.findIndex(
@@ -326,8 +330,8 @@ describe('useActiveWorkoutActions', () => {
       result.current.updateWeight('set-1', 140);
     });
 
-    act(() => {
-      expect(result.current.deleteWorkout()).toBe(true);
+    await act(async () => {
+      expect(await result.current.deleteWorkout()).toBe(true);
     });
 
     const deletedSetFlushIndex = db.runSync.mock.calls.findIndex(

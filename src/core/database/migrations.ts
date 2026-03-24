@@ -24,29 +24,29 @@ interface LegacyRoutineExerciseRow {
 interface Migration {
   version: number;
   description: string;
-  up: (db: SQLiteDatabase) => void;
+  up: (db: SQLiteDatabase) => Promise<void>;
 }
 
 const migrations: Migration[] = [
   {
     version: 1,
     description: 'Adopt explicit schema versioning for existing installs.',
-    up: () => {
+    up: async () => {
       // Version 1 matched the bootstrap-created base schema.
     },
   },
   {
     version: 2,
     description: 'Advance the schema version without changing table layout.',
-    up: () => {
+    up: async () => {
       // Version 2 only introduced the user_version pragma.
     },
   },
   {
     version: 3,
     description: 'Add persisted body-weight entries for offline tracking.',
-    up: (db) => {
-      db.execSync(`
+    up: async (db) => {
+      await db.execAsync(`
         CREATE TABLE IF NOT EXISTS body_weight_entries (
           id        TEXT PRIMARY KEY NOT NULL,
           weight    REAL NOT NULL,
@@ -63,13 +63,17 @@ const migrations: Migration[] = [
   {
     version: 4,
     description: 'Persist workout set targets inside session snapshots.',
-    up: (db) => {
-      if (!columnExists(db, 'workout_sets', 'target_sets')) {
-        db.execSync('ALTER TABLE workout_sets ADD COLUMN target_sets INTEGER;');
+    up: async (db) => {
+      if (!(await columnExists(db, 'workout_sets', 'target_sets'))) {
+        await db.execAsync(
+          'ALTER TABLE workout_sets ADD COLUMN target_sets INTEGER;',
+        );
       }
 
-      if (!columnExists(db, 'workout_sets', 'target_reps')) {
-        db.execSync('ALTER TABLE workout_sets ADD COLUMN target_reps INTEGER;');
+      if (!(await columnExists(db, 'workout_sets', 'target_reps'))) {
+        await db.execAsync(
+          'ALTER TABLE workout_sets ADD COLUMN target_reps INTEGER;',
+        );
       }
     },
   },
@@ -77,16 +81,16 @@ const migrations: Migration[] = [
     version: 5,
     description:
       'Add user profile settings and richer exercise metadata for phase 2.',
-    up: (db) => {
-      if (!columnExists(db, 'exercises', 'how_to')) {
-        db.execSync('ALTER TABLE exercises ADD COLUMN how_to TEXT;');
+    up: async (db) => {
+      if (!(await columnExists(db, 'exercises', 'how_to'))) {
+        await db.execAsync('ALTER TABLE exercises ADD COLUMN how_to TEXT;');
       }
 
-      if (!columnExists(db, 'exercises', 'equipment')) {
-        db.execSync('ALTER TABLE exercises ADD COLUMN equipment TEXT;');
+      if (!(await columnExists(db, 'exercises', 'equipment'))) {
+        await db.execAsync('ALTER TABLE exercises ADD COLUMN equipment TEXT;');
       }
 
-      db.execSync(`
+      await db.execAsync(`
         CREATE TABLE IF NOT EXISTS user_profile (
           id                    TEXT PRIMARY KEY NOT NULL,
           display_name          TEXT,
@@ -101,9 +105,9 @@ const migrations: Migration[] = [
     version: 6,
     description:
       'Add soft deletion for exercises to preserve historical workout data.',
-    up: (db) => {
-      if (!columnExists(db, 'exercises', 'is_deleted')) {
-        db.execSync(
+    up: async (db) => {
+      if (!(await columnExists(db, 'exercises', 'is_deleted'))) {
+        await db.execAsync(
           'ALTER TABLE exercises ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
         );
       }
@@ -112,15 +116,15 @@ const migrations: Migration[] = [
   {
     version: 7,
     description: 'Add soft deletion for routines and schedules.',
-    up: (db) => {
-      if (!columnExists(db, 'routines', 'is_deleted')) {
-        db.execSync(
+    up: async (db) => {
+      if (!(await columnExists(db, 'routines', 'is_deleted'))) {
+        await db.execAsync(
           'ALTER TABLE routines ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
         );
       }
 
-      if (!columnExists(db, 'schedules', 'is_deleted')) {
-        db.execSync(
+      if (!(await columnExists(db, 'schedules', 'is_deleted'))) {
+        await db.execAsync(
           'ALTER TABLE schedules ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
         );
       }
@@ -130,15 +134,15 @@ const migrations: Migration[] = [
     version: 8,
     description:
       'Persist post-workout effort and fatigue scores on workout sessions.',
-    up: (db) => {
-      if (!columnExists(db, 'workout_sessions', 'effort_level')) {
-        db.execSync(
+    up: async (db) => {
+      if (!(await columnExists(db, 'workout_sessions', 'effort_level'))) {
+        await db.execAsync(
           'ALTER TABLE workout_sessions ADD COLUMN effort_level INTEGER;',
         );
       }
 
-      if (!columnExists(db, 'workout_sessions', 'fatigue_level')) {
-        db.execSync(
+      if (!(await columnExists(db, 'workout_sessions', 'fatigue_level'))) {
+        await db.execAsync(
           'ALTER TABLE workout_sessions ADD COLUMN fatigue_level INTEGER;',
         );
       }
@@ -148,8 +152,8 @@ const migrations: Migration[] = [
     version: 9,
     description:
       'Add routine template sets, session exercise snapshots, explicit set positions, and template-apply tracking.',
-    up: (db) => {
-      db.execSync(`
+    up: async (db) => {
+      await db.execAsync(`
         CREATE TABLE IF NOT EXISTS routine_exercise_sets (
           id                  TEXT PRIMARY KEY NOT NULL,
           routine_exercise_id TEXT NOT NULL,
@@ -173,38 +177,45 @@ const migrations: Migration[] = [
           ON workout_session_exercises (session_id);
       `);
 
-      if (!columnExists(db, 'routine_exercises', 'rest_seconds')) {
-        db.execSync(
+      if (!(await columnExists(db, 'routine_exercises', 'rest_seconds'))) {
+        await db.execAsync(
           'ALTER TABLE routine_exercises ADD COLUMN rest_seconds INTEGER;',
         );
       }
 
-      if (!columnExists(db, 'workout_sets', 'position')) {
-        db.execSync('ALTER TABLE workout_sets ADD COLUMN position INTEGER;');
+      if (!(await columnExists(db, 'workout_sets', 'position'))) {
+        await db.execAsync(
+          'ALTER TABLE workout_sets ADD COLUMN position INTEGER;',
+        );
       }
 
-      if (!columnExists(db, 'workout_sessions', 'template_applied_at')) {
-        db.execSync(
+      if (
+        !(await columnExists(db, 'workout_sessions', 'template_applied_at'))
+      ) {
+        await db.execAsync(
           'ALTER TABLE workout_sessions ADD COLUMN template_applied_at INTEGER;',
         );
       }
 
-      const routineExerciseSetsCount = db.getFirstSync<{ count: number }>(
-        'SELECT COUNT(*) AS count FROM routine_exercise_sets',
+      const routineExerciseSetsCount = (
+        await db.getFirstAsync<{ count: number }>(
+          'SELECT COUNT(*) AS count FROM routine_exercise_sets',
+        )
       )?.count;
 
       if ((routineExerciseSetsCount ?? 0) === 0) {
-        const legacyRoutineExercises = db.getAllSync<LegacyRoutineExerciseRow>(
-          `SELECT id, target_reps, target_sets
-           FROM routine_exercises
-           ORDER BY position ASC`,
-        );
+        const legacyRoutineExercises =
+          await db.getAllAsync<LegacyRoutineExerciseRow>(
+            `SELECT id, target_reps, target_sets
+             FROM routine_exercises
+             ORDER BY position ASC`,
+          );
 
         for (const routineExercise of legacyRoutineExercises) {
           const setCount = Math.max(1, routineExercise.target_sets);
 
           for (let index = 0; index < setCount; index += 1) {
-            db.runSync(
+            await db.runAsync(
               `INSERT INTO routine_exercise_sets (
                 id,
                 routine_exercise_id,
@@ -229,80 +240,94 @@ const migrations: Migration[] = [
     version: 10,
     description:
       'Add deterministic intelligence columns for set roles, rep ranges, exercise capability flags, and typed goals.',
-    up: (db) => {
-      if (!columnExists(db, 'exercises', 'strength_estimation_mode')) {
-        db.execSync(
+    up: async (db) => {
+      if (!(await columnExists(db, 'exercises', 'strength_estimation_mode'))) {
+        await db.execAsync(
           "ALTER TABLE exercises ADD COLUMN strength_estimation_mode TEXT NOT NULL DEFAULT 'limited';",
         );
       }
 
-      if (!columnExists(db, 'routine_exercises', 'progression_policy')) {
-        db.execSync(
+      if (
+        !(await columnExists(db, 'routine_exercises', 'progression_policy'))
+      ) {
+        await db.execAsync(
           "ALTER TABLE routine_exercises ADD COLUMN progression_policy TEXT NOT NULL DEFAULT 'double_progression';",
         );
       }
 
-      if (!columnExists(db, 'routine_exercises', 'target_rir')) {
-        db.execSync(
+      if (!(await columnExists(db, 'routine_exercises', 'target_rir'))) {
+        await db.execAsync(
           'ALTER TABLE routine_exercises ADD COLUMN target_rir REAL;',
         );
       }
 
-      if (!columnExists(db, 'routine_exercise_sets', 'target_reps_min')) {
-        db.execSync(
+      if (
+        !(await columnExists(db, 'routine_exercise_sets', 'target_reps_min'))
+      ) {
+        await db.execAsync(
           'ALTER TABLE routine_exercise_sets ADD COLUMN target_reps_min INTEGER;',
         );
       }
 
-      if (!columnExists(db, 'routine_exercise_sets', 'target_reps_max')) {
-        db.execSync(
+      if (
+        !(await columnExists(db, 'routine_exercise_sets', 'target_reps_max'))
+      ) {
+        await db.execAsync(
           'ALTER TABLE routine_exercise_sets ADD COLUMN target_reps_max INTEGER;',
         );
       }
 
-      if (!columnExists(db, 'routine_exercise_sets', 'set_role')) {
-        db.execSync(
+      if (!(await columnExists(db, 'routine_exercise_sets', 'set_role'))) {
+        await db.execAsync(
           "ALTER TABLE routine_exercise_sets ADD COLUMN set_role TEXT NOT NULL DEFAULT 'work';",
         );
       }
 
       if (
-        !columnExists(db, 'workout_session_exercises', 'progression_policy')
+        !(await columnExists(
+          db,
+          'workout_session_exercises',
+          'progression_policy',
+        ))
       ) {
-        db.execSync(
+        await db.execAsync(
           "ALTER TABLE workout_session_exercises ADD COLUMN progression_policy TEXT NOT NULL DEFAULT 'double_progression';",
         );
       }
 
-      if (!columnExists(db, 'workout_session_exercises', 'target_rir')) {
-        db.execSync(
+      if (
+        !(await columnExists(db, 'workout_session_exercises', 'target_rir'))
+      ) {
+        await db.execAsync(
           'ALTER TABLE workout_session_exercises ADD COLUMN target_rir REAL;',
         );
       }
 
-      if (!columnExists(db, 'workout_sets', 'target_reps_min')) {
-        db.execSync(
+      if (!(await columnExists(db, 'workout_sets', 'target_reps_min'))) {
+        await db.execAsync(
           'ALTER TABLE workout_sets ADD COLUMN target_reps_min INTEGER;',
         );
       }
 
-      if (!columnExists(db, 'workout_sets', 'target_reps_max')) {
-        db.execSync(
+      if (!(await columnExists(db, 'workout_sets', 'target_reps_max'))) {
+        await db.execAsync(
           'ALTER TABLE workout_sets ADD COLUMN target_reps_max INTEGER;',
         );
       }
 
-      if (!columnExists(db, 'workout_sets', 'actual_rir')) {
-        db.execSync('ALTER TABLE workout_sets ADD COLUMN actual_rir REAL;');
+      if (!(await columnExists(db, 'workout_sets', 'actual_rir'))) {
+        await db.execAsync(
+          'ALTER TABLE workout_sets ADD COLUMN actual_rir REAL;',
+        );
       }
 
-      if (!columnExists(db, 'workout_sets', 'set_role')) {
-        db.execSync(
+      if (!(await columnExists(db, 'workout_sets', 'set_role'))) {
+        await db.execAsync(
           "ALTER TABLE workout_sets ADD COLUMN set_role TEXT NOT NULL DEFAULT 'work';",
         );
       }
 
-      db.execSync(`
+      await db.execAsync(`
         CREATE TABLE IF NOT EXISTS training_goals (
           id TEXT PRIMARY KEY NOT NULL,
           goal_type TEXT NOT NULL,
@@ -324,13 +349,13 @@ const migrations: Migration[] = [
           ON training_goals (status);
       `);
 
-      db.execSync(`
+      await db.execAsync(`
         UPDATE routine_exercise_sets
         SET target_reps_min = COALESCE(target_reps_min, target_reps),
             target_reps_max = COALESCE(target_reps_max, target_reps)
       `);
 
-      db.execSync(`
+      await db.execAsync(`
         UPDATE workout_sets
         SET target_reps_min = COALESCE(target_reps_min, target_reps),
             target_reps_max = COALESCE(target_reps_max, target_reps)
@@ -341,8 +366,8 @@ const migrations: Migration[] = [
     version: 11,
     description:
       'Add ordered-query indexes for schedules, routines, workout sessions, and session snapshots.',
-    up: (db) => {
-      db.execSync(`
+    up: async (db) => {
+      await db.execAsync(`
         CREATE INDEX IF NOT EXISTS idx_schedule_entries_schedule_position
           ON schedule_entries (schedule_id, position);
 
@@ -365,48 +390,55 @@ const migrations: Migration[] = [
   },
 ];
 
-function setUserVersion(db: SQLiteDatabase, version: number): void {
-  db.execSync(`PRAGMA user_version = ${version}`);
+async function setUserVersion(
+  db: SQLiteDatabase,
+  version: number,
+): Promise<void> {
+  await db.execAsync(`PRAGMA user_version = ${version}`);
 }
 
-function tableExists(db: SQLiteDatabase, tableName: string): boolean {
-  const row = db.getFirstSync<SqliteMasterRow>(
+async function tableExists(
+  db: SQLiteDatabase,
+  tableName: string,
+): Promise<boolean> {
+  const row = await db.getFirstAsync<SqliteMasterRow>(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
     [tableName],
   );
   return row?.name === tableName;
 }
 
-function columnExists(
+async function columnExists(
   db: SQLiteDatabase,
   tableName: string,
   columnName: string,
-): boolean {
-  const columns = db.getAllSync<TableInfoRow>(
+): Promise<boolean> {
+  const columns = await db.getAllAsync<TableInfoRow>(
     `PRAGMA table_info(${tableName})`,
   );
   return columns.some((column) => column.name === columnName);
 }
 
-export function getUserVersion(db: SQLiteDatabase): number {
+export async function getUserVersion(db: SQLiteDatabase): Promise<number> {
   return (
-    db.getFirstSync<UserVersionRow>('PRAGMA user_version')?.user_version ?? 0
+    (await db.getFirstAsync<UserVersionRow>('PRAGMA user_version'))
+      ?.user_version ?? 0
   );
 }
 
-function hasTrainerTables(db: SQLiteDatabase): boolean {
+async function hasTrainerTables(db: SQLiteDatabase): Promise<boolean> {
   return (
-    tableExists(db, 'exercises') ||
-    tableExists(db, 'routines') ||
-    tableExists(db, 'schedules') ||
-    tableExists(db, 'workout_sessions') ||
-    tableExists(db, 'workout_sets') ||
-    tableExists(db, 'body_weight_entries')
+    (await tableExists(db, 'exercises')) ||
+    (await tableExists(db, 'routines')) ||
+    (await tableExists(db, 'schedules')) ||
+    (await tableExists(db, 'workout_sessions')) ||
+    (await tableExists(db, 'workout_sets')) ||
+    (await tableExists(db, 'body_weight_entries'))
   );
 }
 
-export function prepareDatabase(db: SQLiteDatabase): number {
-  const currentVersion = getUserVersion(db);
+export async function prepareDatabase(db: SQLiteDatabase): Promise<number> {
+  const currentVersion = await getUserVersion(db);
 
   if (currentVersion > SCHEMA_VERSION) {
     console.warn(
@@ -415,29 +447,31 @@ export function prepareDatabase(db: SQLiteDatabase): number {
     return currentVersion;
   }
 
-  if (currentVersion === 0 && !hasTrainerTables(db)) {
-    db.execSync(CREATE_TABLES_SQL);
-    setUserVersion(db, SCHEMA_VERSION);
+  if (currentVersion === 0 && !(await hasTrainerTables(db))) {
+    await db.execAsync(CREATE_TABLES_SQL);
+    await setUserVersion(db, SCHEMA_VERSION);
     return SCHEMA_VERSION;
   }
 
-  db.execSync(CREATE_TABLES_SQL);
+  await db.execAsync(CREATE_TABLES_SQL);
 
   if (
     currentVersion === 0 &&
-    tableExists(db, 'workout_sessions') &&
-    !columnExists(db, 'workout_sessions', 'schedule_id')
+    (await tableExists(db, 'workout_sessions')) &&
+    !(await columnExists(db, 'workout_sessions', 'schedule_id'))
   ) {
-    db.withTransactionSync(() => {
-      db.execSync('ALTER TABLE workout_sessions ADD COLUMN schedule_id TEXT;');
-      db.execSync(
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(
+        'ALTER TABLE workout_sessions ADD COLUMN schedule_id TEXT;',
+      );
+      await db.execAsync(
         'ALTER TABLE workout_sessions ADD COLUMN snapshot_name TEXT;',
       );
-      setUserVersion(db, 2);
+      await setUserVersion(db, 2);
     });
   }
 
-  let migratedVersion = getUserVersion(db);
+  let migratedVersion = await getUserVersion(db);
 
   for (const migration of migrations) {
     if (migration.version <= migratedVersion) {
@@ -448,9 +482,9 @@ export function prepareDatabase(db: SQLiteDatabase): number {
       `[Database] Migrating schema from version ${migratedVersion} to ${migration.version}: ${migration.description}`,
     );
 
-    db.withTransactionSync(() => {
-      migration.up(db);
-      setUserVersion(db, migration.version);
+    await db.withTransactionAsync(async () => {
+      await migration.up(db);
+      await setUserVersion(db, migration.version);
     });
 
     migratedVersion = migration.version;

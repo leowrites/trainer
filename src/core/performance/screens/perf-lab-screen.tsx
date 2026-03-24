@@ -439,7 +439,8 @@ export function PerfLabScreen(): React.JSX.Element {
     const currentState = useWorkoutStore.getState();
 
     if (!currentState.isWorkoutActive) {
-      const startedSessionId = startWorkoutFromSchedule() ?? startFreeWorkout();
+      const startedSessionId =
+        (await startWorkoutFromSchedule()) ?? (await startFreeWorkout());
       if (!startedSessionId) {
         return;
       }
@@ -480,12 +481,12 @@ export function PerfLabScreen(): React.JSX.Element {
       }
 
       if (scenarioId === 'start-now') {
-        deleteWorkout();
+        await deleteWorkout();
         await navigateToTab('Workout');
         refreshPreview();
         await waitForFrames(2);
         const startedSessionId =
-          startWorkoutFromSchedule() ?? startFreeWorkout();
+          (await startWorkoutFromSchedule()) ?? (await startFreeWorkout());
         if (startedSessionId) {
           await waitForNavigationReady();
           rootNavigationRef.navigate('ActiveWorkout');
@@ -506,7 +507,7 @@ export function PerfLabScreen(): React.JSX.Element {
         updateWeight(targetSetId, 95 + sampleIndex * 2.5);
         updateActualRir(targetSetId, sampleIndex % 4);
         toggleSetLogged(targetSetId, sampleIndex % 2 === 0);
-        flushPendingWrites();
+        await flushPendingWrites();
         await waitForFrames(2);
         return;
       }

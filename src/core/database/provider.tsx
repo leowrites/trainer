@@ -1,7 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import React, { createContext, useContext, useEffect } from 'react';
+import { useState } from 'react';
 
-import { database } from './database';
+import { getDatabase } from './database';
 import { seedDevelopmentDatabase } from './seed-development';
 import { seedDefaultExercises } from './seed-exercises';
 
@@ -13,6 +14,8 @@ interface DatabaseProviderProps {
   children: React.ReactNode;
   /** Override the database instance (useful for testing). */
   db?: SQLiteDatabase;
+  /** Optional fallback rendered while async bootstrap is in progress. */
+  fallback?: React.ReactNode;
 }
 
 /**
@@ -23,30 +26,72 @@ interface DatabaseProviderProps {
  */
 export function DatabaseProvider({
   children,
-  db = database,
+  db,
+  fallback = null,
 }: DatabaseProviderProps): React.JSX.Element {
+  const [resolvedDatabase, setResolvedDatabase] =
+    useState<SQLiteDatabase | null>(db ?? null);
+  const [isReady, setIsReady] = useState<boolean>(db !== undefined);
+
   useEffect(() => {
+    let isCancelled = false;
+
+    if (db !== undefined) {
+      setResolvedDatabase(db);
+      setIsReady(true);
+      return () => {
+        isCancelled = true;
+      };
+    }
+
     const shouldSeedDevelopmentData =
       __DEV__ && process.env.EXPO_PUBLIC_DEV_SEED === '1';
 
-    try {
-      if (shouldSeedDevelopmentData) {
-        seedDevelopmentDatabase(db);
-      } else {
-        seedDefaultExercises(db);
+    async function bootstrapDatabase(): Promise<void> {
+      const targetDb = await getDatabase();
+
+      if (isCancelled) {
+        return;
       }
-    } catch (error) {
-      console.error(
-        shouldSeedDevelopmentData
-          ? '[Seed] Failed to seed development data:'
-          : '[Seed] Failed to seed default exercises:',
-        error,
-      );
+
+      try {
+        if (shouldSeedDevelopmentData) {
+          await seedDevelopmentDatabase(targetDb);
+        } else {
+          await seedDefaultExercises(targetDb);
+        }
+      } catch (error) {
+        console.error(
+          shouldSeedDevelopmentData
+            ? '[Seed] Failed to seed development data:'
+            : '[Seed] Failed to seed default exercises:',
+          error,
+        );
+      }
+
+      if (!isCancelled) {
+        setResolvedDatabase(targetDb);
+        setIsReady(true);
+      }
     }
+
+    setIsReady(false);
+    setResolvedDatabase(null);
+    void bootstrapDatabase();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [db]);
 
+  if (!isReady || resolvedDatabase === null) {
+    return <>{fallback}</>;
+  }
+
   return (
-    <DatabaseContext.Provider value={db}>{children}</DatabaseContext.Provider>
+    <DatabaseContext.Provider value={resolvedDatabase}>
+      {children}
+    </DatabaseContext.Provider>
   );
 }
 

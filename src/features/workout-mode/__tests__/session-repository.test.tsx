@@ -28,9 +28,9 @@ import {
 } from '../session-repository';
 
 describe('session-repository', () => {
-  it('merges legacy set-derived exercises with explicit session exercise rows', () => {
+  it('merges legacy set-derived exercises with explicit session exercise rows', async () => {
     const db = {
-      getFirstSync: jest.fn().mockImplementation((query: string) => {
+      getFirstAsync: jest.fn().mockImplementation(async (query: string) => {
         if (query.includes('FROM workout_sessions WHERE id = ?')) {
           return {
             id: 'session-1',
@@ -41,7 +41,7 @@ describe('session-repository', () => {
 
         return null;
       }),
-      getAllSync: jest.fn().mockImplementation((query: string) => {
+      getAllAsync: jest.fn().mockImplementation(async (query: string) => {
         if (query.includes('FROM workout_session_exercises')) {
           return [
             {
@@ -104,7 +104,9 @@ describe('session-repository', () => {
       }),
     };
 
-    expect(loadActiveWorkoutSession(db as never, 'session-1')).toEqual({
+    await expect(
+      loadActiveWorkoutSession(db as never, 'session-1'),
+    ).resolves.toEqual({
       id: 'session-1',
       title: 'Push A',
       startTime: 1,
@@ -198,9 +200,9 @@ describe('session-repository', () => {
     });
   });
 
-  it('loads only the latest completed performance row per exercise', () => {
+  it('loads only the latest completed performance row per exercise', async () => {
     const db = {
-      getAllSync: jest.fn().mockReturnValue([
+      getAllAsync: jest.fn().mockResolvedValue([
         {
           exercise_id: 'exercise-1',
           reps: 6,
@@ -216,12 +218,12 @@ describe('session-repository', () => {
       ]),
     };
 
-    expect(
+    await expect(
       loadPreviousExercisePerformanceMap(db as never, 'current-session', [
         'exercise-1',
         'exercise-2',
       ]),
-    ).toEqual({
+    ).resolves.toEqual({
       'exercise-1': {
         reps: 6,
         weight: 110,
@@ -234,7 +236,7 @@ describe('session-repository', () => {
       },
     });
 
-    expect(db.getAllSync).toHaveBeenCalledWith(
+    expect(db.getAllAsync).toHaveBeenCalledWith(
       expect.stringContaining('WITH latest_completed_sessions AS'),
       [
         'exercise-1',

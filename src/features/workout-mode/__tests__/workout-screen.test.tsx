@@ -219,9 +219,10 @@ describe('workout screens', () => {
       updateWeight: jest.fn(),
       updateActualRir: jest.fn(),
       toggleSetLogged: jest.fn(),
-      flushPendingWrites: jest.fn(),
-      completeWorkout: jest.fn().mockReturnValue('completed-session-1'),
-      deleteWorkout: jest.fn().mockReturnValue(true),
+      flushPendingWrites: jest.fn().mockResolvedValue(undefined),
+      isCriticalMutationPending: false,
+      completeWorkout: jest.fn().mockResolvedValue('completed-session-1'),
+      deleteWorkout: jest.fn().mockResolvedValue(true),
     });
     mockUsePreviousExercisePerformance.mockReturnValue({
       'exercise-1': {
@@ -290,8 +291,9 @@ describe('workout screens', () => {
     >);
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: null,
-      startWorkoutFromSchedule: jest.fn(),
-      startFreeWorkout: jest.fn(),
+      isStarting: false,
+      startWorkoutFromSchedule: jest.fn().mockResolvedValue(null),
+      startFreeWorkout: jest.fn().mockResolvedValue(''),
       refreshPreview: jest.fn(),
     });
 
@@ -305,10 +307,10 @@ describe('workout screens', () => {
     expect(expandWorkout).toHaveBeenCalledTimes(1);
   });
 
-  it('does not rerender the home shell while starting a scheduled workout', () => {
+  it('does not rerender the home shell while starting a scheduled workout', async () => {
     const props = createWorkoutTabScreenProps();
     const commits: string[] = [];
-    const startWorkoutFromSchedule = jest.fn().mockReturnValue('session-1');
+    const startWorkoutFromSchedule = jest.fn().mockResolvedValue('session-1');
 
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: {
@@ -318,8 +320,9 @@ describe('workout screens', () => {
         exerciseCount: 5,
         estimatedMinutes: 45,
       },
+      isStarting: false,
       startWorkoutFromSchedule,
-      startFreeWorkout: jest.fn(),
+      startFreeWorkout: jest.fn().mockResolvedValue(''),
       refreshPreview: jest.fn(),
     });
 
@@ -336,8 +339,9 @@ describe('workout screens', () => {
 
     commits.length = 0;
 
-    act(() => {
+    await act(async () => {
       fireEvent(screen.getByText('Start now'), 'onPress');
+      await Promise.resolve();
     });
 
     expect(startWorkoutFromSchedule).toHaveBeenCalledTimes(1);

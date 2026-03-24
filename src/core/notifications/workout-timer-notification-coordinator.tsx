@@ -17,7 +17,7 @@ import type { JSX } from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
-import { database } from '@core/database';
+import { useDatabase } from '@core/database/provider';
 import { navigateToActiveWorkoutScreen } from '@core/navigation';
 import {
   loadInProgressWorkoutSession,
@@ -101,6 +101,7 @@ function buildTimerRequests(
 }
 
 export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
+  const db = useDatabase();
   const {
     isWorkoutActive,
     activeSessionId,
@@ -155,7 +156,9 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
   }, []);
 
   useEffect(() => {
-    function restoreInProgressWorkout(sessionId?: string): boolean {
+    async function restoreInProgressWorkout(
+      sessionId?: string,
+    ): Promise<boolean> {
       const state = useWorkoutStore.getState();
       const isMatchingActiveSession =
         state.isWorkoutActive &&
@@ -165,8 +168,8 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
       }
 
       const restoredSession = sessionId
-        ? loadInProgressWorkoutSession(database, sessionId)
-        : loadLatestInProgressWorkoutSession(database);
+        ? await loadInProgressWorkoutSession(db, sessionId)
+        : await loadLatestInProgressWorkoutSession(db);
       if (!restoredSession) {
         return false;
       }
@@ -175,10 +178,12 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
       return true;
     }
 
-    function openActiveWorkoutFromNotification(sessionId: string): void {
+    async function openActiveWorkoutFromNotification(
+      sessionId: string,
+    ): Promise<void> {
       const state = useWorkoutStore.getState();
       if (!state.isWorkoutActive || state.activeSessionId !== sessionId) {
-        const wasRestored = restoreInProgressWorkout(sessionId);
+        const wasRestored = await restoreInProgressWorkout(sessionId);
         if (!wasRestored) {
           return;
         }
@@ -192,16 +197,18 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
     }
 
     const lastResponseData = getLastWorkoutTimerNotificationResponseData();
-    if (lastResponseData) {
-      openActiveWorkoutFromNotification(lastResponseData.sessionId);
-    } else {
-      restoreInProgressWorkout();
-    }
+    void (async () => {
+      if (lastResponseData) {
+        await openActiveWorkoutFromNotification(lastResponseData.sessionId);
+      } else {
+        await restoreInProgressWorkout();
+      }
+    })();
 
     return addWorkoutTimerNotificationResponseListener((data) => {
-      openActiveWorkoutFromNotification(data.sessionId);
+      void openActiveWorkoutFromNotification(data.sessionId);
     });
-  }, []);
+  }, [db]);
 
   useEffect(() => {
     let disposed = false;
