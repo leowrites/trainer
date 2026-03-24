@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { useDatabase } from '@core/database/provider';
-import type { Routine, Schedule, ScheduleEntry } from '@core/database/types';
+import type {
+  Exercise,
+  Routine,
+  Schedule,
+  ScheduleEntry,
+} from '@core/database/types';
 import { generateId } from '@core/database/utils';
 import { selectNextRoutineId } from '@features/schedule';
 import {
@@ -9,7 +15,7 @@ import {
   loadRoutineExerciseTemplates,
 } from '@features/routines';
 import type { WorkoutSnapshotInput } from '@features/routines';
-import { loadActiveWorkoutSession } from '../session-repository';
+import type { ActiveWorkoutSession } from '../types';
 import { useWorkoutStore } from '../store';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -20,6 +26,76 @@ export interface NextRoutinePreview {
   scheduleName: string;
   exerciseCount: number;
   estimatedMinutes: number;
+}
+
+interface ExerciseNameRow extends Pick<Exercise, 'id' | 'name'> {}
+
+function loadExerciseNameIndex(
+  db: Pick<SQLiteDatabase, 'getAllSync'>,
+  exerciseIds: string[],
+): Record<string, string> {
+  if (exerciseIds.length === 0) {
+    return {};
+  }
+
+  const exerciseRows = db.getAllSync<ExerciseNameRow>(
+    `SELECT id, name
+     FROM exercises
+     WHERE id IN (${exerciseIds.map(() => '?').join(', ')})`,
+    exerciseIds,
+  );
+
+  return exerciseRows.reduce<Record<string, string>>((index, exerciseRow) => {
+    index[exerciseRow.id] = exerciseRow.name;
+    return index;
+  }, {});
+}
+
+function buildStartedWorkoutSession(
+  sessionId: string,
+  startedAt: number,
+  snapshot: WorkoutSnapshotInput,
+  exerciseNamesById: Record<string, string>,
+): ActiveWorkoutSession {
+  return {
+    id: sessionId,
+    title: snapshot.snapshotName,
+    startTime: startedAt,
+    isFreeWorkout: false,
+    exercises: snapshot.exercises.map((exercise) => ({
+      exerciseId: exercise.exerciseId,
+      exerciseName: exerciseNamesById[exercise.exerciseId] ?? 'Exercise',
+      restSeconds: exercise.restSeconds ?? null,
+      progressionPolicy: exercise.progressionPolicy ?? 'double_progression',
+      targetRir: exercise.targetRir ?? null,
+      targetSets: exercise.sets?.length ?? null,
+      targetReps: exercise.sets?.[0]?.targetRepsMin ?? null,
+      targetRepsMin: exercise.sets?.[0]?.targetRepsMin ?? null,
+      targetRepsMax: exercise.sets?.[0]?.targetRepsMax ?? null,
+      sets:
+        exercise.sets?.map((setEntry) => ({
+          id: generateId(),
+          exerciseId: exercise.exerciseId,
+          position: setEntry.position,
+          reps: setEntry.targetRepsMin,
+          weight: setEntry.plannedWeight ?? 0,
+          targetWeight: setEntry.plannedWeight ?? 0,
+          isCompleted: false,
+          targetSets: exercise.sets?.length ?? null,
+          targetReps: setEntry.targetRepsMin,
+          targetRepsMin: setEntry.targetRepsMin,
+          targetRepsMax: setEntry.targetRepsMax,
+          actualRir: null,
+          setRole:
+            setEntry.setRole ??
+            (exercise.progressionPolicy === 'top_set_backoff'
+              ? setEntry.position === 0
+                ? 'top_set'
+                : 'backoff'
+              : 'work'),
+        })) ?? [],
+    })),
+  };
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -115,6 +191,7 @@ export function useWorkoutStarter(): {
 
   const startWorkoutFromSchedule = useCallback((): string | null => {
     let sessionId: string | null = null;
+    let startedSession: ActiveWorkoutSession | null = null;
 
     db.withTransactionSync(() => {
       // Re-fetch the active schedule inside the transaction.
@@ -163,10 +240,22 @@ export function useWorkoutStarter(): {
           })),
         })),
       );
+      const startedAt = Date.now();
+      const nextSessionId = generateId();
+      const exerciseNamesById = loadExerciseNameIndex(
+        db,
+        snapshot.exercises.map((exercise) => exercise.exerciseId),
+      );
+      const nextSession = buildStartedWorkoutSession(
+        nextSessionId,
+        startedAt,
+        snapshot,
+        exerciseNamesById,
+      );
 
       // Create the workout session with snapshot data.
-      sessionId = generateId();
-      const now = Date.now();
+      sessionId = nextSessionId;
+      startedSession = nextSession;
       db.runSync(
         'INSERT INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
         [
@@ -174,14 +263,20 @@ export function useWorkoutStarter(): {
           routineId,
           activeSchedule.id,
           snapshot.snapshotName,
-          now,
+          startedAt,
           null,
         ],
       );
 
       // Eagerly create placeholder WorkoutSets from the snapshot so that
       // routine edits cannot affect this session.
-      for (const exercise of snapshot.exercises) {
+      nextSession.exercises.forEach((exercise, exerciseIndex) => {
+        const snapshotExercise = snapshot.exercises[exerciseIndex];
+
+        if (!snapshotExercise) {
+          return;
+        }
+
         const sessionExerciseId = generateId();
         db.runSync(
           `INSERT INTO workout_session_exercises (
@@ -189,43 +284,22 @@ export function useWorkoutStarter(): {
             session_id,
             exercise_id,
             position,
-            rest_seconds
-          ) VALUES (?, ?, ?, ?, ?)`,
+            rest_seconds,
+            progression_policy,
+            target_rir
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [
             sessionExerciseId,
             sessionId,
             exercise.exerciseId,
-            exercise.position,
+            snapshotExercise.position,
             exercise.restSeconds ?? null,
+            exercise.progressionPolicy ?? 'double_progression',
+            exercise.targetRir ?? null,
           ],
         );
 
-        if (
-          (exercise.progressionPolicy ?? 'double_progression') !==
-            'double_progression' ||
-          exercise.targetRir !== null
-        ) {
-          db.runSync(
-            `UPDATE workout_session_exercises
-             SET progression_policy = ?, target_rir = ?
-             WHERE id = ?`,
-            [
-              exercise.progressionPolicy ?? 'double_progression',
-              exercise.targetRir ?? null,
-              sessionExerciseId,
-            ],
-          );
-        }
-
-        for (const setEntry of exercise.sets ?? []) {
-          const setId = generateId();
-          const defaultSetRole =
-            setEntry.setRole ??
-            (exercise.progressionPolicy === 'top_set_backoff'
-              ? setEntry.position === 0
-                ? 'top_set'
-                : 'backoff'
-              : 'work');
+        for (const setEntry of exercise.sets) {
           db.runSync(
             `INSERT INTO workout_sets (
               id,
@@ -242,29 +316,26 @@ export function useWorkoutStarter(): {
               set_role
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-              setId,
+              setEntry.id,
               sessionId,
               exercise.exerciseId,
-              setEntry.position,
-              setEntry.plannedWeight ?? 0,
-              setEntry.targetRepsMin,
+              setEntry.position ?? 0,
+              setEntry.weight,
+              setEntry.reps,
               0,
-              (exercise.sets ?? []).length,
-              setEntry.targetRepsMin,
-              setEntry.targetRepsMin,
-              setEntry.targetRepsMax,
-              defaultSetRole,
+              exercise.sets.length,
+              setEntry.targetRepsMin ?? null,
+              setEntry.targetRepsMin ?? null,
+              setEntry.targetRepsMax ?? null,
+              setEntry.setRole ?? 'work',
             ],
           );
         }
-      }
+      });
     });
 
-    if (sessionId) {
-      const activeSession = loadActiveWorkoutSession(db, sessionId);
-      if (activeSession) {
-        startWorkout(activeSession);
-      }
+    if (sessionId && startedSession) {
+      startWorkout(startedSession);
       refreshPreview();
     }
 
@@ -278,10 +349,13 @@ export function useWorkoutStarter(): {
       'INSERT INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
       [sessionId, null, null, null, now, null],
     );
-    const activeSession = loadActiveWorkoutSession(db, sessionId);
-    if (activeSession) {
-      startWorkout(activeSession);
-    }
+    startWorkout({
+      id: sessionId,
+      title: 'Free Workout',
+      startTime: now,
+      isFreeWorkout: true,
+      exercises: [],
+    });
     return sessionId;
   }, [db, startWorkout]);
 

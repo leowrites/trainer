@@ -21,8 +21,9 @@
  * ```
  */
 
-import React from 'react';
-import type { PressableStateCallbackType, ViewProps } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet } from 'react-native';
+import type { ViewProps } from 'react-native';
 
 import { useReducedMotionPreference } from '@shared/hooks';
 import { Box } from '@shared/ui/box';
@@ -49,16 +50,10 @@ export function Card({
   accessibilityLabel,
 }: CardProps): React.JSX.Element {
   const prefersReducedMotion = useReducedMotionPreference();
+  const [pressed, setPressed] = useState(false);
 
-  const renderContent = (pressed: boolean): React.JSX.Element => (
-    <GluestackCard
-      className={`rounded-[28px] border px-5 py-5 ${
-        pressed
-          ? 'border-surface-border/80 bg-surface-elevated'
-          : 'border-surface-border/80 bg-surface-card'
-      } ${className}`}
-      style={style}
-    >
+  const renderContent = (): React.JSX.Element => (
+    <Box pointerEvents={onPress ? 'box-none' : 'auto'}>
       {label !== undefined && label !== '' ? (
         <Box className="mb-5 flex-row items-center">
           <Box className="mr-2">
@@ -68,27 +63,44 @@ export function Card({
         </Box>
       ) : null}
       {children}
+    </Box>
+  );
+
+  const cardContent = (
+    <GluestackCard
+      className={`overflow-hidden rounded-[28px] border px-5 py-5 ${
+        pressed
+          ? 'border-surface-border/80 bg-surface-elevated'
+          : 'border-surface-border/80 bg-surface-card'
+      } ${className}`}
+      style={[
+        style,
+        onPress
+          ? getPressFeedbackStyle({
+              pressed,
+              prefersReducedMotion,
+              pressedScale: 0.98,
+            })
+          : null,
+      ]}
+    >
+      {onPress ? (
+        <Pressable
+          style={StyleSheet.absoluteFillObject}
+          onPress={onPress}
+          onPressIn={() => setPressed(true)}
+          onPressOut={() => setPressed(false)}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel ?? label}
+        />
+      ) : null}
+      {renderContent()}
     </GluestackCard>
   );
 
   if (onPress) {
-    return (
-      <Pressable
-        style={({ pressed }: PressableStateCallbackType) =>
-          getPressFeedbackStyle({
-            pressed,
-            prefersReducedMotion,
-            pressedScale: 0.98,
-          })
-        }
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel ?? label}
-      >
-        {({ pressed }: PressableStateCallbackType) => renderContent(pressed)}
-      </Pressable>
-    );
+    return cardContent;
   }
 
-  return <Box accessibilityRole="none">{renderContent(false)}</Box>;
+  return <Box accessibilityRole="none">{cardContent}</Box>;
 }

@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 
 import type { GoalsScreenProps } from '../screens/goals-screen';
@@ -20,14 +20,83 @@ jest.mock('../hooks/use-training-goals', () => ({
 }));
 
 jest.mock('@shared/components', () => ({
-  Body: ({ children }: { children: React.ReactNode }) => children,
-  Button: ({ children }: { children: React.ReactNode }) => children,
-  Card: ({ children }: { children: React.ReactNode }) => children,
-  Container: ({ children }: { children: React.ReactNode }) => children,
-  Heading: ({ children }: { children: React.ReactNode }) => children,
-  Input: () => null,
-  Label: ({ children }: { children: React.ReactNode }) => children,
-  Muted: ({ children }: { children: React.ReactNode }) => children,
+  Body: ({ children }: { children: React.ReactNode }) => {
+    const ReactNative = require('react-native');
+    return <ReactNative.Text>{children}</ReactNative.Text>;
+  },
+  Button: ({
+    children,
+    onPress,
+  }: {
+    children: React.ReactNode;
+    onPress?: () => void;
+  }) => {
+    const ReactNative = require('react-native');
+    return (
+      <ReactNative.Pressable onPress={onPress}>
+        <ReactNative.Text>{children}</ReactNative.Text>
+      </ReactNative.Pressable>
+    );
+  },
+  Card: ({ children }: { children: React.ReactNode }) => {
+    const ReactNative = require('react-native');
+    return <ReactNative.View>{children}</ReactNative.View>;
+  },
+  Container: ({ children }: { children: React.ReactNode }) =>
+    (() => {
+      const ReactNative = require('react-native');
+      return <ReactNative.View>{children}</ReactNative.View>;
+    })(),
+  Heading: ({ children }: { children: React.ReactNode }) =>
+    (() => {
+      const ReactNative = require('react-native');
+      return <ReactNative.Text>{children}</ReactNative.Text>;
+    })(),
+  Input: ({
+    value,
+    onChangeText,
+    placeholder,
+  }: {
+    value?: string;
+    onChangeText?: (value: string) => void;
+    placeholder?: string;
+  }) => {
+    const ReactNative = require('react-native');
+    return (
+      <ReactNative.TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+      />
+    );
+  },
+  InteractivePressable: ({
+    children,
+    onPress,
+    accessibilityLabel,
+  }: {
+    children: React.ReactNode;
+    onPress?: () => void;
+    accessibilityLabel?: string;
+  }) => {
+    const ReactNative = require('react-native');
+    return (
+      <ReactNative.Pressable
+        accessibilityLabel={accessibilityLabel}
+        onPress={onPress}
+      >
+        <ReactNative.Text>{children}</ReactNative.Text>
+      </ReactNative.Pressable>
+    );
+  },
+  Label: ({ children }: { children: React.ReactNode }) => {
+    const ReactNative = require('react-native');
+    return <ReactNative.Text>{children}</ReactNative.Text>;
+  },
+  Muted: ({ children }: { children: React.ReactNode }) => {
+    const ReactNative = require('react-native');
+    return <ReactNative.Text>{children}</ReactNative.Text>;
+  },
 }));
 
 const mockUseHistoryAnalytics = jest.mocked(useHistoryAnalytics);
@@ -91,6 +160,68 @@ describe('GoalsScreen', () => {
 
     expect(mockUseTrainingGoals).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ id: 'session-1' })]),
+    );
+  });
+
+  it('submits the exact selected exercise id for strength goals', () => {
+    const createGoal = jest.fn();
+
+    mockUseHistoryAnalytics.mockReturnValue({
+      isLoading: false,
+      isLoadingMore: false,
+      hasMore: false,
+      allSessions: [],
+      sessions: [],
+      trendSeriesByMetric: {
+        volume: [],
+        hours: [],
+        reps: [],
+        sets: [],
+      },
+      loadMore: jest.fn(),
+      refresh: jest.fn(),
+    });
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-1',
+          name: 'Bench Press',
+          muscle_group: 'chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+      ],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+    mockUseTrainingGoals.mockReturnValue({
+      goals: [],
+      goalViewModels: [],
+      createGoal,
+      updateGoal: jest.fn(),
+      deleteGoal: jest.fn(),
+      refresh: jest.fn(),
+    });
+
+    render(<GoalsScreen {...({} as GoalsScreenProps)} />);
+
+    fireEvent.press(screen.getByText('Select exercise'));
+    fireEvent.press(screen.getByLabelText('Choose Bench Press'));
+    fireEvent.changeText(screen.getByPlaceholderText('100'), '225');
+    fireEvent.changeText(screen.getByPlaceholderText('5'), '5');
+    fireEvent.press(screen.getByText('Create Goal'));
+
+    expect(createGoal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        goalType: 'strength',
+        exerciseId: 'exercise-1',
+        targetLoad: 225,
+        targetReps: 5,
+      }),
     );
   });
 });

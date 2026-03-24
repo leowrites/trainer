@@ -305,6 +305,46 @@ describe('workout screens', () => {
     expect(expandWorkout).toHaveBeenCalledTimes(1);
   });
 
+  it('does not rerender the home shell while starting a scheduled workout', () => {
+    const props = createWorkoutTabScreenProps();
+    const commits: string[] = [];
+    const startWorkoutFromSchedule = jest.fn().mockReturnValue('session-1');
+
+    mockUseWorkoutStarter.mockReturnValue({
+      nextRoutine: {
+        routineId: 'routine-1',
+        routineName: 'Push A',
+        scheduleName: 'Upper Split',
+        exerciseCount: 5,
+        estimatedMinutes: 45,
+      },
+      startWorkoutFromSchedule,
+      startFreeWorkout: jest.fn(),
+      refreshPreview: jest.fn(),
+    });
+
+    render(
+      <React.Profiler
+        id="WorkoutHomeScreen"
+        onRender={(_id, phase) => {
+          commits.push(phase);
+        }}
+      >
+        <WorkoutScreen {...props} />
+      </React.Profiler>,
+    );
+
+    commits.length = 0;
+
+    act(() => {
+      fireEvent(screen.getByText('Start now'), 'onPress');
+    });
+
+    expect(startWorkoutFromSchedule).toHaveBeenCalledTimes(1);
+    expect(props.navigation.navigate).toHaveBeenCalledWith('ActiveWorkout');
+    expect(commits).toHaveLength(0);
+  });
+
   it('renders the active workout shell from normalized store state', () => {
     const props = createWorkoutActiveScreenProps();
 
@@ -351,6 +391,63 @@ describe('workout screens', () => {
 
     expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
     expect(screen.getByText('Delete workout')).toBeTruthy();
+  });
+
+  it('opens the overview shell immediately and loads exercise rows after the deferred tick', () => {
+    const props = createWorkoutActiveScreenProps();
+
+    seedActiveWorkout();
+    render(<WorkoutActiveScreen {...props} />);
+
+    fireEvent.press(screen.getByText('Overview'));
+
+    expect(screen.getByText('Loading workout details...')).toBeTruthy();
+    expect(screen.queryByLabelText('Jump to Set 1')).toBeNull();
+
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(screen.getByLabelText('Jump to Set 1')).toBeTruthy();
+  });
+
+  it('keeps the overview open when jumping to another set', () => {
+    const props = createWorkoutActiveScreenProps();
+
+    seedActiveWorkout();
+    render(<WorkoutActiveScreen {...props} />);
+
+    fireEvent.press(screen.getByText('Overview'));
+
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    fireEvent.press(screen.getByLabelText('Jump to Set 2'));
+
+    expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Set 2 of 2/)).toBeTruthy();
+  });
+
+  it('keeps the overview mounted when delete workout is pressed', () => {
+    const props = createWorkoutActiveScreenProps();
+    const alertSpy = jest.spyOn(require('react-native').Alert, 'alert');
+
+    seedActiveWorkout();
+    render(<WorkoutActiveScreen {...props} />);
+
+    fireEvent.press(screen.getByText('Overview'));
+
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    fireEvent.press(screen.getByText('Delete workout'));
+
+    expect(alertSpy).toHaveBeenCalled();
+    expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
+
+    alertSpy.mockRestore();
   });
 
   it('does not rerender the screen shell for route-local set edits', () => {

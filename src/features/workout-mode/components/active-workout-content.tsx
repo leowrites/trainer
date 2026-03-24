@@ -29,6 +29,7 @@ import {
   useActiveWorkoutSessionMeta,
   useActiveWorkoutSetExerciseId,
   useActiveWorkoutSetIds,
+  useActiveWorkoutSummary,
 } from '../hooks/use-active-workout-state';
 import { usePreviousExercisePerformance } from '../hooks/use-previous-exercise-performance';
 import type { PreviousExercisePerformance } from '../types';
@@ -122,10 +123,12 @@ export function ActiveWorkoutContent({
   const headerHeight = useHeaderHeight();
   const prefersReducedMotion = useReducedMotionPreference();
   const sessionMeta = useActiveWorkoutSessionMeta();
+  const activeSummary = useActiveWorkoutSummary();
   const setIds = useActiveWorkoutSetIds();
   const initialFocusedSetId = useActiveWorkoutInitialFocusedSetId();
   const exerciseIdsInSession = useActiveWorkoutExerciseIds();
   const [showOverview, setShowOverview] = useState(false);
+  const [isOverviewContentReady, setIsOverviewContentReady] = useState(false);
   const [showExerciseSheet, setShowExerciseSheet] = useState(false);
   const [focusedSetId, setFocusedSetId] = useState<string | null>(null);
   const focusedExerciseId = useActiveWorkoutSetExerciseId(focusedSetId ?? '');
@@ -133,7 +136,9 @@ export function ActiveWorkoutContent({
     sessionMeta?.id ?? null,
     exerciseIdsInSession,
   );
-  const overview = useActiveWorkoutOverview(showOverview);
+  const overview = useActiveWorkoutOverview(
+    showOverview && isOverviewContentReady,
+  );
   const previousFocusedSetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -166,12 +171,31 @@ export function ActiveWorkoutContent({
   }, [flushPendingWrites, focusedSetId]);
 
   useEffect(() => {
+    if (!showOverview) {
+      setIsOverviewContentReady(false);
+      return;
+    }
+
+    const hydrationTimeout = setTimeout(() => {
+      setIsOverviewContentReady(true);
+    }, 0);
+
+    return () => {
+      clearTimeout(hydrationTimeout);
+    };
+  }, [showOverview]);
+
+  useEffect(() => {
     return () => {
       flushPendingWrites();
     };
   }, [flushPendingWrites]);
 
   const hasFocusableSet = setIds.length > 0;
+  const openOverview = (): void => {
+    setIsOverviewContentReady(false);
+    setShowOverview(true);
+  };
 
   if (!hasFocusableSet) {
     return (
@@ -203,17 +227,18 @@ export function ActiveWorkoutContent({
             style={{ paddingBottom: Math.max(insets.bottom, 8) }}
           >
             <View className="rounded-[24px] border border-surface-border bg-surface-card p-2">
-              <Button onPress={() => setShowOverview(true)} className="flex-1">
+              <Button onPress={openOverview} className="flex-1">
                 Overview
               </Button>
             </View>
           </View>
 
-          {showOverview && overview !== null ? (
+          {showOverview ? (
             <WorkoutOverviewModal
               visible={showOverview}
               prefersReducedMotion={prefersReducedMotion}
               bottomInset={insets.bottom}
+              summary={activeSummary}
               overview={overview}
               currentSetId={null}
               onClose={() => setShowOverview(false)}
@@ -224,7 +249,6 @@ export function ActiveWorkoutContent({
               }}
               onDeleteWorkout={() => {
                 flushPendingWrites();
-                setShowOverview(false);
                 onDeleteWorkout();
               }}
               onJumpToSet={setFocusedSetId}
@@ -268,7 +292,7 @@ export function ActiveWorkoutContent({
             ? null
             : (previousPerformanceByExerciseId[focusedExerciseId] ?? null)
         }
-        onOpenOverview={() => setShowOverview(true)}
+        onOpenOverview={openOverview}
         onOpenExerciseDetails={onOpenExerciseDetails}
         onOpenExerciseTimerOptions={onOpenExerciseTimerOptions}
         onMoveFocus={setFocusedSetId}
@@ -279,11 +303,12 @@ export function ActiveWorkoutContent({
         toggleSetLogged={toggleSetLogged}
       />
 
-      {showOverview && overview !== null ? (
+      {showOverview ? (
         <WorkoutOverviewModal
           visible={showOverview}
           prefersReducedMotion={prefersReducedMotion}
           bottomInset={insets.bottom}
+          summary={activeSummary}
           overview={overview}
           currentSetId={focusedSetId}
           onClose={() => setShowOverview(false)}
@@ -294,12 +319,10 @@ export function ActiveWorkoutContent({
           }}
           onDeleteWorkout={() => {
             flushPendingWrites();
-            setShowOverview(false);
             onDeleteWorkout();
           }}
           onJumpToSet={(nextSetId) => {
             setFocusedSetId(nextSetId);
-            setShowOverview(false);
           }}
           addSet={(exerciseId) => {
             flushPendingWrites();

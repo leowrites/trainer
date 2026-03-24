@@ -268,22 +268,20 @@ export function createWorkoutSessionExerciseRecord(
       session_id,
       exercise_id,
       position,
-      rest_seconds
-    ) VALUES (?, ?, ?, ?, ?)`,
-    [sessionExerciseId, sessionId, exerciseId, position, restSeconds],
+      rest_seconds,
+      progression_policy,
+      target_rir
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      sessionExerciseId,
+      sessionId,
+      exerciseId,
+      position,
+      restSeconds,
+      progressionPolicy ?? 'double_progression',
+      targetRir,
+    ],
   );
-
-  if (
-    (progressionPolicy ?? 'double_progression') !== 'double_progression' ||
-    targetRir !== null
-  ) {
-    db.runSync(
-      `UPDATE workout_session_exercises
-       SET progression_policy = ?, target_rir = ?
-       WHERE id = ?`,
-      [progressionPolicy ?? 'double_progression', targetRir, sessionExerciseId],
-    );
-  }
 
   return {
     id: sessionExerciseId,
