@@ -194,4 +194,69 @@ describe('prepareDatabase', () => {
       'ALTER TABLE schedules ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
     );
   });
+
+  it('adds ordered-query indexes for version 10 databases', () => {
+    const db = createMigrationDbMock({
+      version: 10,
+      tableNames: [
+        'schedule_entries',
+        'routine_exercises',
+        'workout_session_exercises',
+        'workout_sets',
+        'workout_sessions',
+      ],
+      columnsByTable: {
+        workout_sessions: [
+          'schedule_id',
+          'snapshot_name',
+          'effort_level',
+          'fatigue_level',
+          'template_applied_at',
+        ],
+        workout_sets: [
+          'target_sets',
+          'target_reps',
+          'position',
+          'target_reps_min',
+          'target_reps_max',
+          'actual_rir',
+          'set_role',
+        ],
+        exercises: [
+          'how_to',
+          'equipment',
+          'is_deleted',
+          'strength_estimation_mode',
+        ],
+        routines: ['is_deleted'],
+        schedules: ['is_deleted'],
+        routine_exercises: ['rest_seconds', 'progression_policy', 'target_rir'],
+        routine_exercise_sets: [
+          'target_reps_min',
+          'target_reps_max',
+          'set_role',
+        ],
+        workout_session_exercises: ['progression_policy', 'target_rir'],
+      },
+    });
+
+    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+
+    expect(finalVersion).toBe(SCHEMA_VERSION);
+    expect(db.execSync).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'CREATE INDEX IF NOT EXISTS idx_schedule_entries_schedule_position',
+      ),
+    );
+    expect(db.execSync).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'CREATE INDEX IF NOT EXISTS idx_routine_exercises_routine_position',
+      ),
+    );
+    expect(db.execSync).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'CREATE INDEX IF NOT EXISTS idx_workout_sessions_end_time_start_time',
+      ),
+    );
+  });
 });

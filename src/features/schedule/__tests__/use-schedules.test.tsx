@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react-native';
 
-import type { Schedule, ScheduleEntry } from '@core/database/types';
+import type { Schedule } from '@core/database/types';
 import {
   createMockDb,
   createDatabaseWrapper,
@@ -214,25 +214,6 @@ describe('useSchedules', () => {
     expect(db.withTransactionSync).toHaveBeenCalledTimes(1);
   });
 
-  it('getScheduleEntries queries entries for the given schedule', () => {
-    const db = createMockDb();
-    const mockEntries: ScheduleEntry[] = [
-      { id: 'se1', schedule_id: 's1', routine_id: 'r1', position: 0 },
-    ];
-    db.getAllSync.mockReturnValue(mockEntries);
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useSchedules(), { wrapper });
-
-    let entries: ScheduleEntry[] = [];
-    act(() => {
-      entries = result.current.getScheduleEntries('s1');
-    });
-
-    expect(entries).toEqual(mockEntries);
-    const lastCall = (db.getAllSync as jest.Mock).mock.calls.at(-1);
-    expect(lastCall![1]).toEqual(['s1']);
-  });
-
   it('refresh() triggers a re-fetch', () => {
     const db = createMockDb();
     db.getAllSync.mockReturnValue([]);
@@ -247,80 +228,6 @@ describe('useSchedules', () => {
     expect((db.getAllSync as jest.Mock).mock.calls.length).toBeGreaterThan(
       callsBefore,
     );
-  });
-
-  it('version starts at 0 and increments on refresh()', () => {
-    const db = createMockDb();
-    db.getAllSync.mockReturnValue([]);
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useSchedules(), { wrapper });
-    expect(result.current.version).toBe(0);
-
-    act(() => {
-      result.current.refresh();
-    });
-    expect(result.current.version).toBe(1);
-
-    act(() => {
-      result.current.refresh();
-    });
-    expect(result.current.version).toBe(2);
-  });
-
-  it('version increments after createSchedule', () => {
-    const db = createMockDb();
-    db.getAllSync.mockReturnValue([]);
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useSchedules(), { wrapper });
-    const versionBefore = result.current.version;
-
-    act(() => {
-      result.current.createSchedule({ name: 'New', routineIds: [] });
-    });
-
-    expect(result.current.version).toBeGreaterThan(versionBefore);
-  });
-
-  it('version increments after updateSchedule', () => {
-    const db = createMockDb();
-    db.getAllSync.mockReturnValue([]);
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useSchedules(), { wrapper });
-    const versionBefore = result.current.version;
-
-    act(() => {
-      result.current.updateSchedule('s1', { name: 'Updated', routineIds: [] });
-    });
-
-    expect(result.current.version).toBeGreaterThan(versionBefore);
-  });
-
-  it('version increments after deleteSchedule', () => {
-    const db = createMockDb();
-    db.getAllSync.mockReturnValue([]);
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useSchedules(), { wrapper });
-    const versionBefore = result.current.version;
-
-    act(() => {
-      result.current.deleteSchedule('s1');
-    });
-
-    expect(result.current.version).toBeGreaterThan(versionBefore);
-  });
-
-  it('version increments after setActiveSchedule', () => {
-    const db = createMockDb();
-    db.getAllSync.mockReturnValue([]);
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useSchedules(), { wrapper });
-    const versionBefore = result.current.version;
-
-    act(() => {
-      result.current.setActiveSchedule('s1');
-    });
-
-    expect(result.current.version).toBeGreaterThan(versionBefore);
   });
 
   // ── State-update consistency tests ────────────────────────────────────────
@@ -369,34 +276,6 @@ describe('useSchedules', () => {
     });
 
     expect(result.current.schedules[0].name).toBe('New Name');
-  });
-
-  it('updateSchedule: getScheduleEntries returns new routineIds after save', () => {
-    const db = createMockDb();
-    db.getAllSync.mockReturnValue([]);
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useSchedules(), { wrapper });
-
-    const newEntries: ScheduleEntry[] = [
-      { id: 'se2', schedule_id: 's1', routine_id: 'r2', position: 0 },
-      { id: 'se3', schedule_id: 's1', routine_id: 'r3', position: 1 },
-    ];
-    db.getAllSync.mockReturnValue(newEntries);
-
-    act(() => {
-      result.current.updateSchedule('s1', {
-        name: 'Updated',
-        routineIds: ['r2', 'r3'],
-      });
-    });
-
-    let entries: ScheduleEntry[] = [];
-    act(() => {
-      entries = result.current.getScheduleEntries('s1');
-    });
-
-    expect(entries).toEqual(newEntries);
-    expect(entries.map((e) => e.routine_id)).toEqual(['r2', 'r3']);
   });
 
   it('deleteSchedule: schedules list is empty after the only schedule is deleted', () => {

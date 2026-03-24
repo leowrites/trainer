@@ -12,12 +12,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useOptionalDatabase } from '@core/database/provider';
 import type { TrainingGoal } from '@core/database/types';
 import type { HistorySession } from '@features/analytics';
-import { loadExerciseCapabilities } from '../metrics/capabilities';
 import {
   buildExerciseExposureIndex,
   buildExerciseExposures,
 } from '../metrics/exposures';
 import type { TrainingGoalInput, TrainingGoalViewModel } from '../types';
+import { useExerciseCapabilities } from './use-exercise-capabilities';
 import { buildGoalProgressSummaries } from '../goals/domain';
 import {
   createTrainingGoal,
@@ -26,7 +26,14 @@ import {
   updateTrainingGoal,
 } from '../goals/repository';
 
-export function useTrainingGoals(allSessions: HistorySession[] = []): {
+export function useTrainingGoals(
+  allSessions: HistorySession[] = [],
+  options: {
+    capabilitiesByExerciseId?: ReturnType<
+      typeof useExerciseCapabilities
+    >['capabilitiesByExerciseId'];
+  } = {},
+): {
   goals: TrainingGoal[];
   goalViewModels: TrainingGoalViewModel[];
   createGoal: (input: TrainingGoalInput) => TrainingGoal;
@@ -35,6 +42,8 @@ export function useTrainingGoals(allSessions: HistorySession[] = []): {
   refresh: () => void;
 } {
   const db = useOptionalDatabase();
+  const { capabilitiesByExerciseId: loadedCapabilitiesByExerciseId } =
+    useExerciseCapabilities();
   const [goals, setGoals] = useState<TrainingGoal[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -50,13 +59,8 @@ export function useTrainingGoals(allSessions: HistorySession[] = []): {
     setGoals(listTrainingGoals(db));
   }, [db, refreshKey]);
 
-  const capabilitiesByExerciseId = useMemo(
-    () =>
-      !db || typeof db.getAllSync !== 'function'
-        ? {}
-        : loadExerciseCapabilities(db),
-    [db],
-  );
+  const capabilitiesByExerciseId =
+    options.capabilitiesByExerciseId ?? loadedCapabilitiesByExerciseId;
   const exposuresByExerciseId = useMemo(
     () =>
       buildExerciseExposureIndex(

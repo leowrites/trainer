@@ -1,4 +1,14 @@
-import { useEffect, useState } from 'react';
+/**
+ * Previous exercise performance cache.
+ *
+ * CALLING SPEC:
+ * - cache previous-performance lookups by session id and exercise id
+ * - fetch only missing exercise entries when the active workout grows
+ * - keep the returned map stable while the exercise list is unchanged
+ * - side effects: sqlite reads
+ */
+
+import { useEffect, useRef, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';
 import { loadPreviousExercisePerformanceMap } from '../session-repository';
@@ -9,28 +19,63 @@ export function usePreviousExercisePerformance(
   exerciseIds: string[],
 ): Record<string, PreviousExercisePerformance | null> {
   const db = useDatabase();
-  const exerciseKey = exerciseIds.join('|');
   const [performanceByExerciseId, setPerformanceByExerciseId] = useState<
     Record<string, PreviousExercisePerformance | null>
   >({});
+  const cacheRef = useRef<Record<string, PreviousExercisePerformance | null>>(
+    {},
+  );
+  const exerciseKey = exerciseIds.join('|');
 
   useEffect(() => {
-    const requestedExerciseIds =
-      exerciseKey === '' ? [] : exerciseKey.split('|');
-
-    if (!currentSessionId || requestedExerciseIds.length === 0) {
+    if (!currentSessionId || exerciseIds.length === 0) {
       setPerformanceByExerciseId({});
       return;
     }
 
-    setPerformanceByExerciseId(
-      loadPreviousExercisePerformanceMap(
+    const requestedExerciseIds = exerciseIds.filter(Boolean);
+    const missingExerciseIds = requestedExerciseIds.filter(
+      (exerciseId) =>
+        cacheRef.current[`${currentSessionId}:${exerciseId}`] === undefined,
+    );
+
+    if (missingExerciseIds.length > 0) {
+      const loadedPerformance = loadPreviousExercisePerformanceMap(
         db,
         currentSessionId,
-        requestedExerciseIds,
-      ),
+        missingExerciseIds,
+      );
+
+      missingExerciseIds.forEach((exerciseId) => {
+        cacheRef.current[`${currentSessionId}:${exerciseId}`] =
+          loadedPerformance[exerciseId] ?? null;
+      });
+    }
+
+    const nextPerformanceByExerciseId = Object.fromEntries(
+      requestedExerciseIds.map((exerciseId) => [
+        exerciseId,
+        cacheRef.current[`${currentSessionId}:${exerciseId}`] ?? null,
+      ]),
     );
-  }, [currentSessionId, db, exerciseKey]);
+
+    setPerformanceByExerciseId((currentPerformanceByExerciseId) => {
+      const currentKeys = Object.keys(currentPerformanceByExerciseId);
+
+      if (
+        currentKeys.length === requestedExerciseIds.length &&
+        requestedExerciseIds.every(
+          (exerciseId) =>
+            currentPerformanceByExerciseId[exerciseId] ===
+            nextPerformanceByExerciseId[exerciseId],
+        )
+      ) {
+        return currentPerformanceByExerciseId;
+      }
+
+      return nextPerformanceByExerciseId;
+    });
+  }, [currentSessionId, db, exerciseIds, exerciseKey]);
 
   return performanceByExerciseId;
 }

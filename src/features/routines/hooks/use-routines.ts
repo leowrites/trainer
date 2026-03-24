@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';
-import type { Routine, RoutineExercise } from '@core/database/types';
+import type { Routine } from '@core/database/types';
 import { generateId } from '@core/database/utils';
 import {
-  loadRoutineExerciseTemplates,
   replaceRoutineExerciseTemplates,
   insertRoutineExerciseTemplates,
 } from '../routine-template-repository';
-import type {
-  NewRoutineInput,
-  RoutineExerciseTemplate,
-} from '../template-types';
+import type { NewRoutineInput } from '../template-types';
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -19,18 +15,13 @@ import type {
  * CRUD hook for routines using expo-sqlite.
  *
  * Returns the current list of routines and helpers for creating,
- * updating, reading exercises of a routine, and deleting routines.
+ * updating, and deleting routines.
  * Re-fetches after mutations.
  */
 export function useRoutines(): {
   routines: Routine[];
   hasLoaded: boolean;
   refresh: () => void;
-  getRoutineExercises: (routineId: string) => RoutineExercise[];
-  getRoutineTemplateExercises?: (
-    routineId: string,
-  ) => RoutineExerciseTemplate[];
-  getRoutineExerciseCounts: () => Record<string, number>;
   createRoutine: (input: NewRoutineInput) => Routine;
   updateRoutine: (id: string, input: NewRoutineInput) => void;
   deleteRoutine: (id: string) => void;
@@ -51,39 +42,6 @@ export function useRoutines(): {
     setRoutines(rows);
     setHasLoaded(true);
   }, [db, refreshKey]);
-
-  const getRoutineExercises = useCallback(
-    (routineId: string): RoutineExercise[] => {
-      return db.getAllSync<RoutineExercise>(
-        `SELECT id, routine_id, exercise_id, position, target_sets, target_reps, rest_seconds, progression_policy, target_rir
-         FROM routine_exercises
-         WHERE routine_id = ?
-         ORDER BY position ASC`,
-        [routineId],
-      );
-    },
-    [db],
-  );
-
-  const getRoutineExerciseCounts = useCallback((): Record<string, number> => {
-    const rows = db.getAllSync<{
-      routine_id: string;
-      exercise_count: number;
-    }>(
-      'SELECT routine_id, COUNT(*) AS exercise_count FROM routine_exercises GROUP BY routine_id',
-    );
-
-    return rows.reduce<Record<string, number>>((accumulator, row) => {
-      accumulator[row.routine_id] = row.exercise_count;
-      return accumulator;
-    }, {});
-  }, [db]);
-
-  const getRoutineTemplateExercises = useCallback(
-    (routineId: string): RoutineExerciseTemplate[] =>
-      loadRoutineExerciseTemplates(db, routineId),
-    [db],
-  );
 
   const createRoutine = useCallback(
     (input: NewRoutineInput): Routine => {
@@ -206,9 +164,6 @@ export function useRoutines(): {
     routines,
     hasLoaded,
     refresh,
-    getRoutineExercises,
-    getRoutineTemplateExercises,
-    getRoutineExerciseCounts,
     createRoutine,
     updateRoutine,
     deleteRoutine,

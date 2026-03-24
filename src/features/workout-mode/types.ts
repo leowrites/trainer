@@ -5,6 +5,13 @@ import type {
   WorkoutSet,
 } from '@core/database/types';
 
+export interface ActiveWorkoutSessionMeta {
+  id: string;
+  title: string;
+  startTime: number;
+  isFreeWorkout: boolean;
+}
+
 export interface ActiveWorkoutSet {
   id: string;
   exerciseId: string;
@@ -42,6 +49,14 @@ export interface ActiveWorkoutSession {
   exercises: ActiveWorkoutExercise[];
 }
 
+export interface ActiveWorkoutSummary {
+  exerciseCount: number;
+  completedExerciseCount: number;
+  setCount: number;
+  completedSetCount: number;
+  volume: number;
+}
+
 export interface PreviousExercisePerformance {
   reps: number;
   weight: number;
@@ -63,13 +78,7 @@ export interface FocusedWorkoutGuidance {
   };
 }
 
-export interface FocusedWorkoutLocation {
-  exerciseIndex: number;
-  setIndex: number;
-}
-
 export interface FocusedWorkoutViewModel {
-  location: FocusedWorkoutLocation;
   exerciseId: string;
   exerciseName: string;
   setId: string;
@@ -77,9 +86,29 @@ export interface FocusedWorkoutViewModel {
   totalSetsForExercise: number;
   totalRemainingSets: number;
   selectedReps: number;
+  selectedWeight: number;
   selectedRir: number | null;
   isCompleted: boolean;
   guidance: FocusedWorkoutGuidance;
+}
+
+export interface ActiveWorkoutOverviewSet {
+  setId: string;
+  setLabel: string;
+  reps: number;
+  weight: number;
+  isCompleted: boolean;
+}
+
+export interface ActiveWorkoutOverviewExercise {
+  exerciseId: string;
+  exerciseName: string;
+  sets: ActiveWorkoutOverviewSet[];
+}
+
+export interface ActiveWorkoutOverview {
+  summary: ActiveWorkoutSummary;
+  exercises: ActiveWorkoutOverviewExercise[];
 }
 
 export type WorkoutSessionRow = Pick<

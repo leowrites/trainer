@@ -24,6 +24,7 @@ import {
   loadLatestInProgressWorkoutSession,
   useWorkoutStore,
 } from '@features/workout-mode';
+import { selectExerciseName } from '@features/workout-mode/store';
 import type { WorkoutTimerNotificationRequest } from './types';
 import {
   addWorkoutTimerNotificationResponseListener,
@@ -49,7 +50,6 @@ function buildTimerRequests(
     WorkoutStoreState,
     | 'isWorkoutActive'
     | 'activeSessionId'
-    | 'activeSession'
     | 'restTimerEndsAt'
     | 'exerciseTimerEndsAtByExerciseId'
   >,
@@ -81,9 +81,7 @@ function buildTimerRequests(
     }
 
     const exerciseName =
-      state.activeSession?.exercises.find(
-        (exercise) => exercise.exerciseId === exerciseId,
-      )?.exerciseName ?? 'Exercise';
+      selectExerciseName(useWorkoutStore.getState(), exerciseId) ?? 'Exercise';
 
     requests.push({
       key: `exercise:${exerciseId}`,
@@ -106,14 +104,12 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
   const {
     isWorkoutActive,
     activeSessionId,
-    activeSession,
     restTimerEndsAt,
     exerciseTimerEndsAtByExerciseId,
   } = useWorkoutStore(
     useShallow((state) => ({
       isWorkoutActive: state.isWorkoutActive,
       activeSessionId: state.activeSessionId,
-      activeSession: state.activeSession,
       restTimerEndsAt: state.restTimerEndsAt,
       exerciseTimerEndsAtByExerciseId: state.exerciseTimerEndsAtByExerciseId,
     })),
@@ -125,12 +121,10 @@ export function WorkoutTimerNotificationCoordinator(): JSX.Element | null {
     return buildTimerRequests({
       isWorkoutActive,
       activeSessionId,
-      activeSession,
       restTimerEndsAt,
       exerciseTimerEndsAtByExerciseId,
     });
   }, [
-    activeSession,
     activeSessionId,
     exerciseTimerEndsAtByExerciseId,
     isWorkoutActive,

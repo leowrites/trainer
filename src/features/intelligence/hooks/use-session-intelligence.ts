@@ -13,12 +13,10 @@
 import { useMemo } from 'react';
 
 import type { HistorySession, WeightUnit } from '@features/analytics';
-import { useOptionalDatabase } from '@core/database/provider';
 import {
   buildSessionClassifications,
   buildSessionRecordBadges,
 } from '../classifiers/session-signals';
-import { loadExerciseCapabilities } from '../metrics/capabilities';
 import {
   buildExerciseExposureIndex,
   buildExerciseExposures,
@@ -29,14 +27,23 @@ import type {
   SessionIntelligence,
   TrainingGoalViewModel,
 } from '../types';
+import { useExerciseCapabilities } from './use-exercise-capabilities';
 
 export function useSessionIntelligence(
   session: HistorySession | null,
   allSessions: HistorySession[],
   goalViewModels: TrainingGoalViewModel[],
   unit: WeightUnit,
+  options: {
+    capabilitiesByExerciseId?: ReturnType<
+      typeof useExerciseCapabilities
+    >['capabilitiesByExerciseId'];
+  } = {},
 ): SessionIntelligence {
-  const db = useOptionalDatabase();
+  const { capabilitiesByExerciseId: loadedCapabilitiesByExerciseId } =
+    useExerciseCapabilities();
+  const capabilitiesByExerciseId =
+    options.capabilitiesByExerciseId ?? loadedCapabilitiesByExerciseId;
 
   return useMemo(() => {
     if (!session) {
@@ -49,10 +56,6 @@ export function useSessionIntelligence(
       };
     }
 
-    const capabilitiesByExerciseId =
-      !db || typeof db.getAllSync !== 'function'
-        ? {}
-        : loadExerciseCapabilities(db);
     const exposuresByExerciseId = buildExerciseExposureIndex(
       buildExerciseExposures(allSessions, capabilitiesByExerciseId),
     );
@@ -144,5 +147,5 @@ export function useSessionIntelligence(
         .map((goalViewModel) => goalViewModel.progress)
         .slice(0, 3),
     };
-  }, [allSessions, db, goalViewModels, session, unit]);
+  }, [allSessions, capabilitiesByExerciseId, goalViewModels, session, unit]);
 }

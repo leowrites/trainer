@@ -1,10 +1,10 @@
-import type { ActiveWorkoutSession } from '../types';
 import {
   DEFAULT_REST_SECONDS,
   MAX_REST_SECONDS,
   MIN_REST_SECONDS,
 } from '@shared/constants';
-import { useWorkoutStore } from '../store';
+import { selectActiveWorkoutSnapshot, useWorkoutStore } from '../store';
+import type { ActiveWorkoutSession } from '../types';
 
 const mockSession: ActiveWorkoutSession = {
   id: 'session-1',
@@ -34,39 +34,34 @@ const mockSession: ActiveWorkoutSession = {
 
 describe('useWorkoutStore', () => {
   beforeEach(() => {
-    useWorkoutStore.setState({
-      isWorkoutActive: false,
-      isWorkoutCollapsed: false,
-      activeSessionId: null,
-      startTime: null,
-      activeSession: null,
-      restTimerEndsAt: null,
-      exerciseTimerEndsAtByExerciseId: {},
-      exerciseTimerDurationByExerciseId: {},
-    });
+    useWorkoutStore.getState().endWorkout();
   });
 
   it('starts with an inactive workout session', () => {
     const state = useWorkoutStore.getState();
+
     expect(state.isWorkoutActive).toBe(false);
     expect(state.isWorkoutCollapsed).toBe(false);
     expect(state.activeSessionId).toBeNull();
     expect(state.startTime).toBeNull();
-    expect(state.activeSession).toBeNull();
+    expect(state.activeSessionMeta).toBeNull();
+    expect(state.activeExerciseOrder).toEqual([]);
+    expect(state.activeRouteSetIds).toEqual([]);
     expect(state.restTimerEndsAt).toBeNull();
     expect(state.exerciseTimerEndsAtByExerciseId).toEqual({});
     expect(state.exerciseTimerDurationByExerciseId).toEqual({});
   });
 
-  it('activates a workout session with the session snapshot', () => {
+  it('hydrates a normalized workout session snapshot', () => {
     useWorkoutStore.getState().startWorkout(mockSession);
 
     const state = useWorkoutStore.getState();
+
     expect(state.isWorkoutActive).toBe(true);
-    expect(state.isWorkoutCollapsed).toBe(false);
-    expect(state.activeSessionId).toBe(mockSession.id);
-    expect(state.startTime).toBe(mockSession.startTime);
-    expect(state.activeSession).toEqual(mockSession);
+    expect(state.activeSessionMeta?.title).toBe('Push A');
+    expect(state.activeExerciseOrder).toEqual(['exercise-1']);
+    expect(state.activeRouteSetIds).toEqual(['set-1']);
+    expect(selectActiveWorkoutSnapshot(state)).toEqual(mockSession);
     expect(state.exerciseTimerEndsAtByExerciseId).toEqual({
       'exercise-1': null,
     });
@@ -75,18 +70,32 @@ describe('useWorkoutStore', () => {
     });
   });
 
-  it('collapses and expands an active workout session', () => {
-    useWorkoutStore.getState().startWorkout(mockSession);
+  it('updates only the targeted set record and preserves sibling references', () => {
+    useWorkoutStore.getState().startWorkout({
+      ...mockSession,
+      exercises: [
+        {
+          ...mockSession.exercises[0],
+          sets: [
+            mockSession.exercises[0].sets[0],
+            {
+              id: 'set-2',
+              exerciseId: 'exercise-1',
+              reps: 10,
+              weight: 155,
+              isCompleted: false,
+              targetSets: 3,
+              targetReps: 10,
+            },
+          ],
+        },
+      ],
+    });
 
-    useWorkoutStore.getState().collapseWorkout();
-    expect(useWorkoutStore.getState().isWorkoutCollapsed).toBe(true);
-
-    useWorkoutStore.getState().expandWorkout();
-    expect(useWorkoutStore.getState().isWorkoutCollapsed).toBe(false);
-  });
-
-  it('updates an existing set in the active session', () => {
-    useWorkoutStore.getState().startWorkout(mockSession);
+    const beforeState = useWorkoutStore.getState();
+    const untouchedSet = beforeState.activeSetsById['set-2'];
+    const exerciseRecord = beforeState.activeExercisesById['exercise-1'];
+    const routeSetIds = beforeState.activeRouteSetIds;
 
     useWorkoutStore.getState().updateSet('set-1', {
       reps: 10,
@@ -94,17 +103,27 @@ describe('useWorkoutStore', () => {
       isCompleted: true,
     });
 
-    expect(
-      useWorkoutStore.getState().activeSession?.exercises[0].sets[0],
-    ).toMatchObject({
+    const afterState = useWorkoutStore.getState();
+
+    expect(afterState.activeSetsById['set-1']).toMatchObject({
       reps: 10,
       weight: 145,
       isCompleted: true,
     });
+    expect(afterState.activeSetsById['set-2']).toBe(untouchedSet);
+    expect(afterState.activeExercisesById['exercise-1']).toBe(exerciseRecord);
+    expect(afterState.activeRouteSetIds).toBe(routeSetIds);
   });
 
-  it('appends a new set to the matching exercise block', () => {
+  it('keeps route ids stable for set edits and rebuilds them only for structural changes', () => {
     useWorkoutStore.getState().startWorkout(mockSession);
+
+    const initialRouteSetIds = useWorkoutStore.getState().activeRouteSetIds;
+
+    useWorkoutStore.getState().updateSet('set-1', { reps: 9 });
+    expect(useWorkoutStore.getState().activeRouteSetIds).toBe(
+      initialRouteSetIds,
+    );
 
     useWorkoutStore.getState().addSet('exercise-1', {
       id: 'set-2',
@@ -116,93 +135,39 @@ describe('useWorkoutStore', () => {
       targetReps: 8,
     });
 
-    expect(
-      useWorkoutStore
-        .getState()
-        .activeSession?.exercises[0].sets.map((setItem) => setItem.id),
-    ).toEqual(['set-1', 'set-2']);
+    expect(useWorkoutStore.getState().activeRouteSetIds).toEqual([
+      'set-1',
+      'set-2',
+    ]);
   });
 
-  it('adds and removes exercise blocks from the active session', () => {
-    useWorkoutStore.getState().startWorkout(mockSession);
-
-    useWorkoutStore.getState().addExercise({
-      exerciseId: 'exercise-2',
-      exerciseName: 'Goblet Squat',
-      targetSets: null,
-      targetReps: null,
-      sets: [],
-    });
-
-    expect(
-      useWorkoutStore
-        .getState()
-        .activeSession?.exercises.map((exercise) => exercise.exerciseId),
-    ).toEqual(['exercise-1', 'exercise-2']);
-
-    useWorkoutStore.getState().removeExercise('exercise-2');
-
-    expect(
-      useWorkoutStore
-        .getState()
-        .activeSession?.exercises.map((exercise) => exercise.exerciseId),
-    ).toEqual(['exercise-1']);
-  });
-
-  it('removes planned routine exercise blocks from the store', () => {
-    useWorkoutStore.getState().startWorkout(mockSession);
-
-    useWorkoutStore.getState().removeExercise('exercise-1');
-
-    expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([]);
-  });
-
-  it('removes a set but preserves the exercise block for future additions', () => {
-    useWorkoutStore.getState().startWorkout(mockSession);
-
-    useWorkoutStore.getState().deleteSet('set-1');
-
-    expect(useWorkoutStore.getState().activeSession?.exercises[0].sets).toEqual(
-      [],
-    );
-  });
-
-  it('starts and clears a rest timer for the active workout', () => {
-    useWorkoutStore.getState().startWorkout(mockSession);
-
-    useWorkoutStore.getState().startRestTimer(120);
-    expect(useWorkoutStore.getState().restTimerEndsAt).not.toBeNull();
-
-    useWorkoutStore.getState().clearRestTimer();
-    expect(useWorkoutStore.getState().restTimerEndsAt).toBeNull();
-  });
-
-  it('persists per-exercise timers across collapse and expand until the workout ends', () => {
+  it('preserves normalized session references when timer state changes', () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_000);
     useWorkoutStore.getState().startWorkout(mockSession);
 
+    const beforeState = useWorkoutStore.getState();
+
     useWorkoutStore.getState().setExerciseTimerDuration('exercise-1', 90);
     useWorkoutStore.getState().startExerciseTimer('exercise-1', 90);
-    useWorkoutStore.getState().collapseWorkout();
-    useWorkoutStore.getState().expandWorkout();
+    useWorkoutStore.getState().startRestTimer(120);
 
-    expect(
-      useWorkoutStore.getState().exerciseTimerDurationByExerciseId,
-    ).toEqual({
+    const afterState = useWorkoutStore.getState();
+
+    expect(afterState.activeSessionMeta).toBe(beforeState.activeSessionMeta);
+    expect(afterState.activeExerciseOrder).toBe(
+      beforeState.activeExerciseOrder,
+    );
+    expect(afterState.activeExercisesById).toBe(
+      beforeState.activeExercisesById,
+    );
+    expect(afterState.activeSetsById).toBe(beforeState.activeSetsById);
+    expect(afterState.exerciseTimerDurationByExerciseId).toEqual({
       'exercise-1': 90,
     });
-    expect(useWorkoutStore.getState().exerciseTimerEndsAtByExerciseId).toEqual({
+    expect(afterState.exerciseTimerEndsAtByExerciseId).toEqual({
       'exercise-1': 91_000,
     });
-
-    useWorkoutStore.getState().endWorkout();
-
-    expect(useWorkoutStore.getState().exerciseTimerEndsAtByExerciseId).toEqual(
-      {},
-    );
-    expect(
-      useWorkoutStore.getState().exerciseTimerDurationByExerciseId,
-    ).toEqual({});
+    expect(afterState.restTimerEndsAt).toBe(121_000);
 
     jest.restoreAllMocks();
   });
@@ -231,15 +196,19 @@ describe('useWorkoutStore', () => {
 
   it('resets all state on endWorkout', () => {
     useWorkoutStore.getState().startWorkout(mockSession);
-
     useWorkoutStore.getState().endWorkout();
 
     const state = useWorkoutStore.getState();
+
     expect(state.isWorkoutActive).toBe(false);
     expect(state.isWorkoutCollapsed).toBe(false);
     expect(state.activeSessionId).toBeNull();
     expect(state.startTime).toBeNull();
-    expect(state.activeSession).toBeNull();
+    expect(state.activeSessionMeta).toBeNull();
+    expect(state.activeExerciseOrder).toEqual([]);
+    expect(state.activeExercisesById).toEqual({});
+    expect(state.activeSetsById).toEqual({});
+    expect(state.activeRouteSetIds).toEqual([]);
     expect(state.restTimerEndsAt).toBeNull();
     expect(state.exerciseTimerEndsAtByExerciseId).toEqual({});
     expect(state.exerciseTimerDurationByExerciseId).toEqual({});

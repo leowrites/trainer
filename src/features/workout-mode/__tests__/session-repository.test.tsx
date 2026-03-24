@@ -22,7 +22,10 @@ jest.mock('@lodev09/react-native-true-sheet', () => {
   };
 });
 
-import { loadActiveWorkoutSession } from '../session-repository';
+import {
+  loadActiveWorkoutSession,
+  loadPreviousExercisePerformanceMap,
+} from '../session-repository';
 
 describe('session-repository', () => {
   it('merges legacy set-derived exercises with explicit session exercise rows', () => {
@@ -193,5 +196,54 @@ describe('session-repository', () => {
         },
       ],
     });
+  });
+
+  it('loads only the latest completed performance row per exercise', () => {
+    const db = {
+      getAllSync: jest.fn().mockReturnValue([
+        {
+          exercise_id: 'exercise-1',
+          reps: 6,
+          weight: 110,
+          end_time: 300,
+        },
+        {
+          exercise_id: 'exercise-2',
+          reps: 10,
+          weight: 55,
+          end_time: 250,
+        },
+      ]),
+    };
+
+    expect(
+      loadPreviousExercisePerformanceMap(db as never, 'current-session', [
+        'exercise-1',
+        'exercise-2',
+      ]),
+    ).toEqual({
+      'exercise-1': {
+        reps: 6,
+        weight: 110,
+        completedAt: 300,
+      },
+      'exercise-2': {
+        reps: 10,
+        weight: 55,
+        completedAt: 250,
+      },
+    });
+
+    expect(db.getAllSync).toHaveBeenCalledWith(
+      expect.stringContaining('WITH latest_completed_sessions AS'),
+      [
+        'exercise-1',
+        'exercise-2',
+        'current-session',
+        'exercise-1',
+        'exercise-2',
+        'current-session',
+      ],
+    );
   });
 });

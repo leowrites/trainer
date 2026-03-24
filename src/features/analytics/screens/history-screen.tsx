@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { FlatList, View } from 'react-native';
 
 import {
+  useExerciseCapabilities,
   useIntelligenceOverview,
   useTrainingGoals,
 } from '@features/intelligence';
@@ -44,12 +45,18 @@ export function HistoryScreen({
     loadMore,
     refresh,
   } = useHistoryAnalytics({ trendRange: activeRange });
-  const { goalViewModels } = useTrainingGoals(allSessions);
+  const { capabilitiesByExerciseId, refresh: refreshExerciseCapabilities } =
+    useExerciseCapabilities();
+  const { goalViewModels } = useTrainingGoals(allSessions, {
+    capabilitiesByExerciseId,
+  });
   const {
     exerciseTrendSummaries,
     routineTrendSummaries,
     goalViewModels: overviewGoalViewModels,
-  } = useIntelligenceOverview(allSessions, goalViewModels);
+  } = useIntelligenceOverview(allSessions, goalViewModels, {
+    capabilitiesByExerciseId,
+  });
   const hasHandledInitialFocus = useRef(false);
 
   useFocusEffect(
@@ -60,8 +67,9 @@ export function HistoryScreen({
       }
 
       refresh();
+      refreshExerciseCapabilities();
       return undefined;
-    }, [refresh]),
+    }, [refresh, refreshExerciseCapabilities]),
   );
 
   return (

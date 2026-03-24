@@ -31,6 +31,7 @@ import {
 import { useReducedMotionPreference } from '@shared/hooks';
 import { configureInteractionLayoutAnimation } from '@shared/utils';
 import { RoutinePickerSheet } from '../components/routine-picker-sheet';
+import { useScheduleEntries } from '../hooks/use-schedule-entries';
 import type { NewScheduleInput } from '../hooks/use-schedules';
 import { useSchedules } from '../hooks/use-schedules';
 import type { ScheduleStackParamList } from '../types';
@@ -98,9 +99,7 @@ export function ScheduleDetailScreen({
   const {
     schedules,
     hasLoaded,
-    version,
     refresh: refreshSchedules,
-    getScheduleEntries,
     createSchedule,
     updateSchedule,
     setActiveSchedule,
@@ -108,6 +107,8 @@ export function ScheduleDetailScreen({
   } = useSchedules();
   const { routines, refresh: refreshRoutines } = useRoutines();
   const scheduleId = route.params?.scheduleId;
+  const { entries: scheduleEntries, refresh: refreshScheduleEntries } =
+    useScheduleEntries(scheduleId);
   const selectedSchedule =
     schedules.find((schedule) => schedule.id === scheduleId) ?? null;
   const [name, setName] = useState('');
@@ -214,7 +215,8 @@ export function ScheduleDetailScreen({
     useCallback(() => {
       refreshSchedules();
       refreshRoutines();
-    }, [refreshRoutines, refreshSchedules]),
+      refreshScheduleEntries();
+    }, [refreshRoutines, refreshScheduleEntries, refreshSchedules]),
   );
 
   useEffect(() => {
@@ -240,21 +242,11 @@ export function ScheduleDetailScreen({
     }
 
     setName(selectedSchedule.name);
-    setSelectedRoutineIds(
-      getScheduleEntries(selectedSchedule.id).map((entry) => entry.routine_id),
-    );
+    setSelectedRoutineIds(scheduleEntries.map((entry) => entry.routine_id));
     setIsRoutinePickerOpen(false);
     setIsEditingName(false);
     setError(null);
-  }, [
-    getScheduleEntries,
-    hasLoaded,
-    navigation,
-    scheduleId,
-    selectedSchedule,
-    selectedSchedule?.id,
-    version,
-  ]);
+  }, [hasLoaded, navigation, scheduleId, scheduleEntries, selectedSchedule]);
 
   const selectedRoutines = useMemo(
     () =>

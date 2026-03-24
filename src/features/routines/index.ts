@@ -13,7 +13,11 @@ export { RoutineEditorScreen } from './screens/routine-editor-screen';
 export type { ExerciseDetailScreenProps } from './screens/exercise-detail-screen';
 export type { RoutinesStackParamList } from './types';
 export { useExercises } from './hooks/use-exercises';
+export { useExerciseInsight } from './hooks/use-exercise-insight';
+export { useRoutineExerciseCounts } from './hooks/use-routine-exercise-counts';
 export { useRoutines } from './hooks/use-routines';
+export { useRoutineInsight } from './hooks/use-routine-insight';
+export { useRoutineTemplate } from './hooks/use-routine-template';
 export {
   insertRoutineExerciseTemplates,
   loadRoutineExerciseTemplates,

@@ -1,7 +1,10 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { type CompositeScreenProps } from '@react-navigation/native';
+import {
+  type CompositeScreenProps,
+  useFocusEffect,
+} from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -12,6 +15,7 @@ import {
   useHistoryAnalytics,
 } from '@features/analytics';
 import {
+  useExerciseCapabilities,
   useIntelligenceOverview,
   useTrainingGoals,
 } from '@features/intelligence';
@@ -29,7 +33,11 @@ import {
   Surface,
 } from '@shared/components';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
-import { useWorkoutStore } from '../store';
+import {
+  selectActiveWorkoutExerciseCount,
+  selectActiveWorkoutTitle,
+  useWorkoutStore,
+} from '../store';
 
 export type WorkoutHomeScreenProps = CompositeScreenProps<
   BottomTabScreenProps<RootTabParamList, 'Workout'>,
@@ -101,8 +109,8 @@ export function WorkoutHomeScreen({
     isWorkoutActive,
   } = useWorkoutStore(
     useShallow((state) => ({
-      currentWorkoutTitle: state.activeSession?.title ?? null,
-      currentExerciseCount: state.activeSession?.exercises.length ?? 0,
+      currentWorkoutTitle: selectActiveWorkoutTitle(state),
+      currentExerciseCount: selectActiveWorkoutExerciseCount(state),
       expandWorkout: state.expandWorkout,
       isWorkoutActive: state.isWorkoutActive,
     })),
@@ -113,7 +121,11 @@ export function WorkoutHomeScreen({
     startWorkoutFromSchedule,
     startFreeWorkout,
   } = useWorkoutStarter();
-  const { allSessions, refresh: refreshHistory } = useHistoryAnalytics();
+  const { capabilitiesByExerciseId, refresh: refreshExerciseCapabilities } =
+    useExerciseCapabilities();
+  const { allSessions, refresh: refreshHistory } = useHistoryAnalytics({
+    includeSessionPage: false,
+  });
   const [starting, setStarting] = useState(false);
   const [dashboardNow] = useState(() => Date.now());
   const dashboardMetrics = useMemo(
@@ -124,10 +136,13 @@ export function WorkoutHomeScreen({
     () => buildWeekCalendarDays(allSessions, dashboardNow),
     [allSessions, dashboardNow],
   );
-  const { goalViewModels } = useTrainingGoals(allSessions);
+  const { goalViewModels } = useTrainingGoals(allSessions, {
+    capabilitiesByExerciseId,
+  });
   const { homePrimaryInsight, homeExerciseHighlights } =
     useIntelligenceOverview(allSessions, goalViewModels, {
       now: dashboardNow,
+      capabilitiesByExerciseId,
     });
 
   const activeGoal = goalViewModels.find(
@@ -135,14 +150,14 @@ export function WorkoutHomeScreen({
   );
   const hasCurrentWorkout = isWorkoutActive && currentWorkoutTitle !== null;
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+  useFocusEffect(
+    useCallback(() => {
       refreshPreview();
       refreshHistory();
-    });
-
-    return unsubscribe;
-  }, [navigation, refreshHistory, refreshPreview]);
+      refreshExerciseCapabilities();
+      return undefined;
+    }, [refreshExerciseCapabilities, refreshHistory, refreshPreview]),
+  );
 
   const handleStartScheduled = (): void => {
     if (starting) {

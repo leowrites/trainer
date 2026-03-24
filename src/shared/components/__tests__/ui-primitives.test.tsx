@@ -13,7 +13,6 @@ jest.mock('@shared/hooks', () => ({
   useReducedMotionPreference: () => false,
 }));
 
-import type { ColSpan } from '../index';
 import {
   ActionRow,
   Badge,
@@ -25,14 +24,10 @@ import {
   Container,
   DayTile,
   DisclosureCard,
-  Grid,
-  GridItem,
-  Header,
   Heading,
   Input,
   Label,
   Muted,
-  ProgressBar,
   StatRow,
   StatValue,
   Surface,
@@ -120,31 +115,6 @@ describe('Card', () => {
     );
     const pressable = screen.getByRole('button');
     expect(pressable).toBeTruthy();
-  });
-});
-
-// ─── Header ───────────────────────────────────────────────────────────────────
-
-describe('Header', () => {
-  it('renders the title', () => {
-    render(<Header title="trai" />);
-    expect(screen.getByText('trai')).toBeTruthy();
-  });
-
-  it('renders titleAccent text', () => {
-    render(<Header title="trai" titleAccent="ner" />);
-    expect(screen.getByText('ner')).toBeTruthy();
-  });
-
-  it('renders metaLabel and metaDetail', () => {
-    render(<Header title="App" metaLabel="Push A" metaDetail="Day 3" />);
-    expect(screen.getByText('Push A')).toBeTruthy();
-    expect(screen.getByText('Day 3')).toBeTruthy();
-  });
-
-  it('does not render meta section when props are omitted', () => {
-    render(<Header title="App" />);
-    expect(screen.queryByText('Push A')).toBeNull();
   });
 });
 
@@ -414,86 +384,6 @@ describe('DisclosureCard', () => {
     fireEvent.press(screen.getByLabelText('Expand Push A'));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
-  });
-});
-
-// ─── ProgressBar ──────────────────────────────────────────────────────────────
-
-describe('ProgressBar', () => {
-  it('renders without crashing at progress 0', () => {
-    const { toJSON } = render(<ProgressBar progress={0} />);
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('renders without crashing at progress 1', () => {
-    const { toJSON } = render(<ProgressBar progress={1} />);
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('clamps progress values above 1', () => {
-    const { toJSON } = render(<ProgressBar progress={2} />);
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('clamps progress values below 0', () => {
-    const { toJSON } = render(<ProgressBar progress={-0.5} />);
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('renders label text when label provided', () => {
-    render(<ProgressBar progress={0.5} label="Protein" />);
-    expect(screen.getByText('Protein')).toBeTruthy();
-  });
-
-  it('renders percentage text when showLabel=true', () => {
-    render(<ProgressBar progress={0.72} label="Protein" showLabel />);
-    expect(screen.getByText('72%')).toBeTruthy();
-  });
-
-  it.each(['accent', 'secondary', 'error'] as const)(
-    'renders variant "%s" without crashing',
-    (variant) => {
-      const { toJSON } = render(
-        <ProgressBar progress={0.5} variant={variant} />,
-      );
-      expect(toJSON()).toBeTruthy();
-    },
-  );
-
-  it('has accessibilityRole progressbar with correct value', () => {
-    render(<ProgressBar progress={0.5} />);
-    const bar = screen.getByRole('progressbar');
-    expect(bar.props.accessibilityValue).toEqual({ min: 0, max: 100, now: 50 });
-  });
-});
-
-// ─── Grid / GridItem ─────────────────────────────────────────────────────────
-
-describe('Grid + GridItem', () => {
-  it('renders children inside grid items', () => {
-    render(
-      <Grid>
-        <GridItem span={6 as ColSpan}>
-          <Body>Left</Body>
-        </GridItem>
-        <GridItem span={6 as ColSpan}>
-          <Body>Right</Body>
-        </GridItem>
-      </Grid>,
-    );
-    expect(screen.getByText('Left')).toBeTruthy();
-    expect(screen.getByText('Right')).toBeTruthy();
-  });
-
-  it('defaults span to 12 (full width)', () => {
-    const { toJSON } = render(
-      <Grid>
-        <GridItem>
-          <Body>Full</Body>
-        </GridItem>
-      </Grid>,
-    );
-    expect(toJSON()).toBeTruthy();
   });
 });
 

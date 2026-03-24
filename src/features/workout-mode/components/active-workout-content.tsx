@@ -2,17 +2,16 @@
  * Active workout content.
  *
  * CALLING SPEC:
- * - coordinate the active-workout pager, overview modal, and exercise picker
- * - derive focused workout state and route scene callbacks into child views
- * - render an empty-workout fallback when no focusable sets exist yet
- * - has no persistence side effects beyond invoking provided callbacks
+ * - coordinate one focused workout scene, the overview modal, and the exercise picker
+ * - keep one focused set id in local state with explicit next/previous/jump navigation
+ * - flush queued set writes when the focused set changes or the surface unmounts
+ * - side effects: none beyond invoking provided callbacks
  */
 
 import { useHeaderHeight } from '@react-navigation/elements';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ScrollView, View } from 'react-native';
 import type { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TabView } from 'react-native-tab-view';
 
 import {
   Button,
@@ -23,33 +22,23 @@ import {
   Surface,
 } from '@shared/components';
 import { useReducedMotionPreference } from '@shared/hooks';
-import { triggerInteractionFeedback } from '@shared/utils';
 import {
-  buildFocusedWorkoutViewModel,
-  findInitialFocusedLocation,
-  getNextFocusedLocation,
-  resolveFocusedLocation,
-} from '../domain/focused-session';
-import type {
-  ActiveWorkoutSession,
-  FocusedWorkoutLocation,
-  PreviousExercisePerformance,
-} from '../types';
+  useActiveWorkoutExerciseIds,
+  useActiveWorkoutInitialFocusedSetId,
+  useActiveWorkoutOverview,
+  useActiveWorkoutSessionMeta,
+  useActiveWorkoutSetExerciseId,
+  useActiveWorkoutSetIds,
+} from '../hooks/use-active-workout-state';
+import { usePreviousExercisePerformance } from '../hooks/use-previous-exercise-performance';
+import type { PreviousExercisePerformance } from '../types';
 import { ExercisePickerBottomSheet } from './exercise-picker-bottom-sheet';
-import { CompleteSetButton } from './complete-set-button';
 import { FocusedWorkoutScene } from './focused-workout-scene';
 import { WorkoutOverviewModal } from './workout-overview-modal';
 
 export interface ActiveWorkoutContentProps {
-  activeSession: ActiveWorkoutSession;
-  now: number;
-  setCount: number;
-  volume: number;
-  restLabel: string | null;
-  onComplete: () => void;
+  onCompleteWorkout: () => void;
   onDeleteWorkout: () => void;
-  startRestTimer: (durationSeconds?: number) => void;
-  clearRestTimer: () => void;
   onOpenExerciseDetails: (exerciseId: string) => void;
   onOpenExerciseTimerOptions: (exerciseId: string) => void;
   addSet: (exerciseId: string) => void;
@@ -58,100 +47,65 @@ export interface ActiveWorkoutContentProps {
   deleteSet: (setId: string) => void;
   updateReps: (setId: string, reps: number) => void;
   updateWeight: (setId: string, weight: number) => void;
-  updateActualRir?: (setId: string, actualRir: number | null) => void;
-  toggleSetLogged: (
-    exerciseId: string,
-    setId: string,
-    isCompleted: boolean,
-  ) => void;
-  exerciseTimerEndsAtByExerciseId: Record<string, number | null>;
-  exerciseTimerDurationByExerciseId: Record<string, number>;
-  previousPerformanceByExerciseId: Record<
-    string,
-    PreviousExercisePerformance | null
-  >;
-  showExerciseSheet: boolean;
-  setShowExerciseSheet: React.Dispatch<React.SetStateAction<boolean>>;
+  updateActualRir: (setId: string, actualRir: number | null) => void;
+  toggleSetLogged: (setId: string, isCompleted: boolean) => void;
+  flushPendingWrites: () => void;
   insets: ReturnType<typeof useSafeAreaInsets>;
 }
 
-interface FocusedSetRoute {
-  key: string;
-  location: FocusedWorkoutLocation;
+interface FocusedWorkoutSingleSceneProps {
+  focusedSetId: string;
+  headerHeight: number;
+  bottomInset: number;
+  previousPerformance: PreviousExercisePerformance | null;
+  onOpenOverview: () => void;
+  onOpenExerciseDetails: (exerciseId: string) => void;
+  onOpenExerciseTimerOptions: (exerciseId: string) => void;
+  onMoveFocus: (nextSetId: string | null) => void;
+  onCompleteWorkout: () => void;
+  updateReps: (setId: string, reps: number) => void;
+  updateWeight: (setId: string, weight: number) => void;
+  updateActualRir: (setId: string, actualRir: number | null) => void;
+  toggleSetLogged: (setId: string, isCompleted: boolean) => void;
 }
 
-const FOCUSED_SCENE_PRELOAD_DISTANCE = 1;
-
-function clampNumber(value: number, minimum = 0): number {
-  return Math.max(minimum, value);
-}
-
-function countCompletedSets(session: ActiveWorkoutSession): number {
-  return session.exercises.reduce(
-    (total, exercise) =>
-      total + exercise.sets.filter((setItem) => setItem.isCompleted).length,
-    0,
-  );
-}
-
-function countCompletedExercises(session: ActiveWorkoutSession): number {
-  return session.exercises.filter(
-    (exercise) =>
-      exercise.sets.length > 0 &&
-      exercise.sets.every((setItem) => setItem.isCompleted),
-  ).length;
-}
-
-function buildFocusedSetRoutes(
-  session: ActiveWorkoutSession,
-): FocusedSetRoute[] {
-  return session.exercises.flatMap((exercise, exerciseIndex) =>
-    exercise.sets.map((_, setIndex) => ({
-      key: `${exerciseIndex}:${setIndex}`,
-      location: { exerciseIndex, setIndex },
-    })),
-  );
-}
-
-function findFocusedRouteIndex(
-  routes: FocusedSetRoute[],
-  location: FocusedWorkoutLocation,
-): number {
-  const routeIndex = routes.findIndex(
-    (route) =>
-      route.location.exerciseIndex === location.exerciseIndex &&
-      route.location.setIndex === location.setIndex,
-  );
-
-  return routeIndex >= 0 ? routeIndex : 0;
-}
-
-function shouldRenderFocusedScene(
-  routes: FocusedSetRoute[],
-  routeKey: string,
-  focusedRouteIndex: number,
-): boolean {
-  const routeIndex = routes.findIndex((route) => route.key === routeKey);
-
-  if (routeIndex === -1) {
-    return false;
-  }
-
+function FocusedWorkoutSingleScene({
+  focusedSetId,
+  headerHeight,
+  bottomInset,
+  previousPerformance,
+  onOpenOverview,
+  onOpenExerciseDetails,
+  onOpenExerciseTimerOptions,
+  onMoveFocus,
+  onCompleteWorkout,
+  updateReps,
+  updateWeight,
+  updateActualRir,
+  toggleSetLogged,
+}: FocusedWorkoutSingleSceneProps): React.JSX.Element {
   return (
-    Math.abs(routeIndex - focusedRouteIndex) <= FOCUSED_SCENE_PRELOAD_DISTANCE
+    <FocusedWorkoutScene
+      focusedSetId={focusedSetId}
+      headerHeight={headerHeight}
+      bottomInset={bottomInset}
+      previousPerformance={previousPerformance}
+      onOpenOverview={onOpenOverview}
+      onOpenExerciseDetails={onOpenExerciseDetails}
+      onOpenExerciseTimerOptions={onOpenExerciseTimerOptions}
+      onMoveFocus={onMoveFocus}
+      onCompleteWorkout={onCompleteWorkout}
+      updateReps={updateReps}
+      updateWeight={updateWeight}
+      updateActualRir={updateActualRir}
+      toggleSetLogged={toggleSetLogged}
+    />
   );
 }
 
 export function ActiveWorkoutContent({
-  activeSession,
-  now,
-  setCount,
-  volume,
-  restLabel,
-  onComplete,
+  onCompleteWorkout,
   onDeleteWorkout,
-  startRestTimer,
-  clearRestTimer,
   onOpenExerciseDetails,
   onOpenExerciseTimerOptions,
   addSet,
@@ -162,281 +116,62 @@ export function ActiveWorkoutContent({
   updateWeight,
   updateActualRir,
   toggleSetLogged,
-  exerciseTimerEndsAtByExerciseId,
-  exerciseTimerDurationByExerciseId,
-  previousPerformanceByExerciseId,
-  showExerciseSheet,
-  setShowExerciseSheet,
+  flushPendingWrites,
   insets,
 }: ActiveWorkoutContentProps): React.JSX.Element {
   const headerHeight = useHeaderHeight();
-  const { width } = useWindowDimensions();
   const prefersReducedMotion = useReducedMotionPreference();
+  const sessionMeta = useActiveWorkoutSessionMeta();
+  const setIds = useActiveWorkoutSetIds();
+  const initialFocusedSetId = useActiveWorkoutInitialFocusedSetId();
+  const exerciseIdsInSession = useActiveWorkoutExerciseIds();
   const [showOverview, setShowOverview] = useState(false);
-  const [completionRewardToken, setCompletionRewardToken] = useState(0);
-  const orderedRoutes = useMemo(
-    () => buildFocusedSetRoutes(activeSession),
-    [activeSession],
+  const [showExerciseSheet, setShowExerciseSheet] = useState(false);
+  const [focusedSetId, setFocusedSetId] = useState<string | null>(null);
+  const focusedExerciseId = useActiveWorkoutSetExerciseId(focusedSetId ?? '');
+  const previousPerformanceByExerciseId = usePreviousExercisePerformance(
+    sessionMeta?.id ?? null,
+    exerciseIdsInSession,
   );
-  const [focusedIndex, setFocusedIndex] = useState(() =>
-    findFocusedRouteIndex(
-      orderedRoutes,
-      findInitialFocusedLocation(activeSession),
-    ),
-  );
-  const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const completedSetCount = useMemo(
-    () => countCompletedSets(activeSession),
-    [activeSession],
-  );
-  const completedExerciseCount = useMemo(
-    () => countCompletedExercises(activeSession),
-    [activeSession],
-  );
-
-  const hasFocusableSet = activeSession.exercises.some(
-    (exercise) => exercise.sets.length > 0,
-  );
-  const location =
-    orderedRoutes[focusedIndex]?.location ??
-    findInitialFocusedLocation(activeSession);
-
-  const focusedExercise = activeSession.exercises[location.exerciseIndex];
-  const focusedSet = focusedExercise?.sets[location.setIndex];
-  const [selectedReps, setSelectedReps] = useState(
-    focusedSet?.reps ?? focusedExercise?.targetRepsMin ?? 0,
-  );
-  const [selectedWeight, setSelectedWeight] = useState(focusedSet?.weight ?? 0);
-  const [selectedRir, setSelectedRir] = useState<number | null>(
-    focusedSet?.actualRir ?? null,
-  );
+  const overview = useActiveWorkoutOverview(showOverview);
+  const previousFocusedSetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    setFocusedIndex((currentIndex) => {
-      const currentLocation = orderedRoutes[currentIndex]?.location;
-      const nextLocation = resolveFocusedLocation(
-        activeSession,
-        currentLocation ?? findInitialFocusedLocation(activeSession),
-      );
-
-      return findFocusedRouteIndex(orderedRoutes, nextLocation);
-    });
-  }, [activeSession, orderedRoutes]);
-
-  useEffect(() => {
-    const exercise = activeSession.exercises[location.exerciseIndex];
-    const setItem = exercise?.sets[location.setIndex];
-
-    if (!exercise || !setItem) {
+    if (setIds.length === 0) {
+      setFocusedSetId(null);
       return;
     }
 
-    setSelectedReps(setItem.reps ?? exercise.targetRepsMin ?? 0);
-    setSelectedWeight(setItem.weight ?? 0);
-    setSelectedRir(setItem.actualRir ?? null);
-  }, [activeSession, location]);
+    setFocusedSetId((currentSetId) => {
+      if (currentSetId !== null && setIds.includes(currentSetId)) {
+        return currentSetId;
+      }
+
+      return initialFocusedSetId ?? setIds[0] ?? null;
+    });
+  }, [initialFocusedSetId, setIds]);
+
+  useEffect(() => {
+    const previousFocusedSetId = previousFocusedSetIdRef.current;
+
+    if (
+      previousFocusedSetId !== null &&
+      focusedSetId !== null &&
+      previousFocusedSetId !== focusedSetId
+    ) {
+      flushPendingWrites();
+    }
+
+    previousFocusedSetIdRef.current = focusedSetId;
+  }, [flushPendingWrites, focusedSetId]);
 
   useEffect(() => {
     return () => {
-      if (completionTimeoutRef.current === null) {
-        return;
-      }
-
-      clearTimeout(completionTimeoutRef.current);
+      flushPendingWrites();
     };
-  }, []);
+  }, [flushPendingWrites]);
 
-  const handleMoveFocus = (nextLocation: FocusedWorkoutLocation): void => {
-    setFocusedIndex(findFocusedRouteIndex(orderedRoutes, nextLocation));
-    setShowOverview(false);
-  };
-
-  const handlePreviewReps = (nextReps: number): void => {
-    setSelectedReps(clampNumber(nextReps));
-  };
-
-  const handlePreviewWeight = (nextWeight: number): void => {
-    setSelectedWeight(clampNumber(nextWeight));
-  };
-
-  const handleOpenExercisePickerFromOverview = (): void => {
-    setShowOverview(false);
-    setShowExerciseSheet(true);
-  };
-
-  const handleDeleteWorkoutFromOverview = (): void => {
-    setShowOverview(false);
-    onDeleteWorkout();
-  };
-
-  const handleAdjustReps = (
-    nextReps: number,
-    options?: { feedback?: boolean },
-  ): void => {
-    if (viewModel === null) {
-      return;
-    }
-
-    const normalizedReps = clampNumber(nextReps);
-    setSelectedReps(normalizedReps);
-    updateReps(viewModel.setId, normalizedReps);
-
-    if (options?.feedback !== false) {
-      triggerInteractionFeedback('set-adjust');
-    }
-  };
-
-  const handleAdjustWeight = (
-    nextWeight: number,
-    options?: { feedback?: boolean },
-  ): void => {
-    if (viewModel === null) {
-      return;
-    }
-
-    const normalizedWeight = clampNumber(nextWeight);
-    setSelectedWeight(normalizedWeight);
-    updateWeight(viewModel.setId, normalizedWeight);
-
-    if (options?.feedback !== false) {
-      triggerInteractionFeedback('set-adjust');
-    }
-  };
-
-  const commitFocusedSetValues = (): void => {
-    if (viewModel === null) {
-      return;
-    }
-
-    updateReps(viewModel.setId, selectedReps);
-    updateWeight(viewModel.setId, selectedWeight);
-  };
-
-  const handleAdjustRir = (nextRir: number | null): void => {
-    if (viewModel === null) {
-      return;
-    }
-
-    commitFocusedSetValues();
-    setSelectedRir(nextRir);
-    updateActualRir?.(viewModel.setId, nextRir);
-    triggerInteractionFeedback('set-adjust');
-  };
-
-  const handleCompleteSet = (): void => {
-    if (viewModel === null) {
-      return;
-    }
-
-    commitFocusedSetValues();
-    updateActualRir?.(viewModel.setId, selectedRir);
-    const didLogSet = !viewModel.isCompleted;
-
-    if (didLogSet) {
-      toggleSetLogged(viewModel.exerciseId, viewModel.setId, true);
-      triggerInteractionFeedback('set-log');
-      setCompletionRewardToken((currentToken) => currentToken + 1);
-    }
-
-    const advanceWorkoutFlow = (): void => {
-      const nextLocation = getNextFocusedLocation(activeSession, location);
-
-      if (
-        nextLocation.exerciseIndex === location.exerciseIndex &&
-        nextLocation.setIndex === location.setIndex
-      ) {
-        onComplete();
-        return;
-      }
-
-      handleMoveFocus(nextLocation);
-    };
-
-    if (!didLogSet || prefersReducedMotion) {
-      advanceWorkoutFlow();
-      return;
-    }
-
-    if (completionTimeoutRef.current !== null) {
-      clearTimeout(completionTimeoutRef.current);
-    }
-
-    completionTimeoutRef.current = setTimeout(() => {
-      completionTimeoutRef.current = null;
-      advanceWorkoutFlow();
-    }, 180);
-  };
-
-  const viewModel = useMemo(
-    () =>
-      hasFocusableSet
-        ? buildFocusedWorkoutViewModel({
-            session: activeSession,
-            location,
-            selectedReps,
-            selectedRir,
-            previousPerformance:
-              previousPerformanceByExerciseId[
-                activeSession.exercises[location.exerciseIndex]?.exerciseId ??
-                  ''
-              ] ?? null,
-          })
-        : null,
-    [
-      activeSession,
-      hasFocusableSet,
-      location,
-      previousPerformanceByExerciseId,
-      selectedReps,
-      selectedRir,
-    ],
-  );
-
-  const renderFocusedSetScene = ({
-    route,
-  }: {
-    route: FocusedSetRoute;
-  }): React.JSX.Element => {
-    if (!shouldRenderFocusedScene(orderedRoutes, route.key, focusedIndex)) {
-      return <View className="flex-1" />;
-    }
-
-    return (
-      <FocusedWorkoutScene
-        activeSession={activeSession}
-        routeLocation={route.location}
-        currentLocation={location}
-        now={now}
-        headerHeight={headerHeight}
-        bottomInset={insets.bottom}
-        restLabel={restLabel}
-        startRestTimer={() => startRestTimer()}
-        clearRestTimer={clearRestTimer}
-        selectedReps={selectedReps}
-        selectedWeight={selectedWeight}
-        selectedRir={selectedRir}
-        completionRewardToken={completionRewardToken}
-        previousPerformanceByExerciseId={previousPerformanceByExerciseId}
-        exerciseTimerEndsAtByExerciseId={exerciseTimerEndsAtByExerciseId}
-        exerciseTimerDurationByExerciseId={exerciseTimerDurationByExerciseId}
-        onOpenOverview={() => setShowOverview(true)}
-        onOpenExerciseDetails={onOpenExerciseDetails}
-        onOpenExerciseTimerOptions={onOpenExerciseTimerOptions}
-        onMoveFocus={handleMoveFocus}
-        onPreviewWeight={handlePreviewWeight}
-        onCommitWeight={(nextWeight) =>
-          handleAdjustWeight(nextWeight, { feedback: false })
-        }
-        onPreviewReps={handlePreviewReps}
-        onCommitReps={(nextReps) =>
-          handleAdjustReps(nextReps, { feedback: false })
-        }
-        onAdjustRir={handleAdjustRir}
-      />
-    );
-  };
+  const hasFocusableSet = setIds.length > 0;
 
   if (!hasFocusableSet) {
     return (
@@ -454,7 +189,9 @@ export function ActiveWorkoutContent({
           >
             <Surface className="rounded-[28px] px-6 py-6">
               <Label>Ready</Label>
-              <Heading className="mt-3 text-4xl">{activeSession.title}</Heading>
+              <Heading className="mt-3 text-4xl">
+                {sessionMeta?.title ?? 'Workout'}
+              </Heading>
               <Muted className="mt-3">
                 Add an exercise to start the focused flow.
               </Muted>
@@ -472,114 +209,124 @@ export function ActiveWorkoutContent({
             </View>
           </View>
 
-          <WorkoutOverviewModal
-            visible={showOverview}
-            prefersReducedMotion={prefersReducedMotion}
-            bottomInset={insets.bottom}
-            activeSession={activeSession}
-            currentLocation={null}
-            completedExerciseCount={completedExerciseCount}
-            completedSetCount={completedSetCount}
-            setCount={setCount}
-            volume={volume}
-            onClose={() => setShowOverview(false)}
-            onAddExercise={handleOpenExercisePickerFromOverview}
-            onDeleteWorkout={handleDeleteWorkoutFromOverview}
-            onJumpToSet={handleMoveFocus}
-            addSet={addSet}
-            removeExercise={removeExercise}
-            deleteSet={deleteSet}
-          />
+          {showOverview && overview !== null ? (
+            <WorkoutOverviewModal
+              visible={showOverview}
+              prefersReducedMotion={prefersReducedMotion}
+              bottomInset={insets.bottom}
+              overview={overview}
+              currentSetId={null}
+              onClose={() => setShowOverview(false)}
+              onAddExercise={() => {
+                flushPendingWrites();
+                setShowOverview(false);
+                setShowExerciseSheet(true);
+              }}
+              onDeleteWorkout={() => {
+                flushPendingWrites();
+                setShowOverview(false);
+                onDeleteWorkout();
+              }}
+              onJumpToSet={setFocusedSetId}
+              addSet={(exerciseId) => {
+                flushPendingWrites();
+                addSet(exerciseId);
+              }}
+              removeExercise={(exerciseId) => {
+                flushPendingWrites();
+                removeExercise(exerciseId);
+              }}
+              deleteSet={(setId) => {
+                flushPendingWrites();
+                deleteSet(setId);
+              }}
+            />
+          ) : null}
 
           <ExercisePickerBottomSheet
             visible={showExerciseSheet}
-            exerciseIdsInSession={activeSession.exercises.map(
-              (exercise) => exercise.exerciseId,
-            )}
+            exerciseIdsInSession={exerciseIdsInSession}
             onClose={() => setShowExerciseSheet(false)}
-            onAddExercise={addExercise}
+            onAddExercise={(exerciseId, exerciseName) => {
+              flushPendingWrites();
+              addExercise(exerciseId, exerciseName);
+            }}
           />
         </View>
-      </Container>
-    );
-  }
-
-  if (viewModel === null) {
-    return (
-      <Container>
-        <View />
       </Container>
     );
   }
 
   return (
     <Container edges={['left', 'right']}>
-      <View className="flex-1">
-        <TabView
-          testID="focused-workout-tab-view"
-          navigationState={{
-            index: focusedIndex,
-            routes: orderedRoutes,
-          }}
-          onIndexChange={setFocusedIndex}
-          renderScene={renderFocusedSetScene}
-          renderTabBar={() => null}
-          initialLayout={{ width }}
-          lazy
-          lazyPreloadDistance={FOCUSED_SCENE_PRELOAD_DISTANCE}
-          animationEnabled={!prefersReducedMotion}
-          style={{ flex: 1, marginHorizontal: -16 }}
-        />
-
-        <View
-          className="absolute bottom-0 left-0 right-0 pb-2"
-          style={{ paddingBottom: Math.max(insets.bottom, 8) }}
-        >
-          <View className="flex-row items-center gap-2 rounded-[24px] border border-surface-border bg-surface-card p-2">
-            <CompleteSetButton
-              label={
-                viewModel.totalRemainingSets === 0 && viewModel.isCompleted
-                  ? 'Finish Workout'
-                  : 'Complete Set'
-              }
-              rewardToken={completionRewardToken}
-              onPress={
-                viewModel.totalRemainingSets === 0 && viewModel.isCompleted
-                  ? onComplete
-                  : handleCompleteSet
-              }
-            />
-          </View>
-        </View>
-      </View>
-
-      <WorkoutOverviewModal
-        visible={showOverview}
-        prefersReducedMotion={prefersReducedMotion}
+      <FocusedWorkoutSingleScene
+        focusedSetId={focusedSetId ?? setIds[0]}
+        headerHeight={headerHeight}
         bottomInset={insets.bottom}
-        activeSession={activeSession}
-        currentLocation={location}
-        completedExerciseCount={completedExerciseCount}
-        completedSetCount={completedSetCount}
-        setCount={setCount}
-        volume={volume}
-        onClose={() => setShowOverview(false)}
-        onAddExercise={handleOpenExercisePickerFromOverview}
-        onDeleteWorkout={handleDeleteWorkoutFromOverview}
-        onJumpToSet={handleMoveFocus}
-        addSet={addSet}
-        removeExercise={removeExercise}
-        deleteSet={deleteSet}
+        previousPerformance={
+          focusedExerciseId === null
+            ? null
+            : (previousPerformanceByExerciseId[focusedExerciseId] ?? null)
+        }
+        onOpenOverview={() => setShowOverview(true)}
+        onOpenExerciseDetails={onOpenExerciseDetails}
+        onOpenExerciseTimerOptions={onOpenExerciseTimerOptions}
+        onMoveFocus={setFocusedSetId}
+        onCompleteWorkout={onCompleteWorkout}
+        updateReps={updateReps}
+        updateWeight={updateWeight}
+        updateActualRir={updateActualRir}
+        toggleSetLogged={toggleSetLogged}
       />
 
-      <ExercisePickerBottomSheet
-        visible={showExerciseSheet}
-        exerciseIdsInSession={activeSession.exercises.map(
-          (exercise) => exercise.exerciseId,
-        )}
-        onClose={() => setShowExerciseSheet(false)}
-        onAddExercise={addExercise}
-      />
+      {showOverview && overview !== null ? (
+        <WorkoutOverviewModal
+          visible={showOverview}
+          prefersReducedMotion={prefersReducedMotion}
+          bottomInset={insets.bottom}
+          overview={overview}
+          currentSetId={focusedSetId}
+          onClose={() => setShowOverview(false)}
+          onAddExercise={() => {
+            flushPendingWrites();
+            setShowOverview(false);
+            setShowExerciseSheet(true);
+          }}
+          onDeleteWorkout={() => {
+            flushPendingWrites();
+            setShowOverview(false);
+            onDeleteWorkout();
+          }}
+          onJumpToSet={(nextSetId) => {
+            setFocusedSetId(nextSetId);
+            setShowOverview(false);
+          }}
+          addSet={(exerciseId) => {
+            flushPendingWrites();
+            addSet(exerciseId);
+          }}
+          removeExercise={(exerciseId) => {
+            flushPendingWrites();
+            removeExercise(exerciseId);
+          }}
+          deleteSet={(setId) => {
+            flushPendingWrites();
+            deleteSet(setId);
+          }}
+        />
+      ) : null}
+
+      {showExerciseSheet ? (
+        <ExercisePickerBottomSheet
+          visible={showExerciseSheet}
+          exerciseIdsInSession={exerciseIdsInSession}
+          onClose={() => setShowExerciseSheet(false)}
+          onAddExercise={(exerciseId, exerciseName) => {
+            flushPendingWrites();
+            addExercise(exerciseId, exerciseName);
+          }}
+        />
+      ) : null}
     </Container>
   );
 }

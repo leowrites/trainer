@@ -16,18 +16,15 @@ import { InteractivePressable } from '@shared/components';
 
 export interface CompleteSetButtonProps {
   label: string;
-  rewardToken: number;
   onPress: () => void;
 }
 
 export function CompleteSetButton({
   label,
-  rewardToken,
   onPress,
 }: CompleteSetButtonProps): React.JSX.Element {
   const prefersReducedMotion = useReducedMotionPreference();
   const pressScale = React.useRef(new Animated.Value(1)).current;
-  const flashOpacity = React.useRef(new Animated.Value(0)).current;
   const glowPulse = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -59,35 +56,6 @@ export function CompleteSetButton({
       animation.stop();
     };
   }, [glowPulse, prefersReducedMotion]);
-
-  useEffect(() => {
-    if (rewardToken === 0) {
-      return;
-    }
-
-    if (prefersReducedMotion) {
-      flashOpacity.setValue(0.24);
-      Animated.timing(flashOpacity, {
-        toValue: 0,
-        duration: 120,
-        useNativeDriver: true,
-      }).start();
-      return;
-    }
-
-    Animated.sequence([
-      Animated.timing(flashOpacity, {
-        toValue: 0.32,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-      Animated.timing(flashOpacity, {
-        toValue: 0,
-        duration: 140,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [flashOpacity, prefersReducedMotion, rewardToken]);
 
   const animatePressScale = (nextValue: number): void => {
     if (prefersReducedMotion) {

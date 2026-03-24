@@ -31,6 +31,7 @@ import {
 import { ExercisePickerSheet } from '../components/exercise-picker-sheet';
 import { RoutineExerciseEditor } from '../components/routine-exercise-editor';
 import { useExercises } from '../hooks/use-exercises';
+import { useRoutineTemplate } from '../hooks/use-routine-template';
 import { useRoutines } from '../hooks/use-routines';
 import type { RoutineExerciseDraft, RoutinesStackParamList } from '../types';
 import {
@@ -47,6 +48,7 @@ export function RoutineEditorScreen({
   RoutinesStackParamList,
   'RoutineEditor'
 >): React.JSX.Element {
+  const routineId = route.params?.routineId;
   const { colorMode } = useTheme();
   const DraggableFlatList = useMemo(
     () =>
@@ -59,12 +61,11 @@ export function RoutineEditorScreen({
     routines,
     hasLoaded,
     refresh: refreshRoutines,
-    getRoutineExercises,
-    getRoutineTemplateExercises,
     createRoutine,
     updateRoutine,
   } = useRoutines();
-  const routineId = route.params?.routineId;
+  const { template, refresh: refreshRoutineTemplate } =
+    useRoutineTemplate(routineId);
   const selectedRoutine =
     routines.find((routine) => routine.id === routineId) ?? null;
   const [name, setName] = useState('');
@@ -81,7 +82,8 @@ export function RoutineEditorScreen({
     useCallback(() => {
       refreshExercises();
       refreshRoutines();
-    }, [refreshExercises, refreshRoutines]),
+      refreshRoutineTemplate();
+    }, [refreshExercises, refreshRoutineTemplate, refreshRoutines]),
   );
 
   useEffect(() => {
@@ -101,26 +103,22 @@ export function RoutineEditorScreen({
     }
 
     setName(selectedRoutine.name);
-    setExerciseDrafts(
-      buildRoutineExerciseDrafts(
-        getRoutineTemplateExercises?.(selectedRoutine.id) ??
-          getRoutineExercises(selectedRoutine.id),
-      ),
-    );
+    setExerciseDrafts(buildRoutineExerciseDrafts(template));
     setIsExercisePickerOpen(false);
     setError(null);
-  }, [
-    getRoutineTemplateExercises,
-    getRoutineExercises,
-    hasLoaded,
-    navigation,
-    routineId,
-    selectedRoutine,
-  ]);
+  }, [hasLoaded, navigation, routineId, selectedRoutine, template]);
 
   const selectedExerciseIds = useMemo(
     () => exerciseDrafts.map((entry) => entry.exerciseId),
     [exerciseDrafts],
+  );
+  const exerciseNameById = useMemo(
+    () =>
+      exercises.reduce<Record<string, string>>((accumulator, exercise) => {
+        accumulator[exercise.id] = exercise.name;
+        return accumulator;
+      }, {}),
+    [exercises],
   );
 
   const handleCancel = useCallback((): void => {
@@ -366,8 +364,7 @@ export function RoutineEditorScreen({
             isActive,
           }: RenderItemParams<RoutineExerciseDraft>) => {
             const exerciseName =
-              exercises.find((exercise) => exercise.id === item.exerciseId)
-                ?.name ?? item.exerciseId;
+              exerciseNameById[item.exerciseId] ?? item.exerciseId;
 
             return (
               <RoutineExerciseEditor

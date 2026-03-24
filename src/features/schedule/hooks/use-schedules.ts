@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useDatabase } from '@core/database/provider';
-import type { Schedule, ScheduleEntry } from '@core/database/types';
+import type { Schedule } from '@core/database/types';
 import { generateId } from '@core/database/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -18,16 +18,13 @@ export interface NewScheduleInput {
  * CRUD hook for schedules using expo-sqlite.
  *
  * Returns the current list of all schedules and helpers for creating,
- * updating, activating, reading entries, and deleting them.
+ * updating, activating, and deleting them.
  * Re-fetches after mutations.
  */
 export function useSchedules(): {
   schedules: Schedule[];
   hasLoaded: boolean;
   refresh: () => void;
-  /** Increments on every mutation, useful for invalidating derived state. */
-  version: number;
-  getScheduleEntries: (scheduleId: string) => ScheduleEntry[];
   createSchedule: (input: NewScheduleInput) => Schedule;
   updateSchedule: (id: string, input: NewScheduleInput) => void;
   setActiveSchedule: (id: string) => void;
@@ -49,16 +46,6 @@ export function useSchedules(): {
     setSchedules(rows);
     setHasLoaded(true);
   }, [db, refreshKey]);
-
-  const getScheduleEntries = useCallback(
-    (scheduleId: string): ScheduleEntry[] => {
-      return db.getAllSync<ScheduleEntry>(
-        'SELECT id, schedule_id, routine_id, position FROM schedule_entries WHERE schedule_id = ? ORDER BY position ASC',
-        [scheduleId],
-      );
-    },
-    [db],
-  );
 
   const createSchedule = useCallback(
     (input: NewScheduleInput): Schedule => {
@@ -135,8 +122,6 @@ export function useSchedules(): {
     schedules,
     hasLoaded,
     refresh,
-    version: refreshKey,
-    getScheduleEntries,
     createSchedule,
     updateSchedule,
     setActiveSchedule,

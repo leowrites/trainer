@@ -1,11 +1,11 @@
 import { act, renderHook } from '@testing-library/react-native';
 
 import {
-  createMockDb,
   createDatabaseWrapper,
+  createMockDb,
 } from '@core/database/__tests__/test-utils';
-import { useActiveWorkout } from '../hooks/use-active-workout';
-import { useWorkoutStore } from '../store';
+import { selectActiveWorkoutSnapshot, useWorkoutStore } from '../store';
+import { useActiveWorkoutActions } from '../hooks/use-active-workout';
 import type { ActiveWorkoutSession } from '../types';
 
 jest.mock('@core/database/utils', () => ({
@@ -62,34 +62,24 @@ const activeSession: ActiveWorkoutSession = {
   ],
 };
 
-describe('useActiveWorkout', () => {
+describe('useActiveWorkoutActions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useWorkoutStore.setState({
-      isWorkoutActive: true,
-      activeSessionId: activeSession.id,
-      startTime: activeSession.startTime,
-      activeSession,
-    });
+    useWorkoutStore.getState().endWorkout();
+    useWorkoutStore.getState().startWorkout(activeSession);
   });
 
-  it('adds and removes ad hoc exercise blocks during an active workout', () => {
+  it('adds and removes ad hoc exercises without subscribing to the full session tree', () => {
     const db = createMockDb();
     const wrapper = createDatabaseWrapper(db);
-    useWorkoutStore.setState({
-      isWorkoutActive: true,
-      activeSessionId: 'session-2',
-      startTime: activeSession.startTime,
-      activeSession: {
-        ...activeSession,
-        id: 'session-2',
-        title: 'Push A',
-        isFreeWorkout: false,
-        exercises: [],
-      },
+    useWorkoutStore.getState().endWorkout();
+    useWorkoutStore.getState().startWorkout({
+      ...activeSession,
+      id: 'session-2',
+      exercises: [],
     });
 
-    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
+    const { result } = renderHook(() => useActiveWorkoutActions(), { wrapper });
 
     act(() => {
       result.current.addExercise('exercise-2', 'Goblet Squat');
@@ -99,24 +89,9 @@ describe('useActiveWorkout', () => {
       expect.stringContaining('INSERT INTO workout_session_exercises'),
       ['new-set-1', 'session-2', 'exercise-2', 0, 60],
     );
-    expect(db.runSync).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO workout_sets'),
-      [
-        'new-set-1',
-        'session-2',
-        'exercise-2',
-        0,
-        0,
-        0,
-        0,
-        null,
-        null,
-        null,
-        null,
-        'optional',
-      ],
-    );
-    expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([
+    expect(
+      selectActiveWorkoutSnapshot(useWorkoutStore.getState())?.exercises,
+    ).toEqual([
       {
         exerciseId: 'exercise-2',
         exerciseName: 'Goblet Squat',
@@ -155,124 +130,56 @@ describe('useActiveWorkout', () => {
       'DELETE FROM workout_sets WHERE session_id = ? AND exercise_id = ?',
       ['session-2', 'exercise-2'],
     );
-    expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([]);
-  });
-
-  it('does not insert duplicate ad hoc exercises when addExercise is triggered twice', () => {
-    const db = createMockDb();
-    const wrapper = createDatabaseWrapper(db);
-    useWorkoutStore.setState({
-      isWorkoutActive: true,
-      activeSessionId: 'session-2',
-      startTime: activeSession.startTime,
-      activeSession: {
-        ...activeSession,
-        id: 'session-2',
-        exercises: [],
-      },
-    });
-
-    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
-
-    act(() => {
-      result.current.addExercise('exercise-2', 'Goblet Squat');
-      result.current.addExercise('exercise-2', 'Goblet Squat');
-    });
-
     expect(
-      db.runSync.mock.calls.filter(([sql]) =>
-        (sql as string).includes('INSERT INTO workout_sets'),
-      ),
-    ).toHaveLength(1);
-    expect(useWorkoutStore.getState().activeSession?.exercises).toHaveLength(1);
+      selectActiveWorkoutSnapshot(useWorkoutStore.getState())?.exercises,
+    ).toEqual([]);
   });
 
-  it('uses the next persisted exercise position when re-adding after removals', () => {
-    const db = createMockDb();
-    db.getFirstSync.mockImplementation((query: string) => {
-      if (query.includes('MAX(position) AS max_position')) {
-        return { max_position: 2 };
-      }
+  it('persists set edits, additions, and deletions while keeping store selectors in sync', () => {
+    jest.useFakeTimers();
 
-      return null;
-    });
-    const wrapper = createDatabaseWrapper(db);
-    useWorkoutStore.setState({
-      isWorkoutActive: true,
-      activeSessionId: 'session-2',
-      startTime: activeSession.startTime,
-      activeSession: {
-        ...activeSession,
-        id: 'session-2',
-        exercises: [
-          activeSession.exercises[0],
-          {
-            exerciseId: 'exercise-3',
-            exerciseName: 'Shoulder Press',
-            restSeconds: 90,
-            targetSets: 3,
-            targetReps: 10,
-            sets: [],
-          },
-        ],
-      },
-    });
-
-    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
-
-    act(() => {
-      result.current.addExercise('exercise-4', 'Cable Row');
-    });
-
-    expect(db.withTransactionSync).toHaveBeenCalled();
-    expect(db.runSync).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO workout_session_exercises'),
-      ['new-set-1', 'session-2', 'exercise-4', 3, 60],
-    );
-  });
-
-  it('removes planned routine exercises during an active workout', () => {
     const db = createMockDb();
     const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
-
-    act(() => {
-      result.current.removeExercise('exercise-1');
+    const { result, unmount } = renderHook(() => useActiveWorkoutActions(), {
+      wrapper,
     });
-
-    expect(db.runSync).toHaveBeenCalledWith(
-      'DELETE FROM workout_sets WHERE session_id = ? AND exercise_id = ?',
-      ['session-1', 'exercise-1'],
-    );
-    expect(useWorkoutStore.getState().activeSession?.exercises).toEqual([]);
-  });
-
-  it('persists set edits/additions/deletions and keeps the store in sync', () => {
-    const db = createMockDb();
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
 
     act(() => {
       result.current.updateReps('set-1', 10);
-    });
-    act(() => {
       result.current.updateWeight('set-1', 145.5);
     });
+
+    expect(
+      selectActiveWorkoutSnapshot(useWorkoutStore.getState())?.exercises[0]
+        .sets[0],
+    ).toEqual(
+      expect.objectContaining({
+        id: 'set-1',
+        reps: 10,
+        weight: 145.5,
+        isCompleted: false,
+      }),
+    );
+    expect(
+      db.runSync.mock.calls.some(([sql]) =>
+        (sql as string).includes('UPDATE workout_sets'),
+      ),
+    ).toBe(false);
+
     act(() => {
-      result.current.addSet('exercise-1');
-    });
-    act(() => {
-      result.current.deleteSet('set-1');
+      result.current.flushPendingWrites();
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
-      'UPDATE workout_sets SET reps = ?, is_completed = 1 WHERE id = ?',
-      [10, 'set-1'],
+      expect.stringContaining('SET reps = ?, weight = ?'),
+      [10, 145.5, 'set-1'],
     );
-    expect(db.runSync).toHaveBeenCalledWith(
-      'UPDATE workout_sets SET weight = ?, is_completed = 1 WHERE id = ?',
-      [145.5, 'set-1'],
-    );
+
+    act(() => {
+      result.current.addSet('exercise-1');
+      result.current.deleteSet('set-1');
+    });
+
     expect(
       db.runSync.mock.calls.some(([sql]) =>
         (sql as string).includes('INSERT INTO workout_sets'),
@@ -282,28 +189,65 @@ describe('useActiveWorkout', () => {
       'DELETE FROM workout_sets WHERE id = ?',
       ['set-1'],
     );
-    expect(useWorkoutStore.getState().activeSession?.exercises[0].sets).toEqual(
-      [
-        {
-          id: 'new-set-1',
-          exerciseId: 'exercise-1',
-          position: 0,
-          reps: 10,
-          weight: 145.5,
-          targetWeight: 145.5,
-          isCompleted: false,
-          targetSets: 3,
-          targetReps: 8,
-          targetRepsMin: 8,
-          targetRepsMax: 8,
-          actualRir: null,
-          setRole: 'optional',
-        },
-      ],
-    );
+    expect(
+      selectActiveWorkoutSnapshot(useWorkoutStore.getState())?.exercises[0]
+        .sets,
+    ).toEqual([
+      expect.objectContaining({
+        id: 'new-set-1',
+        exerciseId: 'exercise-1',
+        reps: 10,
+        weight: 145.5,
+      }),
+    ]);
+
+    unmount();
+    jest.useRealTimers();
   });
 
-  it('completes the workout by persisting end_time before clearing ephemeral state', () => {
+  it('batches rapid RIR updates before flushing', () => {
+    jest.useFakeTimers();
+
+    const db = createMockDb();
+    const wrapper = createDatabaseWrapper(db);
+    const { result, unmount } = renderHook(() => useActiveWorkoutActions(), {
+      wrapper,
+    });
+
+    act(() => {
+      result.current.updateActualRir('set-1', 3);
+      result.current.updateActualRir('set-1', 2);
+      result.current.updateActualRir('set-1', 1);
+    });
+
+    expect(
+      selectActiveWorkoutSnapshot(useWorkoutStore.getState())?.exercises[0]
+        .sets[0].actualRir,
+    ).toBe(1);
+    expect(
+      db.runSync.mock.calls.some(([sql]) =>
+        (sql as string).includes('actual_rir'),
+      ),
+    ).toBe(false);
+
+    act(() => {
+      jest.advanceTimersByTime(180);
+    });
+
+    const rirUpdateCalls = db.runSync.mock.calls.filter(([sql]) =>
+      (sql as string).includes('actual_rir'),
+    );
+    expect(rirUpdateCalls).toHaveLength(1);
+    expect(rirUpdateCalls[0]).toEqual([
+      expect.stringContaining('SET actual_rir = ?'),
+      [1, 'set-1'],
+    ]);
+
+    unmount();
+    jest.useRealTimers();
+  });
+
+  it('flushes queued set changes before completing and deleting workouts', () => {
     jest.useFakeTimers();
     jest.setSystemTime(1_700_000_123_000);
 
@@ -336,35 +280,61 @@ describe('useActiveWorkout', () => {
       return [];
     });
     const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
+    const { result, unmount } = renderHook(() => useActiveWorkoutActions(), {
+      wrapper,
+    });
+
+    act(() => {
+      result.current.updateReps('set-1', 10);
+    });
 
     act(() => {
       expect(result.current.completeWorkout()).toBe('session-1');
     });
 
+    const completedSetFlushIndex = db.runSync.mock.calls.findIndex(
+      ([sql, params]) =>
+        (sql as string).includes('SET reps = ?') &&
+        Array.isArray(params) &&
+        params[0] === 10 &&
+        params[1] === 'set-1',
+    );
+    const completeSessionIndex = db.runSync.mock.calls.findIndex(([sql]) =>
+      (sql as string).includes('UPDATE workout_sessions SET end_time = ?'),
+    );
+
+    expect(completedSetFlushIndex).toBeGreaterThanOrEqual(0);
+    expect(completeSessionIndex).toBeGreaterThan(completedSetFlushIndex);
     expect(db.runSync).toHaveBeenCalledWith(
       'UPDATE workout_sessions SET end_time = ? WHERE id = ?',
       [1_700_000_123_000, 'session-1'],
     );
-    expect(db.runSync).toHaveBeenCalledWith(
-      'UPDATE schedules SET current_position = ? WHERE id = ?',
-      [0, 'schedule-1'],
-    );
     expect(useWorkoutStore.getState().isWorkoutActive).toBe(false);
-    expect(useWorkoutStore.getState().activeSession).toBeNull();
 
-    jest.useRealTimers();
-  });
+    useWorkoutStore.getState().startWorkout(activeSession);
+    db.runSync.mockClear();
 
-  it('deletes the active workout session before clearing ephemeral state', () => {
-    const db = createMockDb();
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useActiveWorkout(), { wrapper });
+    act(() => {
+      result.current.updateWeight('set-1', 140);
+    });
 
     act(() => {
       expect(result.current.deleteWorkout()).toBe(true);
     });
 
+    const deletedSetFlushIndex = db.runSync.mock.calls.findIndex(
+      ([sql, params]) =>
+        (sql as string).includes('SET weight = ?') &&
+        Array.isArray(params) &&
+        params[0] === 140 &&
+        params[1] === 'set-1',
+    );
+    const deleteSetsIndex = db.runSync.mock.calls.findIndex(([sql]) =>
+      (sql as string).includes('DELETE FROM workout_sets WHERE session_id = ?'),
+    );
+
+    expect(deletedSetFlushIndex).toBeGreaterThanOrEqual(0);
+    expect(deleteSetsIndex).toBeGreaterThan(deletedSetFlushIndex);
     expect(db.runSync).toHaveBeenCalledWith(
       'DELETE FROM workout_sets WHERE session_id = ?',
       ['session-1'],
@@ -374,6 +344,8 @@ describe('useActiveWorkout', () => {
       ['session-1'],
     );
     expect(useWorkoutStore.getState().isWorkoutActive).toBe(false);
-    expect(useWorkoutStore.getState().activeSession).toBeNull();
+
+    unmount();
+    jest.useRealTimers();
   });
 });

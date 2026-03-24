@@ -1,29 +1,35 @@
 /**
- * Focused workout session helpers.
+ * Focused workout view-model helpers.
  *
  * CALLING SPEC:
- * - `findInitialFocusedLocation(session)` returns the first incomplete set, or
- *   the final set when everything is complete.
- * - `resolveFocusedLocation(session, preferredLocation)` preserves an existing
- *   focus when that exercise/set still exists; otherwise it falls back to the
- *   initial focused location.
- * - `buildFocusedWorkoutViewModel(input)` derives the current focused-set
- *   display model and a single guidance message.
- * - Side effects: none.
+ * - build focused-set guidance from one exercise record, one set record, and summary counts
+ * - keep deterministic copy and target formatting outside React components
+ * - side effects: none
  */
 
 import type {
-  ActiveWorkoutSession,
+  ActiveWorkoutExercise,
+  ActiveWorkoutSet,
   FocusedWorkoutGuidance,
-  FocusedWorkoutLocation,
   FocusedWorkoutViewModel,
   PreviousExercisePerformance,
 } from '../types';
 
 interface BuildFocusedWorkoutViewModelInput {
-  session: ActiveWorkoutSession;
-  location: FocusedWorkoutLocation;
+  exercise: Pick<
+    ActiveWorkoutExercise,
+    | 'exerciseId'
+    | 'exerciseName'
+    | 'targetReps'
+    | 'targetRepsMin'
+    | 'targetRepsMax'
+  >;
+  set: ActiveWorkoutSet;
+  setNumber: number;
+  totalSetsForExercise: number;
+  totalRemainingSets: number;
   selectedReps: number;
+  selectedWeight: number;
   selectedRir: number | null;
   previousPerformance: PreviousExercisePerformance | null;
 }
@@ -130,123 +136,40 @@ function buildGuidance(
   };
 }
 
-export function findInitialFocusedLocation(
-  session: ActiveWorkoutSession,
-): FocusedWorkoutLocation {
-  for (
-    let exerciseIndex = 0;
-    exerciseIndex < session.exercises.length;
-    exerciseIndex += 1
-  ) {
-    const exercise = session.exercises[exerciseIndex];
-
-    if (!exercise) {
-      continue;
-    }
-
-    for (let setIndex = 0; setIndex < exercise.sets.length; setIndex += 1) {
-      if (!exercise.sets[setIndex]?.isCompleted) {
-        return { exerciseIndex, setIndex };
-      }
-    }
-  }
-
-  const lastExerciseIndex = Math.max(0, session.exercises.length - 1);
-  const lastSetIndex = Math.max(
-    0,
-    (session.exercises[lastExerciseIndex]?.sets.length ?? 1) - 1,
-  );
-
-  return {
-    exerciseIndex: lastExerciseIndex,
-    setIndex: lastSetIndex,
-  };
-}
-
-export function getNextFocusedLocation(
-  session: ActiveWorkoutSession,
-  location: FocusedWorkoutLocation,
-): FocusedWorkoutLocation {
-  const orderedLocations = session.exercises.flatMap(
-    (exercise, exerciseIndex) =>
-      exercise.sets.map((_, setIndex) => ({ exerciseIndex, setIndex })),
-  );
-  const currentIndex = orderedLocations.findIndex(
-    (item) =>
-      item.exerciseIndex === location.exerciseIndex &&
-      item.setIndex === location.setIndex,
-  );
-
-  if (currentIndex < 0 || currentIndex === orderedLocations.length - 1) {
-    return location;
-  }
-
-  return orderedLocations[currentIndex + 1] ?? location;
-}
-
-export function resolveFocusedLocation(
-  session: ActiveWorkoutSession,
-  preferredLocation: FocusedWorkoutLocation,
-): FocusedWorkoutLocation {
-  const exercise = session.exercises[preferredLocation.exerciseIndex];
-  const setItem = exercise?.sets[preferredLocation.setIndex];
-
-  if (exercise && setItem) {
-    return preferredLocation;
-  }
-
-  return findInitialFocusedLocation(session);
-}
-
 export function buildFocusedWorkoutViewModel({
-  session,
-  location,
+  exercise,
+  set,
+  setNumber,
+  totalSetsForExercise,
+  totalRemainingSets,
   selectedReps,
+  selectedWeight,
   selectedRir,
   previousPerformance,
 }: BuildFocusedWorkoutViewModelInput): FocusedWorkoutViewModel {
-  const exercise = session.exercises[location.exerciseIndex];
-  const setItem = exercise?.sets[location.setIndex];
-
-  if (!exercise || !setItem) {
-    throw new Error('Focused workout location is out of bounds.');
-  }
-
-  const totalRemainingSets = session.exercises.reduce(
-    (sum, activeExercise, exerciseIndex) =>
-      sum +
-      activeExercise.sets.filter((candidate, setIndex) => {
-        if (
-          exerciseIndex === location.exerciseIndex &&
-          setIndex === location.setIndex
-        ) {
-          return false;
-        }
-
-        return !candidate.isCompleted;
-      }).length,
-    0,
-  );
-
-  const repsMin = setItem.targetRepsMin ?? setItem.targetReps ?? null;
+  const repsMin =
+    set.targetRepsMin ?? set.targetReps ?? exercise.targetReps ?? null;
   const repsMax =
-    setItem.targetRepsMax ??
-    setItem.targetRepsMin ??
-    setItem.targetReps ??
+    set.targetRepsMax ??
+    set.targetRepsMin ??
+    set.targetReps ??
+    exercise.targetRepsMax ??
+    exercise.targetRepsMin ??
+    exercise.targetReps ??
     null;
-  const targetWeight = setItem.targetWeight ?? setItem.weight;
+  const targetWeight = set.targetWeight ?? selectedWeight;
 
   return {
-    location,
     exerciseId: exercise.exerciseId,
     exerciseName: exercise.exerciseName,
-    setId: setItem.id,
-    setNumber: location.setIndex + 1,
-    totalSetsForExercise: exercise.sets.length,
+    setId: set.id,
+    setNumber,
+    totalSetsForExercise,
     totalRemainingSets,
     selectedReps,
+    selectedWeight,
     selectedRir,
-    isCompleted: setItem.isCompleted,
+    isCompleted: set.isCompleted,
     guidance: buildGuidance(
       selectedReps,
       selectedRir,

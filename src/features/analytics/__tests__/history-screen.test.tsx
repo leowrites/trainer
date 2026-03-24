@@ -9,7 +9,11 @@ import { useHistoryAnalytics } from '../hooks/use-history-analytics';
 import type { HistorySession, TrendPoint } from '../types';
 
 jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: (callback: () => void) => callback(),
+  useFocusEffect: (callback: () => void | (() => void)) => {
+    const React = require('react');
+
+    React.useEffect(() => callback(), [callback]);
+  },
 }));
 
 jest.mock('@shared/hooks', () => ({

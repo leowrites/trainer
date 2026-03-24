@@ -36,7 +36,10 @@ import {
   WorkoutScreen,
   WorkoutSummaryScreen,
 } from '@features/workout-mode';
-import { useWorkoutStore } from '@features/workout-mode/store';
+import {
+  selectActiveWorkoutTitle,
+  useWorkoutStore,
+} from '@features/workout-mode/store';
 import { useTheme } from '@core/theme/theme-context';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -207,7 +210,7 @@ function TabNavigator({
     useShallow((state) => ({
       isWorkoutActive: state.isWorkoutActive,
       isWorkoutCollapsed: state.isWorkoutCollapsed,
-      activeWorkoutTitle: state.activeSession?.title ?? 'Workout',
+      activeWorkoutTitle: selectActiveWorkoutTitle(state) ?? 'Workout',
       expandWorkout: state.expandWorkout,
     })),
   );

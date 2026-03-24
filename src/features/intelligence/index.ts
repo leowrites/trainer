@@ -7,6 +7,7 @@
 import React from 'react';
 
 export { useIntelligenceOverview } from './hooks/use-intelligence-overview';
+export { useExerciseCapabilities } from './hooks/use-exercise-capabilities';
 export { useSessionIntelligence } from './hooks/use-session-intelligence';
 export { useTrainingGoals } from './hooks/use-training-goals';
 export { loadExerciseCapabilities } from './metrics/capabilities';

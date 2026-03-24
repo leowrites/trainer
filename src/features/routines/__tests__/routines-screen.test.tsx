@@ -2,12 +2,16 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import React, { type ForwardedRef, type PropsWithChildren } from 'react';
 
+import type { ScheduleEntry } from '@core/database/types';
 import { RoutineDetailScreen } from '../screens/routine-detail-screen';
 import { LibraryScreen } from '../screens/library-screen';
 import { RoutinesScreen } from '../screens/routines-screen';
-import { useSchedules } from '@features/schedule';
+import { useScheduleEntryIndex, useSchedules } from '@features/schedule';
+import { useExerciseInsight } from '../hooks/use-exercise-insight';
 import { useExercises } from '../hooks/use-exercises';
-import { useRoutineInsights } from '../hooks/use-routine-insights';
+import { useRoutineExerciseCounts } from '../hooks/use-routine-exercise-counts';
+import { useRoutineInsight } from '../hooks/use-routine-insight';
+import { useRoutineTemplate } from '../hooks/use-routine-template';
 import { useRoutines } from '../hooks/use-routines';
 
 void React;
@@ -38,8 +42,20 @@ jest.mock('../hooks/use-exercises', () => ({
   useExercises: jest.fn(),
 }));
 
-jest.mock('../hooks/use-routine-insights', () => ({
-  useRoutineInsights: jest.fn(),
+jest.mock('../hooks/use-exercise-insight', () => ({
+  useExerciseInsight: jest.fn(),
+}));
+
+jest.mock('../hooks/use-routine-exercise-counts', () => ({
+  useRoutineExerciseCounts: jest.fn(),
+}));
+
+jest.mock('../hooks/use-routine-insight', () => ({
+  useRoutineInsight: jest.fn(),
+}));
+
+jest.mock('../hooks/use-routine-template', () => ({
+  useRoutineTemplate: jest.fn(),
 }));
 
 jest.mock('../hooks/use-routines', () => ({
@@ -60,7 +76,7 @@ jest.mock('@features/schedule', () => ({
   getActiveScheduleSummary: (
     schedules: Array<{ id: string; is_active: number }>,
     routines: Array<unknown>,
-    getScheduleEntries: (scheduleId: string) => Array<{ routine_id: string }>,
+    entriesByScheduleId: Record<string, Array<{ routine_id: string }>>,
   ) => {
     const activeSchedule =
       schedules.find((schedule) => schedule.is_active === 1) ?? null;
@@ -71,12 +87,13 @@ jest.mock('@features/schedule', () => ({
 
     return {
       schedule: activeSchedule,
-      routineCount: getScheduleEntries(activeSchedule.id).length,
+      routineCount: (entriesByScheduleId[activeSchedule.id] ?? []).length,
       nextRoutineName: null,
       entries: routines,
     };
   },
   getScheduleStatusText: () => 'Ready to start from the first routine.',
+  useScheduleEntryIndex: jest.fn(),
 }));
 
 jest.mock('@lodev09/react-native-true-sheet', () => {
@@ -163,21 +180,119 @@ jest.mock('react-native-draggable-flatlist', () => {
 });
 
 const mockUseSchedules = jest.mocked(useSchedules);
+const mockUseScheduleEntryIndex = jest.mocked(useScheduleEntryIndex);
+const mockUseExerciseInsight = jest.mocked(useExerciseInsight);
 const mockUseExercises = jest.mocked(useExercises);
-const mockUseRoutineInsights = jest.mocked(useRoutineInsights);
+const mockUseRoutineExerciseCounts = jest.mocked(useRoutineExerciseCounts);
+const mockUseRoutineInsight = jest.mocked(useRoutineInsight);
+const mockUseRoutineTemplate = jest.mocked(useRoutineTemplate);
 const mockUseRoutines = jest.mocked(useRoutines);
 
-function buildSchedulesHookState(): ReturnType<typeof useSchedules> {
+function buildSchedulesHookState(
+  overrides: Partial<ReturnType<typeof useSchedules>> = {},
+): ReturnType<typeof useSchedules> {
   return {
     schedules: [],
     hasLoaded: true,
     refresh: jest.fn(),
-    version: 0,
-    getScheduleEntries: jest.fn().mockReturnValue([]),
     createSchedule: jest.fn(),
     updateSchedule: jest.fn(),
     setActiveSchedule: jest.fn(),
     deleteSchedule: jest.fn(),
+    ...overrides,
+  };
+}
+
+function buildScheduleEntryIndexHookState(
+  entriesByScheduleId: Record<string, ScheduleEntry[]> = {},
+): ReturnType<typeof useScheduleEntryIndex> {
+  return {
+    entriesByScheduleId,
+    refresh: jest.fn(),
+  };
+}
+
+function buildRoutineExerciseCountsHookState(
+  countsByRoutineId: Record<string, number> = {},
+): ReturnType<typeof useRoutineExerciseCounts> {
+  return {
+    countsByRoutineId,
+    refresh: jest.fn(),
+  };
+}
+
+function buildRoutineTemplateHookState(
+  template: ReturnType<typeof useRoutineTemplate>['template'] = [],
+): ReturnType<typeof useRoutineTemplate> {
+  return {
+    template,
+    isLoading: false,
+    refresh: jest.fn(),
+  };
+}
+
+function buildRoutineInsightHookState(
+  insight: ReturnType<typeof useRoutineInsight>['insight'] = {
+    completionCount: 4,
+    lastPerformedAt: new Date('2026-03-12T12:00:00.000Z').getTime(),
+    averageVolume: 5480,
+    averageDurationMinutes: 52,
+    recentSessions: [
+      {
+        sessionId: 'session-1',
+        routineName: 'Push A',
+        startTime: new Date('2026-03-12T12:00:00.000Z').getTime(),
+        endTime: new Date('2026-03-12T12:52:00.000Z').getTime(),
+        totalVolume: 5600,
+        completedSets: 12,
+        totalSets: 12,
+      },
+    ],
+  },
+): ReturnType<typeof useRoutineInsight> {
+  return {
+    insight,
+    isLoading: false,
+    refresh: jest.fn(),
+  };
+}
+
+function buildExerciseInsightHookState(
+  insight: ReturnType<typeof useExerciseInsight>['insight'] = {
+    totalSessions: 2,
+    lastPerformedAt: new Date('2026-03-10T12:00:00.000Z').getTime(),
+    bestCompletedWeight: 185,
+    history: [
+      {
+        sessionId: 'session-1',
+        sessionName: 'Push A',
+        startTime: new Date('2026-03-10T12:00:00.000Z').getTime(),
+        bestCompletedWeight: 185,
+        completedSets: 3,
+        totalSets: 3,
+        setSummary: '8 × 185 • 8 × 185 • 7 × 185',
+      },
+    ],
+  },
+): ReturnType<typeof useExerciseInsight> {
+  return {
+    insight,
+    isLoading: false,
+    refresh: jest.fn(),
+  };
+}
+
+function buildRoutinesHookState(
+  overrides: Partial<ReturnType<typeof useRoutines>> = {},
+): ReturnType<typeof useRoutines> {
+  return {
+    routines: [],
+    hasLoaded: true,
+    refresh: jest.fn(),
+    createRoutine: jest.fn(),
+    updateRoutine: jest.fn(),
+    deleteRoutine: jest.fn(),
+    ...overrides,
   };
 }
 
@@ -194,42 +309,15 @@ describe('RoutinesScreen', () => {
     jest.clearAllMocks();
 
     mockUseSchedules.mockReturnValue(buildSchedulesHookState());
-
-    mockUseRoutineInsights.mockReturnValue({
-      getExerciseInsight: jest.fn().mockReturnValue({
-        totalSessions: 2,
-        lastPerformedAt: new Date('2026-03-10T12:00:00.000Z').getTime(),
-        bestCompletedWeight: 185,
-        history: [
-          {
-            sessionId: 'session-1',
-            sessionName: 'Push A',
-            startTime: new Date('2026-03-10T12:00:00.000Z').getTime(),
-            bestCompletedWeight: 185,
-            completedSets: 3,
-            totalSets: 3,
-            setSummary: '8 × 185 • 8 × 185 • 7 × 185',
-          },
-        ],
-      }),
-      getRoutineInsight: jest.fn().mockReturnValue({
-        completionCount: 4,
-        lastPerformedAt: new Date('2026-03-12T12:00:00.000Z').getTime(),
-        averageVolume: 5480,
-        averageDurationMinutes: 52,
-        recentSessions: [
-          {
-            sessionId: 'session-1',
-            routineName: 'Push A',
-            startTime: new Date('2026-03-12T12:00:00.000Z').getTime(),
-            endTime: new Date('2026-03-12T12:52:00.000Z').getTime(),
-            totalVolume: 5600,
-            completedSets: 12,
-            totalSets: 12,
-          },
-        ],
-      }),
-    });
+    mockUseScheduleEntryIndex.mockReturnValue(
+      buildScheduleEntryIndexHookState(),
+    );
+    mockUseExerciseInsight.mockReturnValue(buildExerciseInsightHookState());
+    mockUseRoutineExerciseCounts.mockReturnValue(
+      buildRoutineExerciseCountsHookState(),
+    );
+    mockUseRoutineInsight.mockReturnValue(buildRoutineInsightHookState());
+    mockUseRoutineTemplate.mockReturnValue(buildRoutineTemplateHookState());
   });
 
   it('creates a new exercise from the top-level create flow', () => {
@@ -253,14 +341,8 @@ describe('RoutinesScreen', () => {
       deleteExercise: jest.fn(),
     });
     mockUseRoutines.mockReturnValue({
-      routines: [],
-      hasLoaded: true,
+      ...buildRoutinesHookState(),
       refresh: refreshRoutines,
-      createRoutine: jest.fn(),
-      updateRoutine: jest.fn(),
-      deleteRoutine: jest.fn(),
-      getRoutineExercises: jest.fn().mockReturnValue([]),
-      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
     });
 
     renderScreen();
@@ -314,16 +396,7 @@ describe('RoutinesScreen', () => {
       updateExercise: jest.fn(),
       deleteExercise: jest.fn(),
     });
-    mockUseRoutines.mockReturnValue({
-      routines: [],
-      hasLoaded: true,
-      refresh: jest.fn(),
-      createRoutine: jest.fn(),
-      updateRoutine: jest.fn(),
-      deleteRoutine: jest.fn(),
-      getRoutineExercises: jest.fn().mockReturnValue([]),
-      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
-    });
+    mockUseRoutines.mockReturnValue(buildRoutinesHookState());
 
     renderScreen();
 
@@ -357,16 +430,7 @@ describe('RoutinesScreen', () => {
       updateExercise: jest.fn(),
       deleteExercise: jest.fn(),
     });
-    mockUseRoutines.mockReturnValue({
-      routines: [],
-      hasLoaded: true,
-      refresh: jest.fn(),
-      createRoutine: jest.fn(),
-      updateRoutine: jest.fn(),
-      deleteRoutine: jest.fn(),
-      getRoutineExercises: jest.fn().mockReturnValue([]),
-      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
-    });
+    mockUseRoutines.mockReturnValue(buildRoutinesHookState());
 
     renderScreen();
 
@@ -406,35 +470,63 @@ describe('RoutinesScreen', () => {
       updateExercise: jest.fn(),
       deleteExercise: jest.fn(),
     });
-    mockUseRoutines.mockReturnValue({
-      routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
-      hasLoaded: true,
-      refresh: jest.fn(),
-      createRoutine: jest.fn(),
-      updateRoutine,
-      deleteRoutine: jest.fn(),
-      getRoutineExercises: jest.fn().mockReturnValue([
+    mockUseRoutines.mockReturnValue(
+      buildRoutinesHookState({
+        routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+        updateRoutine,
+      }),
+    );
+    mockUseRoutineExerciseCounts.mockReturnValue(
+      buildRoutineExerciseCountsHookState({
+        'routine-1': 2,
+      }),
+    );
+    mockUseRoutineTemplate.mockReturnValue(
+      buildRoutineTemplateHookState([
         {
           id: 'routine-exercise-1',
-          routine_id: 'routine-1',
-          exercise_id: 'exercise-1',
+          exerciseId: 'exercise-1',
           position: 0,
-          target_sets: 3,
-          target_reps: 10,
+          restSeconds: null,
+          progressionPolicy: 'double_progression',
+          targetRir: null,
+          targetSets: 3,
+          targetReps: 10,
+          targetRepsMin: 10,
+          targetRepsMax: 10,
+          sets: Array.from({ length: 3 }, (_, index) => ({
+            id: `set-${index + 1}`,
+            position: index,
+            targetReps: 10,
+            targetRepsMin: 10,
+            targetRepsMax: 10,
+            plannedWeight: null,
+            setRole: 'work',
+          })),
         },
         {
           id: 'routine-exercise-2',
-          routine_id: 'routine-1',
-          exercise_id: 'exercise-2',
+          exerciseId: 'exercise-2',
           position: 1,
-          target_sets: 4,
-          target_reps: 8,
+          restSeconds: null,
+          progressionPolicy: 'double_progression',
+          targetRir: null,
+          targetSets: 4,
+          targetReps: 8,
+          targetRepsMin: 8,
+          targetRepsMax: 8,
+          sets: Array.from({ length: 4 }, (_, index) => ({
+            id: `set-b-${index + 1}`,
+            position: index,
+            targetReps: 8,
+            targetRepsMin: 8,
+            targetRepsMax: 8,
+            plannedWeight: null,
+            setRole: 'work',
+          })),
         },
       ]),
-      getRoutineExerciseCounts: jest.fn().mockReturnValue({
-        'routine-1': 2,
-      }),
-    });
+    );
 
     renderScreen();
 
@@ -527,27 +619,41 @@ describe('RoutinesScreen', () => {
       updateExercise: jest.fn(),
       deleteExercise: jest.fn(),
     });
-    mockUseRoutines.mockReturnValue({
-      routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
-      hasLoaded: true,
-      refresh: jest.fn(),
-      createRoutine: jest.fn(),
-      updateRoutine: jest.fn(),
-      deleteRoutine: jest.fn(),
-      getRoutineExercises: jest.fn().mockReturnValue([
-        {
-          id: 'routine-exercise-1',
-          routine_id: 'routine-1',
-          exercise_id: 'exercise-1',
-          position: 0,
-          target_sets: 3,
-          target_reps: 10,
-        },
-      ]),
-      getRoutineExerciseCounts: jest.fn().mockReturnValue({
+    mockUseRoutines.mockReturnValue(
+      buildRoutinesHookState({
+        routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      }),
+    );
+    mockUseRoutineExerciseCounts.mockReturnValue(
+      buildRoutineExerciseCountsHookState({
         'routine-1': 1,
       }),
-    });
+    );
+    mockUseRoutineTemplate.mockReturnValue(
+      buildRoutineTemplateHookState([
+        {
+          id: 'routine-exercise-1',
+          exerciseId: 'exercise-1',
+          position: 0,
+          restSeconds: null,
+          progressionPolicy: 'double_progression',
+          targetRir: null,
+          targetSets: 3,
+          targetReps: 10,
+          targetRepsMin: 10,
+          targetRepsMax: 10,
+          sets: Array.from({ length: 3 }, (_, index) => ({
+            id: `set-${index + 1}`,
+            position: index,
+            targetReps: 10,
+            targetRepsMin: 10,
+            targetRepsMax: 10,
+            plannedWeight: null,
+            setRole: 'work',
+          })),
+        },
+      ]),
+    );
 
     renderScreen();
 
@@ -594,18 +700,17 @@ describe('RoutinesScreen', () => {
       updateExercise: jest.fn(),
       deleteExercise: jest.fn(),
     });
-    mockUseRoutines.mockReturnValue({
-      routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
-      hasLoaded: true,
-      refresh: jest.fn(),
-      createRoutine: jest.fn(),
-      updateRoutine,
-      deleteRoutine: jest.fn(),
-      getRoutineExercises: jest.fn().mockReturnValue([]),
-      getRoutineExerciseCounts: jest.fn().mockReturnValue({
+    mockUseRoutines.mockReturnValue(
+      buildRoutinesHookState({
+        routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+        updateRoutine,
+      }),
+    );
+    mockUseRoutineExerciseCounts.mockReturnValue(
+      buildRoutineExerciseCountsHookState({
         'routine-1': 0,
       }),
-    });
+    );
 
     renderScreen();
 
@@ -667,16 +772,12 @@ describe('RoutinesScreen', () => {
       deleteExercise: jest.fn(),
     });
 
-    mockUseRoutines.mockReturnValue({
-      routines: [],
-      hasLoaded: false,
-      refresh: jest.fn(),
-      createRoutine: jest.fn(),
-      updateRoutine: jest.fn(),
-      deleteRoutine: jest.fn(),
-      getRoutineExercises: jest.fn().mockReturnValue([]),
-      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
-    });
+    mockUseRoutines.mockReturnValue(
+      buildRoutinesHookState({
+        routines: [],
+        hasLoaded: false,
+      }),
+    );
 
     const view = render(
       <NavigationContainer>
@@ -693,18 +794,16 @@ describe('RoutinesScreen', () => {
 
     expect(goBack).not.toHaveBeenCalled();
 
-    mockUseRoutines.mockReturnValue({
-      routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
-      hasLoaded: true,
-      refresh: jest.fn(),
-      createRoutine: jest.fn(),
-      updateRoutine: jest.fn(),
-      deleteRoutine: jest.fn(),
-      getRoutineExercises: jest.fn().mockReturnValue([]),
-      getRoutineExerciseCounts: jest.fn().mockReturnValue({
+    mockUseRoutines.mockReturnValue(
+      buildRoutinesHookState({
+        routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      }),
+    );
+    mockUseRoutineExerciseCounts.mockReturnValue(
+      buildRoutineExerciseCountsHookState({
         'routine-1': 0,
       }),
-    });
+    );
 
     view.rerender(
       <NavigationContainer>
@@ -745,16 +844,7 @@ describe('RoutinesScreen', () => {
       updateExercise: jest.fn(),
       deleteExercise: jest.fn(),
     });
-    mockUseRoutines.mockReturnValue({
-      routines: [],
-      hasLoaded: true,
-      refresh: jest.fn(),
-      createRoutine: jest.fn(),
-      updateRoutine: jest.fn(),
-      deleteRoutine: jest.fn(),
-      getRoutineExercises: jest.fn().mockReturnValue([]),
-      getRoutineExerciseCounts: jest.fn().mockReturnValue({}),
-    });
+    mockUseRoutines.mockReturnValue(buildRoutinesHookState());
 
     render(
       <LibraryScreen
@@ -793,18 +883,16 @@ describe('RoutinesScreen', () => {
       updateExercise: jest.fn(),
       deleteExercise: jest.fn(),
     });
-    mockUseRoutines.mockReturnValue({
-      routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
-      hasLoaded: true,
-      refresh: jest.fn(),
-      createRoutine: jest.fn(),
-      updateRoutine: jest.fn(),
-      deleteRoutine: jest.fn(),
-      getRoutineExercises: jest.fn().mockReturnValue([]),
-      getRoutineExerciseCounts: jest.fn().mockReturnValue({
+    mockUseRoutines.mockReturnValue(
+      buildRoutinesHookState({
+        routines: [{ id: 'routine-1', name: 'Push A', notes: null }],
+      }),
+    );
+    mockUseRoutineExerciseCounts.mockReturnValue(
+      buildRoutineExerciseCountsHookState({
         'routine-1': 0,
       }),
-    });
+    );
 
     render(
       <LibraryScreen

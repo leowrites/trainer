@@ -6,7 +6,7 @@
  * changes. Forward-only migration steps belong in migrations.ts.
  */
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS exercises (
@@ -40,6 +40,8 @@ export const CREATE_TABLES_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_routine_exercises_routine
     ON routine_exercises (routine_id);
+  CREATE INDEX IF NOT EXISTS idx_routine_exercises_routine_position
+    ON routine_exercises (routine_id, position);
   CREATE INDEX IF NOT EXISTS idx_routine_exercises_exercise
     ON routine_exercises (exercise_id);
 
@@ -74,6 +76,8 @@ export const CREATE_TABLES_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_schedule_entries_schedule
     ON schedule_entries (schedule_id);
+  CREATE INDEX IF NOT EXISTS idx_schedule_entries_schedule_position
+    ON schedule_entries (schedule_id, position);
   CREATE INDEX IF NOT EXISTS idx_schedule_entries_routine
     ON schedule_entries (routine_id);
 
@@ -93,6 +97,10 @@ export const CREATE_TABLES_SQL = `
     ON workout_sessions (routine_id);
   CREATE INDEX IF NOT EXISTS idx_workout_sessions_schedule
     ON workout_sessions (schedule_id);
+  CREATE INDEX IF NOT EXISTS idx_workout_sessions_start_time_desc
+    ON workout_sessions (start_time DESC);
+  CREATE INDEX IF NOT EXISTS idx_workout_sessions_end_time_start_time
+    ON workout_sessions (end_time, start_time DESC);
 
   CREATE TABLE IF NOT EXISTS workout_session_exercises (
     id          TEXT PRIMARY KEY NOT NULL,
@@ -106,6 +114,8 @@ export const CREATE_TABLES_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_workout_session_exercises_session
     ON workout_session_exercises (session_id);
+  CREATE INDEX IF NOT EXISTS idx_workout_session_exercises_session_position
+    ON workout_session_exercises (session_id, position);
 
   CREATE TABLE IF NOT EXISTS workout_sets (
     id           TEXT PRIMARY KEY NOT NULL,
@@ -125,6 +135,8 @@ export const CREATE_TABLES_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_workout_sets_session
     ON workout_sets (session_id);
+  CREATE INDEX IF NOT EXISTS idx_workout_sets_session_position
+    ON workout_sets (session_id, position);
   CREATE INDEX IF NOT EXISTS idx_workout_sets_exercise
     ON workout_sets (exercise_id);
 

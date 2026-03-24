@@ -4,7 +4,7 @@ import {
   createMockDb,
   createDatabaseWrapper,
 } from '@core/database/__tests__/test-utils';
-import { useWorkoutStore } from '../store';
+import { selectActiveWorkoutSnapshot, useWorkoutStore } from '../store';
 import { useWorkoutStarter } from '../hooks/use-workout-starter';
 import type { ActiveWorkoutSession } from '../types';
 import { loadActiveWorkoutSession } from '../session-repository';
@@ -93,12 +93,7 @@ const baseHydratedSession: ActiveWorkoutSession = {
 describe('useWorkoutStarter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useWorkoutStore.setState({
-      isWorkoutActive: false,
-      activeSessionId: null,
-      startTime: null,
-      activeSession: null,
-    });
+    useWorkoutStore.getState().endWorkout();
     mockLoadActiveWorkoutSession.mockImplementation((_, sessionId) => ({
       ...baseHydratedSession,
       id: sessionId,
@@ -242,7 +237,7 @@ describe('useWorkoutStarter', () => {
       [0, 'schedule-1'],
     );
     expect(mockLoadActiveWorkoutSession).toHaveBeenCalledWith(db, sessionId);
-    expect(useWorkoutStore.getState().activeSession).toEqual({
+    expect(selectActiveWorkoutSnapshot(useWorkoutStore.getState())).toEqual({
       ...baseHydratedSession,
       id: sessionId,
     });

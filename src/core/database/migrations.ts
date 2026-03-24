@@ -337,6 +337,32 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 11,
+    description:
+      'Add ordered-query indexes for schedules, routines, workout sessions, and session snapshots.',
+    up: (db) => {
+      db.execSync(`
+        CREATE INDEX IF NOT EXISTS idx_schedule_entries_schedule_position
+          ON schedule_entries (schedule_id, position);
+
+        CREATE INDEX IF NOT EXISTS idx_routine_exercises_routine_position
+          ON routine_exercises (routine_id, position);
+
+        CREATE INDEX IF NOT EXISTS idx_workout_session_exercises_session_position
+          ON workout_session_exercises (session_id, position);
+
+        CREATE INDEX IF NOT EXISTS idx_workout_sets_session_position
+          ON workout_sets (session_id, position);
+
+        CREATE INDEX IF NOT EXISTS idx_workout_sessions_start_time_desc
+          ON workout_sessions (start_time DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_workout_sessions_end_time_start_time
+          ON workout_sessions (end_time, start_time DESC);
+      `);
+    },
+  },
 ];
 
 function setUserVersion(db: SQLiteDatabase, version: number): void {

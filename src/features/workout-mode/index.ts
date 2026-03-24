@@ -5,7 +5,22 @@
  * rest countdowns, and progressive-overload suggestions during an active session.
  */
 export { useWorkoutStore } from './store';
-export { useActiveWorkout } from './hooks/use-active-workout';
+export {
+  useActiveWorkoutActions,
+  useEnsureActiveWorkoutLoaded,
+} from './hooks/use-active-workout';
+export {
+  useActiveWorkoutExerciseIds,
+  useActiveWorkoutHeaderState,
+  useActiveWorkoutInitialFocusedSetId,
+  useActiveWorkoutOverview,
+  useActiveWorkoutSetIds,
+  useActiveWorkoutSessionMeta,
+  useActiveWorkoutSetSceneState,
+  useActiveWorkoutSummary,
+  useActiveWorkoutVisibility,
+  useExerciseTimerState,
+} from './hooks/use-active-workout-state';
 export { useWorkoutStarter } from './hooks/use-workout-starter';
 export {
   loadInProgressWorkoutSession,

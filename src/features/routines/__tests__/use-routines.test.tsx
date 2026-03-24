@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react-native';
 
-import type { Routine, RoutineExercise } from '@core/database/types';
+import type { Routine } from '@core/database/types';
 import {
   createMockDb,
   createDatabaseWrapper,
@@ -232,33 +232,6 @@ describe('useRoutines', () => {
     expect(db.withTransactionSync).toHaveBeenCalledTimes(1);
   });
 
-  it('getRoutineExercises queries exercises for the given routine', () => {
-    const db = createMockDb();
-    const mockExercises: RoutineExercise[] = [
-      {
-        id: 're1',
-        routine_id: 'r1',
-        exercise_id: 'e1',
-        position: 0,
-        target_sets: 3,
-        target_reps: 10,
-      },
-    ];
-    db.getAllSync.mockReturnValue(mockExercises);
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useRoutines(), { wrapper });
-
-    let exercises: RoutineExercise[] = [];
-    act(() => {
-      exercises = result.current.getRoutineExercises('r1');
-    });
-
-    expect(exercises).toEqual(mockExercises);
-    // The SQL should filter by routine_id
-    const lastCall = (db.getAllSync as jest.Mock).mock.calls.at(-1);
-    expect(lastCall![1]).toEqual(['r1']);
-  });
-
   it('refresh() triggers a re-fetch', () => {
     const db = createMockDb();
     db.getAllSync.mockReturnValue([]);
@@ -292,40 +265,6 @@ describe('useRoutines', () => {
     });
 
     expect(result.current.routines[0].name).toBe('Push B');
-  });
-
-  it('updateRoutine: getRoutineExercises returns the new exercises after save', () => {
-    const db = createMockDb();
-    db.getAllSync.mockReturnValue([]);
-    const wrapper = createDatabaseWrapper(db);
-    const { result } = renderHook(() => useRoutines(), { wrapper });
-
-    const newExercises: RoutineExercise[] = [
-      {
-        id: 're2',
-        routine_id: 'r1',
-        exercise_id: 'e2',
-        position: 0,
-        target_sets: 4,
-        target_reps: 8,
-      },
-    ];
-    db.getAllSync.mockReturnValue(newExercises);
-
-    act(() => {
-      result.current.updateRoutine('r1', {
-        name: 'Push B',
-        exercises: [{ exerciseId: 'e2', targetSets: 4, targetReps: 8 }],
-      });
-    });
-
-    let exercises: RoutineExercise[] = [];
-    act(() => {
-      exercises = result.current.getRoutineExercises('r1');
-    });
-
-    expect(exercises).toEqual(newExercises);
-    expect(exercises[0].exercise_id).toBe('e2');
   });
 
   it('deleteRoutine: routines list is empty after the only routine is deleted', () => {

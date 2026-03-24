@@ -1,23 +1,37 @@
-import { useCallback, useEffect } from 'react';
+/**
+ * Active workout write hooks.
+ *
+ * CALLING SPEC:
+ * - `useEnsureActiveWorkoutLoaded()` restores the in-memory workout snapshot when needed
+ * - `useActiveWorkoutActions()` returns optimistic active-workout mutations plus a queued flush API
+ * - button interactions update Zustand immediately and defer SQLite writes off the press path
+ * - side effects: sqlite reads and writes, app-state flush handling
+ */
+
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { AppState } from 'react-native';
 
 import { useDatabase } from '@core/database/provider';
-import type { ActiveWorkoutSession } from '../types';
+import type { ActiveWorkoutSet } from '../types';
 import {
   completeWorkoutSessionRecord,
   createWorkoutSessionExerciseRecord,
   createWorkoutSetRecord,
-  deleteWorkoutSessionRecord,
   deleteWorkoutExerciseRecords,
+  deleteWorkoutSessionRecord,
   deleteWorkoutSetRecord,
   getNextWorkoutSessionExercisePosition,
   loadActiveWorkoutSession,
   updateWorkoutSessionExerciseRest,
-  updateWorkoutSetActualRir,
-  updateWorkoutSetCompletion,
-  updateWorkoutSetReps,
-  updateWorkoutSetWeight,
+  updateWorkoutSetFields,
 } from '../session-repository';
 import { DEFAULT_EXERCISE_TIMER_SECONDS, useWorkoutStore } from '../store';
+
+const PERSISTENCE_FLUSH_DELAY_MS = 180;
+
+type QueuedSetChanges = Partial<
+  Pick<ActiveWorkoutSet, 'reps' | 'weight' | 'isCompleted' | 'actualRir'>
+>;
 
 function normalizeInteger(value: number): number {
   if (!Number.isFinite(value)) {
@@ -43,62 +57,143 @@ function normalizeOptionalRir(value: number | null): number | null {
   return Math.max(0, Math.round(value * 10) / 10);
 }
 
-export function useActiveWorkout(): {
-  activeSession: ActiveWorkoutSession | null;
-  addExercise: (exerciseId: string, exerciseName: string) => void;
-  removeExercise: (exerciseId: string) => void;
-  addSet: (exerciseId: string) => void;
-  deleteSet: (setId: string) => void;
-  updateExerciseRestSeconds?: (exerciseId: string, restSeconds: number) => void;
-  updateReps: (setId: string, reps: number) => void;
-  updateWeight: (setId: string, weight: number) => void;
-  updateActualRir?: (setId: string, actualRir: number | null) => void;
-  toggleSetLogged: (setId: string, isCompleted: boolean) => void;
-  completeWorkout: () => string | null;
-  deleteWorkout: () => boolean;
-} {
+function mergeQueuedSetChanges(
+  currentChanges: QueuedSetChanges | undefined,
+  nextChanges: QueuedSetChanges,
+): QueuedSetChanges {
+  return {
+    ...(currentChanges ?? {}),
+    ...nextChanges,
+  };
+}
+
+export function useEnsureActiveWorkoutLoaded(): void {
   const db = useDatabase();
-  const {
-    activeSession,
-    activeSessionId,
-    startWorkout,
-    addExercise: addExerciseToStore,
-    removeExercise: removeExerciseFromStore,
-    addSet: addSetToStore,
-    deleteSet: deleteSetFromStore,
-    updateSet,
-    endWorkout,
-  } = useWorkoutStore();
+  const activeSessionId = useWorkoutStore((state) => state.activeSessionId);
+  const activeSessionMeta = useWorkoutStore((state) => state.activeSessionMeta);
+  const startWorkout = useWorkoutStore((state) => state.startWorkout);
 
   useEffect(() => {
-    if (!activeSessionId || activeSession) {
+    if (!activeSessionId || activeSessionMeta !== null) {
       return;
     }
 
     const session = loadActiveWorkoutSession(db, activeSessionId);
+
     if (session) {
       startWorkout(session);
     }
-  }, [activeSession, activeSessionId, db, startWorkout]);
+  }, [activeSessionId, activeSessionMeta, db, startWorkout]);
+}
+
+export function useActiveWorkoutActions(): {
+  addExercise: (exerciseId: string, exerciseName: string) => void;
+  removeExercise: (exerciseId: string) => void;
+  addSet: (exerciseId: string) => void;
+  deleteSet: (setId: string) => void;
+  updateExerciseRestSeconds: (exerciseId: string, restSeconds: number) => void;
+  updateReps: (setId: string, reps: number) => void;
+  updateWeight: (setId: string, weight: number) => void;
+  updateActualRir: (setId: string, actualRir: number | null) => void;
+  toggleSetLogged: (setId: string, isCompleted: boolean) => void;
+  flushPendingWrites: () => void;
+  completeWorkout: () => string | null;
+  deleteWorkout: () => boolean;
+} {
+  const db = useDatabase();
+  const addExerciseToStore = useWorkoutStore((state) => state.addExercise);
+  const removeExerciseFromStore = useWorkoutStore(
+    (state) => state.removeExercise,
+  );
+  const addSetToStore = useWorkoutStore((state) => state.addSet);
+  const deleteSetFromStore = useWorkoutStore((state) => state.deleteSet);
+  const updateSet = useWorkoutStore((state) => state.updateSet);
+  const endWorkout = useWorkoutStore((state) => state.endWorkout);
+  const pendingSetChangesRef = useRef<Record<string, QueuedSetChanges>>({});
+  const flushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushPendingWrites = useCallback((): void => {
+    if (flushTimeoutRef.current !== null) {
+      clearTimeout(flushTimeoutRef.current);
+      flushTimeoutRef.current = null;
+    }
+
+    const pendingSetChanges = pendingSetChangesRef.current;
+    const pendingEntries = Object.entries(pendingSetChanges);
+
+    if (pendingEntries.length === 0) {
+      return;
+    }
+
+    pendingSetChangesRef.current = {};
+
+    db.withTransactionSync(() => {
+      pendingEntries.forEach(([setId, changes]) => {
+        updateWorkoutSetFields(db, setId, changes);
+      });
+    });
+  }, [db]);
+
+  const schedulePendingFlush = useCallback((): void => {
+    if (flushTimeoutRef.current !== null) {
+      clearTimeout(flushTimeoutRef.current);
+    }
+
+    flushTimeoutRef.current = setTimeout(() => {
+      flushTimeoutRef.current = null;
+      flushPendingWrites();
+    }, PERSISTENCE_FLUSH_DELAY_MS);
+  }, [flushPendingWrites]);
+
+  const queueSetChanges = useCallback(
+    (setId: string, changes: QueuedSetChanges): void => {
+      pendingSetChangesRef.current = {
+        ...pendingSetChangesRef.current,
+        [setId]: mergeQueuedSetChanges(
+          pendingSetChangesRef.current[setId],
+          changes,
+        ),
+      };
+      schedulePendingFlush();
+    },
+    [schedulePendingFlush],
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState !== 'active') {
+        flushPendingWrites();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+
+      if (flushTimeoutRef.current !== null) {
+        clearTimeout(flushTimeoutRef.current);
+        flushTimeoutRef.current = null;
+      }
+
+      flushPendingWrites();
+    };
+  }, [flushPendingWrites]);
 
   const addExercise = useCallback(
     (exerciseId: string, exerciseName: string): void => {
+      flushPendingWrites();
+
       const currentState = useWorkoutStore.getState();
-      const currentActiveSession = currentState.activeSession;
       const currentActiveSessionId = currentState.activeSessionId;
 
       if (
         !currentActiveSessionId ||
-        !currentActiveSession ||
-        currentActiveSession.exercises.some(
-          (item) => item.exerciseId === exerciseId,
-        )
+        currentState.activeExercisesById[exerciseId]
       ) {
         return;
       }
 
       const nextExercisePosition = Math.max(
-        currentActiveSession.exercises.length,
+        currentState.activeExerciseOrder.length,
         getNextWorkoutSessionExercisePosition(db, currentActiveSessionId),
       );
       let newSet: ReturnType<typeof createWorkoutSetRecord> | null = null;
@@ -143,68 +238,96 @@ export function useActiveWorkout(): {
         sets: [newSet],
       });
     },
-    [addExerciseToStore, db],
+    [addExerciseToStore, db, flushPendingWrites],
   );
 
   const removeExercise = useCallback(
     (exerciseId: string): void => {
+      flushPendingWrites();
+
       const currentState = useWorkoutStore.getState();
-      const currentActiveSession = currentState.activeSession;
       const currentActiveSessionId = currentState.activeSessionId;
 
-      if (!currentActiveSessionId || !currentActiveSession) {
+      if (!currentActiveSessionId) {
         return;
       }
 
       deleteWorkoutExerciseRecords(db, currentActiveSessionId, exerciseId);
       removeExerciseFromStore(exerciseId);
     },
-    [db, removeExerciseFromStore],
+    [db, flushPendingWrites, removeExerciseFromStore],
   );
 
   const updateReps = useCallback(
     (setId: string, reps: number): void => {
       const normalizedReps = normalizeInteger(reps);
-      updateWorkoutSetReps(db, setId, normalizedReps);
-      updateSet(setId, { reps: normalizedReps, isCompleted: true });
+      const currentSet = useWorkoutStore.getState().activeSetsById[setId];
+
+      if (!currentSet) {
+        return;
+      }
+
+      if (currentSet.reps === normalizedReps) {
+        return;
+      }
+
+      updateSet(setId, { reps: normalizedReps });
+      queueSetChanges(setId, { reps: normalizedReps });
     },
-    [db, updateSet],
+    [queueSetChanges, updateSet],
   );
 
   const updateWeight = useCallback(
     (setId: string, weight: number): void => {
       const normalizedWeight = normalizeWeight(weight);
-      updateWorkoutSetWeight(db, setId, normalizedWeight);
-      updateSet(setId, { weight: normalizedWeight, isCompleted: true });
+      const currentSet = useWorkoutStore.getState().activeSetsById[setId];
+
+      if (!currentSet) {
+        return;
+      }
+
+      if (currentSet.weight === normalizedWeight) {
+        return;
+      }
+
+      updateSet(setId, { weight: normalizedWeight });
+      queueSetChanges(setId, { weight: normalizedWeight });
     },
-    [db, updateSet],
+    [queueSetChanges, updateSet],
   );
 
   const addSet = useCallback(
     (exerciseId: string): void => {
-      if (!activeSessionId) {
+      flushPendingWrites();
+
+      const currentState = useWorkoutStore.getState();
+      const currentActiveSessionId = currentState.activeSessionId;
+      const currentExercise = currentState.activeExercisesById[exerciseId];
+
+      if (!currentActiveSessionId || !currentExercise) {
         return;
       }
 
-      const exercise = activeSession?.exercises.find(
-        (item) => item.exerciseId === exerciseId,
-      );
-      const previousSet = exercise?.sets.at(-1);
+      const previousSetId = currentExercise.setIds.at(-1);
+      const previousSet =
+        previousSetId === undefined
+          ? null
+          : (currentState.activeSetsById[previousSetId] ?? null);
       const newSet = createWorkoutSetRecord(
         db,
-        activeSessionId,
+        currentActiveSessionId,
         exerciseId,
         previousSet?.reps ?? 0,
         previousSet?.weight ?? 0,
-        exercise?.targetSets ?? previousSet?.targetSets ?? null,
-        exercise?.targetRepsMin ??
-          exercise?.targetReps ??
+        currentExercise.targetSets ?? previousSet?.targetSets ?? null,
+        currentExercise.targetRepsMin ??
+          currentExercise.targetReps ??
           previousSet?.targetRepsMin ??
           previousSet?.targetReps ??
           null,
-        exercise?.targetRepsMax ??
-          exercise?.targetRepsMin ??
-          exercise?.targetReps ??
+        currentExercise.targetRepsMax ??
+          currentExercise.targetRepsMin ??
+          currentExercise.targetReps ??
           previousSet?.targetRepsMax ??
           previousSet?.targetRepsMin ??
           previousSet?.targetReps ??
@@ -214,62 +337,84 @@ export function useActiveWorkout(): {
 
       addSetToStore(exerciseId, newSet);
     },
-    [activeSession, activeSessionId, addSetToStore, db],
+    [addSetToStore, db, flushPendingWrites],
   );
 
   const deleteSet = useCallback(
     (setId: string): void => {
+      flushPendingWrites();
       deleteWorkoutSetRecord(db, setId);
       deleteSetFromStore(setId);
     },
-    [db, deleteSetFromStore],
+    [db, deleteSetFromStore, flushPendingWrites],
   );
 
   const updateExerciseRestSeconds = useCallback(
     (exerciseId: string, restSeconds: number): void => {
-      if (!activeSessionId) {
+      const currentActiveSessionId = useWorkoutStore.getState().activeSessionId;
+
+      if (!currentActiveSessionId) {
         return;
       }
 
       updateWorkoutSessionExerciseRest(
         db,
-        activeSessionId,
+        currentActiveSessionId,
         exerciseId,
         restSeconds,
       );
     },
-    [activeSessionId, db],
+    [db],
   );
 
   const toggleSetLogged = useCallback(
     (setId: string, isCompleted: boolean): void => {
-      updateWorkoutSetCompletion(db, setId, isCompleted);
+      const currentSet = useWorkoutStore.getState().activeSetsById[setId];
+
+      if (!currentSet || currentSet.isCompleted === isCompleted) {
+        return;
+      }
+
       updateSet(setId, { isCompleted });
+      queueSetChanges(setId, { isCompleted });
     },
-    [db, updateSet],
+    [queueSetChanges, updateSet],
   );
 
   const updateActualRir = useCallback(
     (setId: string, actualRir: number | null): void => {
       const normalizedActualRir = normalizeOptionalRir(actualRir);
-      updateWorkoutSetActualRir(db, setId, normalizedActualRir);
+      const currentSet = useWorkoutStore.getState().activeSetsById[setId];
+
+      if (!currentSet || currentSet.actualRir === normalizedActualRir) {
+        return;
+      }
+
       updateSet(setId, { actualRir: normalizedActualRir });
+      queueSetChanges(setId, { actualRir: normalizedActualRir });
     },
-    [db, updateSet],
+    [queueSetChanges, updateSet],
   );
 
   const completeWorkout = useCallback((): string | null => {
+    flushPendingWrites();
+
+    const activeSessionId = useWorkoutStore.getState().activeSessionId;
+
     if (!activeSessionId) {
       return null;
     }
 
     completeWorkoutSessionRecord(db, activeSessionId, Date.now());
-    const completedSessionId = activeSessionId;
     endWorkout();
-    return completedSessionId;
-  }, [activeSessionId, db, endWorkout]);
+    return activeSessionId;
+  }, [db, endWorkout, flushPendingWrites]);
 
   const deleteWorkout = useCallback((): boolean => {
+    flushPendingWrites();
+
+    const activeSessionId = useWorkoutStore.getState().activeSessionId;
+
     if (!activeSessionId) {
       return false;
     }
@@ -277,20 +422,38 @@ export function useActiveWorkout(): {
     deleteWorkoutSessionRecord(db, activeSessionId);
     endWorkout();
     return true;
-  }, [activeSessionId, db, endWorkout]);
+  }, [db, endWorkout, flushPendingWrites]);
 
-  return {
-    activeSession,
-    addExercise,
-    removeExercise,
-    addSet,
-    deleteSet,
-    updateExerciseRestSeconds,
-    updateReps,
-    updateWeight,
-    updateActualRir,
-    toggleSetLogged,
-    completeWorkout,
-    deleteWorkout,
-  };
+  return useMemo(
+    () => ({
+      addExercise,
+      removeExercise,
+      addSet,
+      deleteSet,
+      updateExerciseRestSeconds,
+      updateReps,
+      updateWeight,
+      updateActualRir,
+      toggleSetLogged,
+      flushPendingWrites,
+      completeWorkout,
+      deleteWorkout,
+    }),
+    [
+      addExercise,
+      removeExercise,
+      addSet,
+      deleteSet,
+      updateExerciseRestSeconds,
+      updateReps,
+      updateWeight,
+      updateActualRir,
+      toggleSetLogged,
+      flushPendingWrites,
+      completeWorkout,
+      deleteWorkout,
+    ],
+  );
 }
+
+export const useActiveWorkout = useActiveWorkoutActions;

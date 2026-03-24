@@ -19,6 +19,7 @@ import {
 } from '@features/analytics';
 import { useUserProfile } from '@features/health-tracking';
 import {
+  useExerciseCapabilities,
   useSessionIntelligence,
   useTrainingGoals,
 } from '@features/intelligence';
@@ -118,6 +119,7 @@ export function useWorkoutSummary(sessionId: string): {
   const { sessions: detailedSessions, isLoading: isDetailedHistoryLoading } =
     useHistorySessions();
   const { profile } = useUserProfile();
+  const { capabilitiesByExerciseId } = useExerciseCapabilities();
   const [meta, setMeta] = useState<WorkoutSummaryMeta>(
     EMPTY_WORKOUT_SUMMARY_META,
   );
@@ -146,12 +148,17 @@ export function useWorkoutSummary(sessionId: string): {
   const unit: WeightUnit = profile?.preferredWeightUnit ?? 'kg';
   const intelligenceSessions =
     detailedSessions.length > 0 ? detailedSessions : allSessions;
-  const { goalViewModels } = useTrainingGoals(intelligenceSessions);
+  const { goalViewModels } = useTrainingGoals(intelligenceSessions, {
+    capabilitiesByExerciseId,
+  });
   const intelligence = useSessionIntelligence(
     session,
     intelligenceSessions,
     goalViewModels,
     unit,
+    {
+      capabilitiesByExerciseId,
+    },
   );
   const recordBadges = useMemo(
     () =>

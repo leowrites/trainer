@@ -12,23 +12,19 @@ import { Modal, ScrollView, View } from 'react-native';
 
 import { Divider } from '@/shared/ui/divider';
 import { Body, Button, Heading, Muted } from '@shared/components';
-import type { ActiveWorkoutSession, FocusedWorkoutLocation } from '../types';
+import type { ActiveWorkoutOverview } from '../types';
 import { WorkoutOverviewSetRow } from './workout-overview-set-row';
 
 interface WorkoutOverviewModalProps {
   visible: boolean;
   prefersReducedMotion: boolean;
   bottomInset: number;
-  activeSession: ActiveWorkoutSession;
-  currentLocation: FocusedWorkoutLocation | null;
-  completedExerciseCount: number;
-  completedSetCount: number;
-  setCount: number;
-  volume: number;
+  overview: ActiveWorkoutOverview;
+  currentSetId: string | null;
   onClose: () => void;
   onAddExercise: () => void;
   onDeleteWorkout: () => void;
-  onJumpToSet: (location: FocusedWorkoutLocation) => void;
+  onJumpToSet: (setId: string | null) => void;
   addSet: (exerciseId: string) => void;
   removeExercise: (exerciseId: string) => void;
   deleteSet: (setId: string) => void;
@@ -38,12 +34,8 @@ export function WorkoutOverviewModal({
   visible,
   prefersReducedMotion,
   bottomInset,
-  activeSession,
-  currentLocation,
-  completedExerciseCount,
-  completedSetCount,
-  setCount,
-  volume,
+  overview,
+  currentSetId,
   onClose,
   onAddExercise,
   onDeleteWorkout,
@@ -52,9 +44,7 @@ export function WorkoutOverviewModal({
   removeExercise,
   deleteSet,
 }: WorkoutOverviewModalProps): React.JSX.Element {
-  const hasFocusableSet = activeSession.exercises.some(
-    (exercise) => exercise.sets.length > 0,
-  );
+  const hasFocusableSet = overview.summary.setCount > 0;
 
   if (!hasFocusableSet) {
     return (
@@ -119,8 +109,10 @@ export function WorkoutOverviewModal({
 
           <View className="gap-3 pb-4">
             <Muted className="text-sm">
-              {completedExerciseCount}/{activeSession.exercises.length}{' '}
-              exercises · {completedSetCount}/{setCount} sets · {volume} volume
+              {overview.summary.completedExerciseCount}/
+              {overview.summary.exerciseCount} exercises ·{' '}
+              {overview.summary.completedSetCount}/{overview.summary.setCount}{' '}
+              sets · {overview.summary.volume} volume
             </Muted>
             <Button
               size="sm"
@@ -134,7 +126,7 @@ export function WorkoutOverviewModal({
 
           <ScrollView showsVerticalScrollIndicator={false}>
             <View className="gap-4 pb-4">
-              {activeSession.exercises.map((exercise, exerciseIndex) => (
+              {overview.exercises.map((exercise) => (
                 <View
                   key={exercise.exerciseId}
                   className="rounded-[20px] px-4 py-4"
@@ -148,26 +140,17 @@ export function WorkoutOverviewModal({
                   </View>
 
                   <View className="mt-4 gap-2">
-                    {exercise.sets.map((setItem, setIndex) => {
-                      const isCurrent =
-                        currentLocation?.exerciseIndex === exerciseIndex &&
-                        currentLocation.setIndex === setIndex;
-
+                    {exercise.sets.map((setItem) => {
                       return (
                         <WorkoutOverviewSetRow
-                          key={setItem.id}
-                          setLabel={`Set ${setIndex + 1}`}
+                          key={setItem.setId}
+                          setLabel={setItem.setLabel}
                           reps={setItem.reps}
                           weight={setItem.weight}
                           isCompleted={setItem.isCompleted}
-                          isCurrent={isCurrent}
-                          onJump={() =>
-                            onJumpToSet({
-                              exerciseIndex,
-                              setIndex,
-                            })
-                          }
-                          onDelete={() => deleteSet(setItem.id)}
+                          isCurrent={currentSetId === setItem.setId}
+                          onJump={() => onJumpToSet(setItem.setId)}
+                          onDelete={() => deleteSet(setItem.setId)}
                         />
                       );
                     })}

@@ -10,6 +10,7 @@ import {
 } from '@features/analytics';
 import { useUserProfile } from '@features/health-tracking';
 import {
+  useExerciseCapabilities,
   useSessionIntelligence,
   useTrainingGoals,
 } from '@features/intelligence';
@@ -36,6 +37,7 @@ jest.mock('@features/health-tracking', () => ({
 }));
 
 jest.mock('@features/intelligence', () => ({
+  useExerciseCapabilities: jest.fn(),
   useSessionIntelligence: jest.fn(),
   useTrainingGoals: jest.fn(),
 }));
@@ -51,6 +53,7 @@ const mockUseHistoryAnalytics = jest.mocked(useHistoryAnalytics);
 const mockUseHistorySessionDetail = jest.mocked(useHistorySessionDetail);
 const mockUseHistorySessions = jest.mocked(useHistorySessions);
 const mockUseUserProfile = jest.mocked(useUserProfile);
+const mockUseExerciseCapabilities = jest.mocked(useExerciseCapabilities);
 const mockUseSessionIntelligence = jest.mocked(useSessionIntelligence);
 const mockUseTrainingGoals = jest.mocked(useTrainingGoals);
 const mockLoadWorkoutSummaryMeta = jest.mocked(loadWorkoutSummaryMeta);
@@ -132,6 +135,17 @@ describe('useWorkoutSummary', () => {
     mockUseUserProfile.mockReturnValue({
       profile: { preferredWeightUnit: 'lb' },
     } as never);
+    mockUseExerciseCapabilities.mockReturnValue({
+      capabilitiesByExerciseId: {
+        'exercise-1': {
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          muscleGroup: 'Chest',
+          strengthEstimationMode: 'primary',
+        },
+      },
+      refresh: jest.fn(),
+    });
     mockUseTrainingGoals.mockReturnValue({
       goals: [],
       goalViewModels: [],
@@ -163,12 +177,31 @@ describe('useWorkoutSummary', () => {
   it('uses detailed history sessions for intelligence instead of trend-only rows', () => {
     renderHook(() => useWorkoutSummary('current'));
 
-    expect(mockUseTrainingGoals).toHaveBeenCalledWith(detailedHistory);
+    expect(mockUseTrainingGoals).toHaveBeenCalledWith(detailedHistory, {
+      capabilitiesByExerciseId: {
+        'exercise-1': {
+          exerciseId: 'exercise-1',
+          exerciseName: 'Bench Press',
+          muscleGroup: 'Chest',
+          strengthEstimationMode: 'primary',
+        },
+      },
+    });
     expect(mockUseSessionIntelligence).toHaveBeenCalledWith(
       currentSession,
       detailedHistory,
       [],
       'lb',
+      {
+        capabilitiesByExerciseId: {
+          'exercise-1': {
+            exerciseId: 'exercise-1',
+            exerciseName: 'Bench Press',
+            muscleGroup: 'Chest',
+            strengthEstimationMode: 'primary',
+          },
+        },
+      },
     );
   });
 

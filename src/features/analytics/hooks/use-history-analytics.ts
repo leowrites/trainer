@@ -22,6 +22,7 @@ export interface UseHistoryAnalyticsOptions {
   trendLimit?: number;
   trendRange?: HistoryTrendRange;
   now?: number;
+  includeSessionPage?: boolean;
 }
 
 export interface UseHistoryAnalyticsResult {
@@ -38,7 +39,11 @@ export interface UseHistoryAnalyticsResult {
 export function useHistoryAnalytics(
   options: UseHistoryAnalyticsOptions = {},
 ): UseHistoryAnalyticsResult {
-  const { trendLimit = Number.MAX_SAFE_INTEGER, trendRange = '3m' } = options;
+  const {
+    trendLimit = Number.MAX_SAFE_INTEGER,
+    trendRange = '3m',
+    includeSessionPage = true,
+  } = options;
   const db = useDatabase();
   const injectedNow = options.now;
   const [sessions, setSessions] = useState<HistorySession[]>([]);
@@ -60,12 +65,23 @@ export function useHistoryAnalytics(
 
   useEffect(() => {
     const trendRows = loadHistoryTrendRows(db);
+    setTrendSessions(buildHistoryTrendSessions(trendRows));
+    if (!includeSessionPage) {
+      sessionsRef.current = [];
+      hasMoreRef.current = false;
+      isLoadingRef.current = false;
+      isLoadingMoreRef.current = false;
+      setSessions([]);
+      setHasMore(false);
+      setIsLoadingMore(false);
+      setIsLoading(false);
+      return;
+    }
+
     const initialPage = loadHistorySessionPage(db, {
       limit: HISTORY_PAGE_SIZE,
       offset: 0,
     });
-
-    setTrendSessions(buildHistoryTrendSessions(trendRows));
     const nextSessions = buildHistorySessions(
       initialPage.sessionRows,
       initialPage.setRows,
@@ -78,10 +94,11 @@ export function useHistoryAnalytics(
     setHasMore(initialPage.hasMore);
     setIsLoadingMore(false);
     setIsLoading(false);
-  }, [db, refreshKey]);
+  }, [db, includeSessionPage, refreshKey]);
 
   const loadMore = useCallback((): void => {
     if (
+      !includeSessionPage ||
       isLoadingRef.current ||
       isLoadingMoreRef.current ||
       !hasMoreRef.current
@@ -105,7 +122,7 @@ export function useHistoryAnalytics(
     setSessions(nextSessions);
     setHasMore(nextPage.hasMore);
     setIsLoadingMore(false);
-  }, [db]);
+  }, [db, includeSessionPage]);
 
   const now = injectedNow ?? Date.now();
   const filteredTrendSessions = useMemo(

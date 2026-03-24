@@ -9,6 +9,7 @@ import {
   buildScheduleSummary,
   getActiveScheduleSummary,
   getScheduleStatusText,
+  useScheduleEntryIndex,
   useSchedules,
 } from '@features/schedule';
 import { Body, Card, Container, Label, Meta, Muted } from '@shared/components';
@@ -16,6 +17,7 @@ import { normalizeQuery } from '@shared/utils';
 import { LibraryExerciseCard } from '../components/library-exercise-card';
 import { LibraryHeader } from '../components/library-header';
 import { LibraryRoutineCard } from '../components/library-routine-card';
+import { useRoutineExerciseCounts } from '../hooks/use-routine-exercise-counts';
 import { useExercises } from '../hooks/use-exercises';
 import { useRoutines } from '../hooks/use-routines';
 import type { RoutinesStackParamList, Section } from '../types';
@@ -61,24 +63,27 @@ export function LibraryScreen({
   'Library'
 >): React.JSX.Element {
   const { exercises, refresh: refreshExercises } = useExercises();
-  const {
-    routines,
-    getRoutineExerciseCounts,
-    refresh: refreshRoutines,
-  } = useRoutines();
-  const {
-    schedules,
-    refresh: refreshSchedules,
-    getScheduleEntries,
-  } = useSchedules();
-  const routineExerciseCounts = getRoutineExerciseCounts();
+  const { routines, refresh: refreshRoutines } = useRoutines();
+  const { schedules, refresh: refreshSchedules } = useSchedules();
+  const { countsByRoutineId, refresh: refreshRoutineExerciseCounts } =
+    useRoutineExerciseCounts();
+  const { entriesByScheduleId, refresh: refreshScheduleEntryIndex } =
+    useScheduleEntryIndex();
 
   useFocusEffect(
     useCallback(() => {
       refreshExercises();
       refreshRoutines();
       refreshSchedules();
-    }, [refreshExercises, refreshRoutines, refreshSchedules]),
+      refreshRoutineExerciseCounts();
+      refreshScheduleEntryIndex();
+    }, [
+      refreshExercises,
+      refreshRoutineExerciseCounts,
+      refreshRoutines,
+      refreshScheduleEntryIndex,
+      refreshSchedules,
+    ]),
   );
 
   const [section, setSection] = useState<Section>('schedules');
@@ -124,8 +129,8 @@ export function LibraryScreen({
   }, [schedules, searchQuery]);
 
   const activeSummary = useMemo(
-    () => getActiveScheduleSummary(schedules, routines, getScheduleEntries),
-    [getScheduleEntries, routines, schedules],
+    () => getActiveScheduleSummary(schedules, routines, entriesByScheduleId),
+    [entriesByScheduleId, routines, schedules],
   );
 
   const handleChangeSection = useCallback(
@@ -232,7 +237,7 @@ export function LibraryScreen({
           data={filteredSchedules}
           keyExtractor={(schedule) => schedule.id}
           renderItem={({ item }) => {
-            const entries = getScheduleEntries(item.id);
+            const entries = entriesByScheduleId[item.id] ?? [];
             const summary = buildScheduleSummary(item, entries, routines);
 
             return (
@@ -278,7 +283,7 @@ export function LibraryScreen({
           renderItem={({ item }) => (
             <LibraryRoutineCard
               routine={item}
-              exerciseCount={routineExerciseCounts[item.id] ?? 0}
+              exerciseCount={countsByRoutineId[item.id] ?? 0}
               onPress={() => openRoutineDetail(item.id)}
             />
           )}

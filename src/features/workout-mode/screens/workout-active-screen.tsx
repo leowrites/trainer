@@ -1,24 +1,40 @@
+/**
+ * Active workout screen.
+ *
+ * CALLING SPEC:
+ * - own navigation guards, header wiring, and modal navigation for the active workout
+ * - subscribe only to active-workout visibility and header state
+ * - keep timer coordination in a separate bridge so timer writes do not rerender the shell
+ * - side effects: navigation updates and confirmation alerts
+ */
+
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useShallow } from 'zustand/react/shallow';
 
 import type { RootStackParamList } from '@core/navigation';
 import { useTheme } from '@core/theme/theme-context';
 import { showExerciseTimerPicker } from '@shared/utils';
-import { useActiveWorkout } from '../hooks/use-active-workout';
-import { usePreviousExercisePerformance } from '../hooks/use-previous-exercise-performance';
-import { DEFAULT_EXERCISE_TIMER_SECONDS, useWorkoutStore } from '../store';
 import { ActiveWorkoutContent } from '../components/active-workout-content';
 import { WorkoutHeaderRight } from '../components/workout-header-right';
 import { WorkoutHeaderTitle } from '../components/workout-header-title';
+import { WorkoutTimerCoordinatorBridge } from '../components/workout-timer-coordinator-bridge';
 import {
-  countCompletedExercises,
-  formatElapsedDuration,
-  formatRestCountdown,
-  isExerciseDetailNavigationAction,
-} from '../utils/formatters';
+  useActiveWorkoutActions,
+  useEnsureActiveWorkoutLoaded,
+} from '../hooks/use-active-workout';
+import {
+  useActiveWorkoutHeaderState,
+  useActiveWorkoutSessionMeta,
+  useActiveWorkoutVisibility,
+} from '../hooks/use-active-workout-state';
+import {
+  DEFAULT_EXERCISE_TIMER_SECONDS,
+  selectExerciseName,
+  useWorkoutStore,
+} from '../store';
+import { isExerciseDetailNavigationAction } from '../utils/formatters';
 
 export type WorkoutActiveScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -30,38 +46,11 @@ export function WorkoutActiveScreen({
 }: WorkoutActiveScreenProps): React.JSX.Element | null {
   const { colorMode } = useTheme();
   const insets = useSafeAreaInsets();
+  const { isWorkoutActive, isWorkoutCollapsed } = useActiveWorkoutVisibility();
+  const sessionMeta = useActiveWorkoutSessionMeta();
+  const { title, completedExerciseCount, totalExerciseCount, startTime } =
+    useActiveWorkoutHeaderState();
   const {
-    isWorkoutActive,
-    isWorkoutCollapsed,
-    startTime,
-    restTimerEndsAt,
-    collapseWorkout,
-    startRestTimer,
-    clearRestTimer,
-    exerciseTimerEndsAtByExerciseId,
-    exerciseTimerDurationByExerciseId,
-    startExerciseTimer,
-    clearExerciseTimer,
-    setExerciseTimerDuration,
-  } = useWorkoutStore(
-    useShallow((state) => ({
-      isWorkoutActive: state.isWorkoutActive,
-      isWorkoutCollapsed: state.isWorkoutCollapsed,
-      startTime: state.startTime,
-      restTimerEndsAt: state.restTimerEndsAt,
-      collapseWorkout: state.collapseWorkout,
-      startRestTimer: state.startRestTimer,
-      clearRestTimer: state.clearRestTimer,
-      exerciseTimerEndsAtByExerciseId: state.exerciseTimerEndsAtByExerciseId,
-      exerciseTimerDurationByExerciseId:
-        state.exerciseTimerDurationByExerciseId,
-      startExerciseTimer: state.startExerciseTimer,
-      clearExerciseTimer: state.clearExerciseTimer,
-      setExerciseTimerDuration: state.setExerciseTimerDuration,
-    })),
-  );
-  const {
-    activeSession,
     addExercise,
     removeExercise,
     addSet,
@@ -71,20 +60,17 @@ export function WorkoutActiveScreen({
     updateWeight,
     updateActualRir,
     toggleSetLogged,
+    flushPendingWrites,
     completeWorkout,
     deleteWorkout,
-  } = useActiveWorkout();
-  const [showExerciseSheet, setShowExerciseSheet] = useState(false);
-  const [now, setNow] = useState<number>(Date.now());
+  } = useActiveWorkoutActions();
   const allowExitRef = useRef(false);
   const workoutVisibilityRef = useRef({
     isWorkoutActive,
     isWorkoutCollapsed,
   });
-  const previousPerformanceByExerciseId = usePreviousExercisePerformance(
-    activeSession?.id ?? null,
-    activeSession?.exercises.map((exercise) => exercise.exerciseId) ?? [],
-  );
+
+  useEnsureActiveWorkoutLoaded();
 
   workoutVisibilityRef.current = {
     isWorkoutActive,
@@ -104,13 +90,13 @@ export function WorkoutActiveScreen({
         return;
       }
 
+      useWorkoutStore.getState().collapseWorkout();
       event.preventDefault();
-      collapseWorkout();
       navigation.dispatch(event.data.action);
     });
 
     return unsubscribe;
-  }, [collapseWorkout, navigation]);
+  }, [navigation]);
 
   useEffect(() => {
     if (allowExitRef.current) {
@@ -123,39 +109,8 @@ export function WorkoutActiveScreen({
       } else {
         navigation.navigate('Tabs', { screen: 'Workout' });
       }
-      return;
     }
-
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-
-    return () => clearInterval(interval);
   }, [isWorkoutActive, isWorkoutCollapsed, navigation]);
-
-  useEffect(() => {
-    if (restTimerEndsAt !== null && restTimerEndsAt <= now) {
-      clearRestTimer();
-    }
-  }, [clearRestTimer, now, restTimerEndsAt]);
-
-  useEffect(() => {
-    for (const [exerciseId, endsAt] of Object.entries(
-      exerciseTimerEndsAtByExerciseId,
-    )) {
-      if (endsAt !== null && endsAt <= now) {
-        clearExerciseTimer(exerciseId);
-      }
-    }
-  }, [clearExerciseTimer, exerciseTimerEndsAtByExerciseId, now]);
-
-  const sessionTitle = activeSession?.title ?? 'Workout';
-  const durationLabel =
-    startTime !== null ? formatElapsedDuration(now - startTime) : '0m';
-  const totalExerciseCount = activeSession?.exercises.length ?? 0;
-  const completedExerciseCount = activeSession
-    ? countCompletedExercises(activeSession.exercises)
-    : 0;
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -165,50 +120,31 @@ export function WorkoutActiveScreen({
       headerTransparent: true,
       headerTitle: () => (
         <WorkoutHeaderTitle
-          title={sessionTitle}
+          title={title}
           completedExerciseCount={completedExerciseCount}
           totalExerciseCount={totalExerciseCount}
         />
       ),
-      headerRight: () => <WorkoutHeaderRight durationLabel={durationLabel} />,
+      headerRight: () => <WorkoutHeaderRight startTime={startTime} />,
     });
   }, [
     completedExerciseCount,
-    durationLabel,
     navigation,
-    sessionTitle,
+    startTime,
+    title,
     totalExerciseCount,
   ]);
 
-  if (!isWorkoutActive || isWorkoutCollapsed || !activeSession) {
+  if (!isWorkoutActive || isWorkoutCollapsed || sessionMeta === null) {
     return null;
   }
 
-  const setCount = activeSession.exercises.reduce(
-    (sum, exercise) => sum + exercise.sets.length,
-    0,
-  );
-  const volume = activeSession.exercises.reduce(
-    (sum, exercise) =>
-      sum +
-      exercise.sets.reduce(
-        (setSum, setItem) => setSum + setItem.weight * setItem.reps,
-        0,
-      ),
-    0,
-  );
-  const restLabel =
-    restTimerEndsAt !== null
-      ? formatRestCountdown(restTimerEndsAt - now)
-      : null;
   const showExerciseTimerOptions = (exerciseId: string): void => {
+    const state = useWorkoutStore.getState();
     const durationSeconds =
-      exerciseTimerDurationByExerciseId[exerciseId] ??
+      state.exerciseTimerDurationByExerciseId[exerciseId] ??
       DEFAULT_EXERCISE_TIMER_SECONDS;
-    const exerciseName =
-      activeSession.exercises.find(
-        (exercise) => exercise.exerciseId === exerciseId,
-      )?.exerciseName ?? 'Exercise';
+    const exerciseName = selectExerciseName(state, exerciseId) ?? 'Exercise';
 
     showExerciseTimerPicker({
       title: `${exerciseName} timer`,
@@ -216,17 +152,19 @@ export function WorkoutActiveScreen({
       colorMode,
       currentDurationSeconds: durationSeconds,
       onSelectDuration: (nextDuration) => {
-        setExerciseTimerDuration(exerciseId, nextDuration);
-        updateExerciseRestSeconds?.(exerciseId, nextDuration);
-        startExerciseTimer(exerciseId, nextDuration);
+        const currentState = useWorkoutStore.getState();
+        currentState.setExerciseTimerDuration(exerciseId, nextDuration);
+        updateExerciseRestSeconds(exerciseId, nextDuration);
+        currentState.startExerciseTimer(exerciseId, nextDuration);
       },
       onClear: () => {
-        clearExerciseTimer(exerciseId);
+        useWorkoutStore.getState().clearExerciseTimer(exerciseId);
       },
       clearActionLabel: 'Clear Timer',
       clearActionStyle: 'destructive',
     });
   };
+
   const handleDeleteWorkout = (): void => {
     Alert.alert(
       'Delete workout?',
@@ -252,55 +190,38 @@ export function WorkoutActiveScreen({
   };
 
   return (
-    <ActiveWorkoutContent
-      activeSession={activeSession}
-      now={now}
-      setCount={setCount}
-      volume={volume}
-      restLabel={restLabel}
-      onComplete={() => {
-        const completedSessionId = completeWorkout();
+    <>
+      <WorkoutTimerCoordinatorBridge
+        enabled={isWorkoutActive && !isWorkoutCollapsed}
+      />
+      <ActiveWorkoutContent
+        onCompleteWorkout={() => {
+          flushPendingWrites();
+          const completedSessionId = completeWorkout();
 
-        if (completedSessionId) {
-          allowExitRef.current = true;
-          navigation.replace('WorkoutSummary', {
-            sessionId: completedSessionId,
-          });
+          if (completedSessionId) {
+            allowExitRef.current = true;
+            navigation.replace('WorkoutSummary', {
+              sessionId: completedSessionId,
+            });
+          }
+        }}
+        onDeleteWorkout={handleDeleteWorkout}
+        onOpenExerciseDetails={(exerciseId) =>
+          navigation.navigate('ExerciseDetail', { exerciseId })
         }
-      }}
-      onDeleteWorkout={handleDeleteWorkout}
-      startRestTimer={startRestTimer}
-      clearRestTimer={clearRestTimer}
-      onOpenExerciseDetails={(exerciseId) =>
-        navigation.navigate('ExerciseDetail', { exerciseId })
-      }
-      onOpenExerciseTimerOptions={showExerciseTimerOptions}
-      addSet={addSet}
-      addExercise={addExercise}
-      removeExercise={removeExercise}
-      deleteSet={deleteSet}
-      updateReps={updateReps}
-      updateWeight={updateWeight}
-      updateActualRir={updateActualRir}
-      toggleSetLogged={(exerciseId, setId, isCompleted) => {
-        toggleSetLogged(setId, isCompleted);
-
-        if (!isCompleted) {
-          return;
-        }
-
-        const durationSeconds =
-          exerciseTimerDurationByExerciseId[exerciseId] ??
-          DEFAULT_EXERCISE_TIMER_SECONDS;
-        updateExerciseRestSeconds?.(exerciseId, durationSeconds);
-        startExerciseTimer(exerciseId, durationSeconds);
-      }}
-      exerciseTimerEndsAtByExerciseId={exerciseTimerEndsAtByExerciseId}
-      exerciseTimerDurationByExerciseId={exerciseTimerDurationByExerciseId}
-      previousPerformanceByExerciseId={previousPerformanceByExerciseId}
-      showExerciseSheet={showExerciseSheet}
-      setShowExerciseSheet={setShowExerciseSheet}
-      insets={insets}
-    />
+        onOpenExerciseTimerOptions={showExerciseTimerOptions}
+        addSet={addSet}
+        addExercise={addExercise}
+        removeExercise={removeExercise}
+        deleteSet={deleteSet}
+        updateReps={updateReps}
+        updateWeight={updateWeight}
+        updateActualRir={updateActualRir}
+        toggleSetLogged={toggleSetLogged}
+        flushPendingWrites={flushPendingWrites}
+        insets={insets}
+      />
+    </>
   );
 }

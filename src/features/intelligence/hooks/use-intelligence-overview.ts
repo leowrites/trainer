@@ -13,8 +13,6 @@ import {
   buildDashboardMetrics,
   type HistorySession,
 } from '@features/analytics';
-import { useOptionalDatabase } from '@core/database/provider';
-import { loadExerciseCapabilities } from '../metrics/capabilities';
 import {
   buildExerciseExposureIndex,
   buildExerciseExposures,
@@ -32,11 +30,17 @@ import type {
   HomePrimaryInsight,
   TrainingGoalViewModel,
 } from '../types';
+import { useExerciseCapabilities } from './use-exercise-capabilities';
 
 export function useIntelligenceOverview(
   allSessions: HistorySession[],
   goalViewModels: TrainingGoalViewModel[],
-  options: { now?: number } = {},
+  options: {
+    now?: number;
+    capabilitiesByExerciseId?: ReturnType<
+      typeof useExerciseCapabilities
+    >['capabilitiesByExerciseId'];
+  } = {},
 ): {
   exerciseTrendSummaries: ReturnType<typeof buildExerciseTrendSummaries>;
   routineTrendSummaries: ReturnType<typeof buildRoutineTrendSummaries>;
@@ -44,14 +48,13 @@ export function useIntelligenceOverview(
   homePrimaryInsight: HomePrimaryInsight;
   homeExerciseHighlights: HomeExerciseHighlight[];
 } {
-  const db = useOptionalDatabase();
+  const { capabilitiesByExerciseId: loadedCapabilitiesByExerciseId } =
+    useExerciseCapabilities();
   const now = options.now ?? Date.now();
+  const capabilitiesByExerciseId =
+    options.capabilitiesByExerciseId ?? loadedCapabilitiesByExerciseId;
 
   return useMemo(() => {
-    const capabilitiesByExerciseId =
-      !db || typeof db.getAllSync !== 'function'
-        ? {}
-        : loadExerciseCapabilities(db);
     const exposuresByExerciseId = buildExerciseExposureIndex(
       buildExerciseExposures(allSessions, capabilitiesByExerciseId),
     );
@@ -84,5 +87,5 @@ export function useIntelligenceOverview(
         exerciseTrendSummaries,
       ),
     };
-  }, [allSessions, db, goalViewModels, now]);
+  }, [allSessions, capabilitiesByExerciseId, goalViewModels, now]);
 }

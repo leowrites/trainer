@@ -45,7 +45,7 @@ export function buildScheduleSummary(
 export function getActiveScheduleSummary(
   schedules: Schedule[],
   routines: Routine[],
-  getScheduleEntries: (scheduleId: string) => ScheduleEntry[],
+  entriesByScheduleId: Record<string, ScheduleEntry[]>,
 ): ScheduleSummary | null {
   const activeSchedule =
     schedules.find((schedule) => schedule.is_active === 1) ?? null;
@@ -56,7 +56,7 @@ export function getActiveScheduleSummary(
 
   return buildScheduleSummary(
     activeSchedule,
-    getScheduleEntries(activeSchedule.id),
+    entriesByScheduleId[activeSchedule.id] ?? [],
     routines,
   );
 }

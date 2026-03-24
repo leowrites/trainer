@@ -13,8 +13,8 @@ import {
   Label,
   Muted,
 } from '@shared/components';
+import { useExerciseInsight } from '../hooks/use-exercise-insight';
 import { useExercises } from '../hooks/use-exercises';
-import { useRoutineInsights } from '../hooks/use-routine-insights';
 import type { RoutinesStackParamList } from '../types';
 import { formatDateLabel } from '../utils/formatters';
 
@@ -143,7 +143,9 @@ export function ExerciseDetailScreen({
   navigation,
 }: ExerciseDetailScreenProps): React.JSX.Element {
   const { exercises, hasLoaded, refresh } = useExercises();
-  const { getExerciseInsight } = useRoutineInsights();
+  const { insight, refresh: refreshInsight } = useExerciseInsight(
+    route.params.exerciseId,
+  );
 
   const selectedExercise =
     exercises.find((exercise) => exercise.id === route.params.exerciseId) ??
@@ -152,7 +154,8 @@ export function ExerciseDetailScreen({
   useFocusEffect(
     useCallback(() => {
       refresh();
-    }, [refresh]),
+      refreshInsight();
+    }, [refresh, refreshInsight]),
   );
 
   useEffect(() => {
@@ -176,8 +179,6 @@ export function ExerciseDetailScreen({
     );
   }
 
-  const exerciseInsight = getExerciseInsight(selectedExercise.id);
-
   return (
     <Container edges={['left', 'right']}>
       <ExerciseDetailPage
@@ -187,10 +188,10 @@ export function ExerciseDetailScreen({
             exerciseId: selectedExercise.id,
           })
         }
-        totalSessions={exerciseInsight.totalSessions}
-        lastPerformedAt={exerciseInsight.lastPerformedAt}
-        bestCompletedWeight={exerciseInsight.bestCompletedWeight}
-        history={exerciseInsight.history}
+        totalSessions={insight.totalSessions}
+        lastPerformedAt={insight.lastPerformedAt}
+        bestCompletedWeight={insight.bestCompletedWeight}
+        history={insight.history}
       />
     </Container>
   );

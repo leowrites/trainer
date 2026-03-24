@@ -431,6 +431,48 @@ export function updateWorkoutSetActualRir(
   ]);
 }
 
+export function updateWorkoutSetFields(
+  db: SQLiteDatabase,
+  setId: string,
+  changes: Partial<
+    Pick<ActiveWorkoutSet, 'reps' | 'weight' | 'isCompleted' | 'actualRir'>
+  >,
+): void {
+  const assignments: string[] = [];
+  const values: Array<number | null | string> = [];
+
+  if (changes.reps !== undefined) {
+    assignments.push('reps = ?');
+    values.push(changes.reps);
+  }
+
+  if (changes.weight !== undefined) {
+    assignments.push('weight = ?');
+    values.push(changes.weight);
+  }
+
+  if (changes.isCompleted !== undefined) {
+    assignments.push('is_completed = ?');
+    values.push(changes.isCompleted ? 1 : 0);
+  }
+
+  if (changes.actualRir !== undefined) {
+    assignments.push('actual_rir = ?');
+    values.push(changes.actualRir);
+  }
+
+  if (assignments.length === 0) {
+    return;
+  }
+
+  db.runSync(
+    `UPDATE workout_sets
+     SET ${assignments.join(', ')}
+     WHERE id = ?`,
+    [...values, setId],
+  );
+}
+
 export function deleteWorkoutSetRecord(
   db: SQLiteDatabase,
   setId: string,
@@ -541,15 +583,44 @@ export function loadPreviousExercisePerformanceMap(
   }
 
   const rows = db.getAllSync<PreviousExercisePerformanceRow>(
-    `SELECT workout_sets.exercise_id, workout_sets.reps, workout_sets.weight, workout_sessions.end_time
-      FROM workout_sets
-      INNER JOIN workout_sessions ON workout_sessions.id = workout_sets.session_id
-      WHERE workout_sets.exercise_id IN (${exerciseIds.map(() => '?').join(', ')})
-        AND workout_sets.session_id != ?
-        AND workout_sets.is_completed = 1
-        AND workout_sessions.end_time IS NOT NULL
-      ORDER BY workout_sessions.end_time DESC, COALESCE(workout_sets.position, 0) DESC, workout_sets.rowid DESC`,
-    [...exerciseIds, currentSessionId],
+    `WITH latest_completed_sessions AS (
+        SELECT
+          workout_sets.exercise_id,
+          MAX(workout_sessions.end_time) AS latest_end_time
+        FROM workout_sets
+        INNER JOIN workout_sessions
+          ON workout_sessions.id = workout_sets.session_id
+        WHERE workout_sets.exercise_id IN (${exerciseIds.map(() => '?').join(', ')})
+          AND workout_sets.session_id != ?
+          AND workout_sets.is_completed = 1
+          AND workout_sessions.end_time IS NOT NULL
+        GROUP BY workout_sets.exercise_id
+      ),
+      latest_ranked_sets AS (
+        SELECT
+          workout_sets.exercise_id,
+          workout_sets.reps,
+          workout_sets.weight,
+          workout_sessions.end_time,
+          ROW_NUMBER() OVER (
+            PARTITION BY workout_sets.exercise_id
+            ORDER BY COALESCE(workout_sets.position, 0) DESC, workout_sets.rowid DESC
+          ) AS set_rank
+        FROM workout_sets
+        INNER JOIN workout_sessions
+          ON workout_sessions.id = workout_sets.session_id
+        INNER JOIN latest_completed_sessions
+          ON latest_completed_sessions.exercise_id = workout_sets.exercise_id
+         AND latest_completed_sessions.latest_end_time = workout_sessions.end_time
+        WHERE workout_sets.exercise_id IN (${exerciseIds.map(() => '?').join(', ')})
+          AND workout_sets.session_id != ?
+          AND workout_sets.is_completed = 1
+          AND workout_sessions.end_time IS NOT NULL
+      )
+      SELECT exercise_id, reps, weight, end_time
+      FROM latest_ranked_sets
+      WHERE set_rank = 1`,
+    [...exerciseIds, currentSessionId, ...exerciseIds, currentSessionId],
   );
 
   const performanceByExerciseId = Object.fromEntries(

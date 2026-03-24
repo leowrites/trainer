@@ -2,14 +2,14 @@
  * Focused workout scene.
  *
  * CALLING SPEC:
- * - render one focused-set scene inside the workout pager
- * - owns only scene presentation for a single route location
- * - derives route-local summaries and forwards user actions upstream
- * - has no persistence side effects on its own
+ * - render one focused set without pager infrastructure
+ * - own only draft state and explicit previous/next/skip navigation for the current set
+ * - subscribe only to the current focused set and its timer state
+ * - side effects: invokes optimistic workout actions supplied by the parent
  */
 
-import React from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Alert, ScrollView, View, unstable_batchedUpdates } from 'react-native';
 
 import {
   Body,
@@ -20,135 +20,284 @@ import {
   Muted,
   Surface,
 } from '@shared/components';
-import { DEFAULT_EXERCISE_TIMER_SECONDS } from '../store';
+import { triggerInteractionFeedback } from '@shared/utils';
+import { buildFocusedWorkoutViewModel } from '../domain/focused-session';
 import {
-  buildFocusedWorkoutViewModel,
-  getNextFocusedLocation,
-} from '../domain/focused-session';
-import type {
-  ActiveWorkoutSession,
-  FocusedWorkoutLocation,
-  PreviousExercisePerformance,
-} from '../types';
+  useActiveWorkoutSetSceneState,
+  useExerciseTimerState,
+} from '../hooks/use-active-workout-state';
+import { DEFAULT_EXERCISE_TIMER_SECONDS, useWorkoutStore } from '../store';
+import type { PreviousExercisePerformance } from '../types';
+import { formatPreviousPerformance } from '../utils/formatters';
+import { CompleteSetButton } from './complete-set-button';
 import { FocusedSetHero } from './focused-set-hero';
-import {
-  formatPreviousPerformance,
-  formatRestCountdown,
-  formatTimerDuration,
-} from '../utils/formatters';
+import { WorkoutTimerButtonLabel } from './workout-timer-button-label';
 
 interface FocusedWorkoutSceneProps {
-  activeSession: ActiveWorkoutSession;
-  routeLocation: FocusedWorkoutLocation;
-  currentLocation: FocusedWorkoutLocation;
-  now: number;
+  focusedSetId: string;
   headerHeight: number;
   bottomInset: number;
-  restLabel: string | null;
-  startRestTimer: () => void;
-  clearRestTimer: () => void;
-  selectedReps: number;
-  selectedWeight: number;
-  selectedRir: number | null;
-  completionRewardToken: number;
-  previousPerformanceByExerciseId: Record<
-    string,
-    PreviousExercisePerformance | null
-  >;
-  exerciseTimerEndsAtByExerciseId: Record<string, number | null>;
-  exerciseTimerDurationByExerciseId: Record<string, number>;
+  previousPerformance: PreviousExercisePerformance | null;
   onOpenOverview: () => void;
   onOpenExerciseDetails: (exerciseId: string) => void;
   onOpenExerciseTimerOptions: (exerciseId: string) => void;
-  onMoveFocus: (nextLocation: FocusedWorkoutLocation) => void;
-  onPreviewWeight: (value: number) => void;
-  onCommitWeight: (value: number) => void;
-  onPreviewReps: (value: number) => void;
-  onCommitReps: (value: number) => void;
-  onAdjustRir: (nextRir: number | null) => void;
+  onMoveFocus: (nextSetId: string | null) => void;
+  onCompleteWorkout: () => void;
+  updateReps: (setId: string, reps: number) => void;
+  updateWeight: (setId: string, weight: number) => void;
+  updateActualRir: (setId: string, actualRir: number | null) => void;
+  toggleSetLogged: (setId: string, isCompleted: boolean) => void;
+}
+
+interface FocusedSetDraft {
+  reps: number;
+  weight: number;
 }
 
 function buildRirOptions(): Array<number | null> {
   return [null, 0, 1, 2, 3, 4];
 }
 
+function clampNumber(value: number, minimum = 0): number {
+  return Math.max(minimum, value);
+}
+
 export function FocusedWorkoutScene({
-  activeSession,
-  routeLocation,
-  currentLocation,
-  now,
+  focusedSetId,
   headerHeight,
   bottomInset,
-  restLabel,
-  startRestTimer,
-  clearRestTimer,
-  selectedReps,
-  selectedWeight,
-  selectedRir,
-  completionRewardToken,
-  previousPerformanceByExerciseId,
-  exerciseTimerEndsAtByExerciseId,
-  exerciseTimerDurationByExerciseId,
+  previousPerformance,
   onOpenOverview,
   onOpenExerciseDetails,
   onOpenExerciseTimerOptions,
   onMoveFocus,
-  onPreviewWeight,
-  onCommitWeight,
-  onPreviewReps,
-  onCommitReps,
-  onAdjustRir,
+  onCompleteWorkout,
+  updateReps,
+  updateWeight,
+  updateActualRir,
+  toggleSetLogged,
 }: FocusedWorkoutSceneProps): React.JSX.Element {
-  const routeExercise = activeSession.exercises[routeLocation.exerciseIndex];
-  const routeSet = routeExercise?.sets[routeLocation.setIndex];
+  const sceneState = useActiveWorkoutSetSceneState(focusedSetId);
+  const startRestTimer = useWorkoutStore((state) => state.startRestTimer);
+  const clearRestTimer = useWorkoutStore((state) => state.clearRestTimer);
+  const startExerciseTimer = useWorkoutStore(
+    (state) => state.startExerciseTimer,
+  );
+  const { restTimerEndsAt, exerciseTimerEndsAt, exerciseTimerDuration } =
+    useExerciseTimerState(sceneState?.exerciseId ?? '');
+  const currentSet = sceneState?.set ?? null;
+  const [draftBySetId, setDraftBySetId] = useState<
+    Record<string, FocusedSetDraft>
+  >({});
+  const currentDraft =
+    currentSet === null ? null : (draftBySetId[currentSet.id] ?? null);
+  const selectedReps = currentDraft?.reps ?? currentSet?.reps ?? 0;
+  const selectedWeight = currentDraft?.weight ?? currentSet?.weight ?? 0;
 
-  if (!routeExercise || !routeSet) {
+  const sceneViewModel = useMemo(() => {
+    if (sceneState === null) {
+      return null;
+    }
+
+    return buildFocusedWorkoutViewModel({
+      exercise: {
+        exerciseId: sceneState.exerciseId,
+        exerciseName: sceneState.exerciseName,
+        targetReps: sceneState.set.targetReps ?? null,
+        targetRepsMin: sceneState.set.targetRepsMin ?? null,
+        targetRepsMax: sceneState.set.targetRepsMax ?? null,
+      },
+      set: sceneState.set,
+      setNumber: sceneState.setNumber,
+      totalSetsForExercise: sceneState.totalSetsForExercise,
+      totalRemainingSets: sceneState.totalRemainingSets,
+      selectedReps,
+      selectedWeight,
+      selectedRir: sceneState.set.actualRir ?? null,
+      previousPerformance,
+    });
+  }, [previousPerformance, sceneState, selectedReps, selectedWeight]);
+
+  if (sceneState === null || sceneViewModel === null) {
     return <View className="flex-1" />;
   }
 
-  const isFocusedRoute =
-    routeLocation.exerciseIndex === currentLocation.exerciseIndex &&
-    routeLocation.setIndex === currentLocation.setIndex;
-  const sceneReps = isFocusedRoute
-    ? selectedReps
-    : (routeSet.reps ?? routeExercise.targetRepsMin ?? 0);
-  const sceneWeight = isFocusedRoute ? selectedWeight : (routeSet.weight ?? 0);
-  const sceneRir = isFocusedRoute ? selectedRir : (routeSet.actualRir ?? null);
-  const sceneViewModel = buildFocusedWorkoutViewModel({
-    session: activeSession,
-    location: routeLocation,
-    selectedReps: sceneReps,
-    selectedRir: sceneRir,
-    previousPerformance:
-      previousPerformanceByExerciseId[routeExercise.exerciseId] ?? null,
-  });
-  const timerEndsAt =
-    exerciseTimerEndsAtByExerciseId[sceneViewModel.exerciseId] ?? null;
-  const sceneRestTimerLabel =
-    timerEndsAt !== null && timerEndsAt > now
-      ? formatRestCountdown(timerEndsAt - now)
-      : formatTimerDuration(
-          exerciseTimerDurationByExerciseId[sceneViewModel.exerciseId] ??
-            DEFAULT_EXERCISE_TIMER_SECONDS,
-        );
-  const sceneNextLocation = getNextFocusedLocation(
-    activeSession,
-    routeLocation,
-  );
+  const updateDraft = (changes: Partial<FocusedSetDraft>): void => {
+    setDraftBySetId((currentDraftState) => {
+      const existingDraft = currentDraftState[sceneState.set.id] ?? {
+        reps: sceneState.set.reps,
+        weight: sceneState.set.weight,
+      };
+      const nextDraft = {
+        ...existingDraft,
+        ...changes,
+      };
+
+      if (
+        nextDraft.reps === sceneState.set.reps &&
+        nextDraft.weight === sceneState.set.weight
+      ) {
+        if (!(sceneState.set.id in currentDraftState)) {
+          return currentDraftState;
+        }
+
+        const { [sceneState.set.id]: _removedDraft, ...remainingDrafts } =
+          currentDraftState;
+        return remainingDrafts;
+      }
+
+      return {
+        ...currentDraftState,
+        [sceneState.set.id]: nextDraft,
+      };
+    });
+  };
+
+  const clearDraft = (setId: string): void => {
+    setDraftBySetId((currentDraftState) => {
+      if (!(setId in currentDraftState)) {
+        return currentDraftState;
+      }
+
+      const { [setId]: _removedDraft, ...remainingDrafts } = currentDraftState;
+      return remainingDrafts;
+    });
+  };
+
+  const handlePreviewReps = (nextReps: number): void => {
+    updateDraft({ reps: clampNumber(nextReps) });
+  };
+
+  const handlePreviewWeight = (nextWeight: number): void => {
+    updateDraft({ weight: clampNumber(nextWeight) });
+  };
+
+  const handleAdjustReps = (
+    nextReps: number,
+    options?: { feedback?: boolean },
+  ): void => {
+    const normalizedReps = clampNumber(nextReps);
+    updateDraft({ reps: normalizedReps });
+
+    if (normalizedReps !== sceneState.set.reps) {
+      updateReps(sceneState.set.id, normalizedReps);
+    } else {
+      clearDraft(sceneState.set.id);
+    }
+
+    if (options?.feedback !== false) {
+      triggerInteractionFeedback('set-adjust');
+    }
+  };
+
+  const handleAdjustWeight = (
+    nextWeight: number,
+    options?: { feedback?: boolean },
+  ): void => {
+    const normalizedWeight = clampNumber(nextWeight);
+    updateDraft({ weight: normalizedWeight });
+
+    if (normalizedWeight !== sceneState.set.weight) {
+      updateWeight(sceneState.set.id, normalizedWeight);
+    } else {
+      clearDraft(sceneState.set.id);
+    }
+
+    if (options?.feedback !== false) {
+      triggerInteractionFeedback('set-adjust');
+    }
+  };
+
+  const commitFocusedSetValues = (): void => {
+    if (selectedReps !== sceneState.set.reps) {
+      updateReps(sceneState.set.id, selectedReps);
+    }
+
+    if (selectedWeight !== sceneState.set.weight) {
+      updateWeight(sceneState.set.id, selectedWeight);
+    }
+
+    if (currentDraft !== null) {
+      clearDraft(sceneState.set.id);
+    }
+  };
+
+  const handleAdjustRir = (nextRir: number | null): void => {
+    if (currentDraft !== null) {
+      commitFocusedSetValues();
+    }
+
+    if ((sceneState.set.actualRir ?? null) !== nextRir) {
+      updateActualRir(sceneState.set.id, nextRir);
+    }
+
+    triggerInteractionFeedback('set-adjust');
+  };
+
+  const handleMoveToPreviousSet = (): void => {
+    if (sceneState.previousSetId === null) {
+      return;
+    }
+
+    commitFocusedSetValues();
+    onMoveFocus(sceneState.previousSetId);
+  };
+
+  const handleMoveToNextSet = (): void => {
+    if (
+      sceneState.nextSetId === null ||
+      sceneState.nextSetId === sceneState.set.id
+    ) {
+      return;
+    }
+
+    commitFocusedSetValues();
+    onMoveFocus(sceneState.nextSetId);
+  };
+
+  const handleAdvanceAfterCompletion = (): void => {
+    if (
+      sceneState.nextSetId === null ||
+      sceneState.nextSetId === sceneState.set.id
+    ) {
+      onCompleteWorkout();
+      return;
+    }
+
+    onMoveFocus(sceneState.nextSetId);
+  };
+
+  const handleCompleteSet = (): void => {
+    commitFocusedSetValues();
+
+    const didLogSet = !sceneState.set.isCompleted;
+
+    if (didLogSet) {
+      unstable_batchedUpdates(() => {
+        toggleSetLogged(sceneState.set.id, true);
+        startExerciseTimer(sceneState.exerciseId, exerciseTimerDuration);
+        handleAdvanceAfterCompletion();
+      });
+      triggerInteractionFeedback('set-log');
+      return;
+    }
+
+    handleAdvanceAfterCompletion();
+  };
+
+  const hasPreviousSet = sceneState.previousSetId !== null;
+  const hasNextSet =
+    sceneState.nextSetId !== null && sceneState.nextSetId !== sceneState.set.id;
 
   return (
-    <View
-      testID={isFocusedRoute ? 'focused-workout-scene' : undefined}
-      className="flex-1"
-      pointerEvents={isFocusedRoute ? 'auto' : 'none'}
-    >
+    <View testID="focused-workout-scene" className="flex-1">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         contentContainerStyle={{
           paddingTop: headerHeight + 10,
-          paddingBottom: bottomInset + 112,
+          paddingBottom: bottomInset + 132,
           gap: 14,
         }}
       >
@@ -173,17 +322,17 @@ export function FocusedWorkoutScene({
           </View>
 
           <FocusedSetHero
-            weightValue={sceneWeight}
-            repsValue={sceneReps}
-            rewardToken={completionRewardToken}
-            previousSetSummary={formatPreviousPerformance(
-              previousPerformanceByExerciseId[sceneViewModel.exerciseId] ??
-                null,
-            )}
-            onPreviewWeight={onPreviewWeight}
-            onCommitWeight={onCommitWeight}
-            onPreviewReps={onPreviewReps}
-            onCommitReps={onCommitReps}
+            weightValue={selectedWeight}
+            repsValue={selectedReps}
+            previousSetSummary={formatPreviousPerformance(previousPerformance)}
+            onPreviewWeight={handlePreviewWeight}
+            onCommitWeight={(nextWeight) =>
+              handleAdjustWeight(nextWeight, { feedback: false })
+            }
+            onPreviewReps={handlePreviewReps}
+            onCommitReps={(nextReps) =>
+              handleAdjustReps(nextReps, { feedback: false })
+            }
           />
 
           <Surface className="rounded-[24px]">
@@ -192,7 +341,7 @@ export function FocusedWorkoutScene({
             </View>
             <View className="mt-4 flex-row gap-2">
               {buildRirOptions().map((value) => {
-                const isSelected = sceneRir === value;
+                const isSelected = (sceneState.set.actualRir ?? null) === value;
 
                 return (
                   <InteractivePressable
@@ -204,7 +353,7 @@ export function FocusedWorkoutScene({
                     className={`min-w-0 flex-1 items-center rounded-[14px] px-2 py-3 ${
                       isSelected ? 'bg-accent' : 'bg-surface-elevated'
                     }`}
-                    onPress={() => onAdjustRir(value)}
+                    onPress={() => handleAdjustRir(value)}
                   >
                     <Body
                       className={`text-center font-semibold ${
@@ -232,9 +381,26 @@ export function FocusedWorkoutScene({
             <Button
               size="sm"
               variant="secondary"
-              onPress={() => onMoveFocus(sceneNextLocation)}
+              onPress={handleMoveToPreviousSet}
+              disabled={!hasPreviousSet}
+            >
+              Previous
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onPress={handleMoveToNextSet}
+              disabled={!hasNextSet}
             >
               Skip
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onPress={handleMoveToNextSet}
+              disabled={!hasNextSet}
+            >
+              Next
             </Button>
             <Button
               size="sm"
@@ -247,7 +413,7 @@ export function FocusedWorkoutScene({
               size="sm"
               variant="secondary"
               onPress={() => {
-                if (restLabel) {
+                if (restTimerEndsAt !== null && restTimerEndsAt > Date.now()) {
                   clearRestTimer();
                   return;
                 }
@@ -256,7 +422,13 @@ export function FocusedWorkoutScene({
                 onOpenExerciseTimerOptions(sceneViewModel.exerciseId);
               }}
             >
-              {restLabel ? `Rest ${restLabel}` : `Timer ${sceneRestTimerLabel}`}
+              <WorkoutTimerButtonLabel
+                restTimerEndsAt={restTimerEndsAt}
+                exerciseTimerEndsAt={exerciseTimerEndsAt}
+                exerciseTimerDuration={
+                  exerciseTimerDuration ?? DEFAULT_EXERCISE_TIMER_SECONDS
+                }
+              />
             </Button>
             <Button size="sm" variant="secondary" onPress={onOpenOverview}>
               Edit
@@ -276,6 +448,28 @@ export function FocusedWorkoutScene({
           </View>
         </View>
       </ScrollView>
+
+      <View
+        className="absolute bottom-0 left-0 right-0 pb-2"
+        style={{ paddingBottom: Math.max(bottomInset, 8) }}
+      >
+        <View className="mx-4 flex-row items-center gap-2 rounded-[24px] border border-surface-border bg-surface-card p-2">
+          <CompleteSetButton
+            label={
+              sceneViewModel.totalRemainingSets === 0 &&
+              sceneViewModel.isCompleted
+                ? 'Finish Workout'
+                : 'Complete Set'
+            }
+            onPress={
+              sceneViewModel.totalRemainingSets === 0 &&
+              sceneViewModel.isCompleted
+                ? onCompleteWorkout
+                : handleCompleteSet
+            }
+          />
+        </View>
+      </View>
     </View>
   );
 }

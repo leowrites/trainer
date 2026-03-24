@@ -32,8 +32,9 @@ import {
 } from '@shared/utils';
 import { ExercisePickerSheet } from '../components/exercise-picker-sheet';
 import { RoutineExerciseEditor } from '../components/routine-exercise-editor';
+import { useRoutineInsight } from '../hooks/use-routine-insight';
+import { useRoutineTemplate } from '../hooks/use-routine-template';
 import { useExercises } from '../hooks/use-exercises';
-import { useRoutineInsights } from '../hooks/use-routine-insights';
 import { useRoutines } from '../hooks/use-routines';
 import type { RoutineExerciseDraft, RoutinesStackParamList } from '../types';
 import {
@@ -67,12 +68,14 @@ export function RoutineDetailScreen({
     routines,
     hasLoaded,
     refresh: refreshRoutines,
-    getRoutineExercises,
-    getRoutineTemplateExercises,
     updateRoutine,
     deleteRoutine,
   } = useRoutines();
-  const { getRoutineInsight } = useRoutineInsights();
+  const { template, refresh: refreshRoutineTemplate } = useRoutineTemplate(
+    route.params.routineId,
+  );
+  const { insight: routineInsight, refresh: refreshRoutineInsight } =
+    useRoutineInsight(route.params.routineId);
   const selectedRoutine =
     routines.find((routine) => routine.id === route.params.routineId) ?? null;
   const [name, setName] = useState('');
@@ -82,12 +85,27 @@ export function RoutineDetailScreen({
   const [isExercisePickerOpen, setIsExercisePickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const saveActionRef = useRef<() => void>(() => undefined);
+  const exerciseNameById = useMemo(
+    () =>
+      exercises.reduce<Record<string, string>>((accumulator, exercise) => {
+        accumulator[exercise.id] = exercise.name;
+        return accumulator;
+      }, {}),
+    [exercises],
+  );
 
   useFocusEffect(
     useCallback(() => {
       refreshExercises();
       refreshRoutines();
-    }, [refreshExercises, refreshRoutines]),
+      refreshRoutineTemplate();
+      refreshRoutineInsight();
+    }, [
+      refreshExercises,
+      refreshRoutineInsight,
+      refreshRoutineTemplate,
+      refreshRoutines,
+    ]),
   );
 
   useEffect(() => {
@@ -101,22 +119,11 @@ export function RoutineDetailScreen({
     }
 
     setName(selectedRoutine.name);
-    setExerciseDrafts(
-      buildRoutineExerciseDrafts(
-        getRoutineTemplateExercises?.(selectedRoutine.id) ??
-          getRoutineExercises(selectedRoutine.id),
-      ),
-    );
+    setExerciseDrafts(buildRoutineExerciseDrafts(template));
     navigation.setOptions({
       title: selectedRoutine.name,
     });
-  }, [
-    getRoutineExercises,
-    getRoutineTemplateExercises,
-    hasLoaded,
-    navigation,
-    selectedRoutine,
-  ]);
+  }, [hasLoaded, navigation, selectedRoutine, template]);
 
   const handleSave = useCallback((): void => {
     if (!selectedRoutine) {
@@ -311,7 +318,6 @@ export function RoutineDetailScreen({
     );
   }
 
-  const routineInsight = getRoutineInsight(selectedRoutine.id);
   const selectedExerciseIds = exerciseDrafts.map((entry) => entry.exerciseId);
 
   return (
@@ -335,8 +341,7 @@ export function RoutineDetailScreen({
             isActive,
           }: RenderItemParams<RoutineExerciseDraft>) => {
             const exerciseName =
-              exercises.find((exercise) => exercise.id === item.exerciseId)
-                ?.name ?? item.exerciseId;
+              exerciseNameById[item.exerciseId] ?? item.exerciseId;
 
             return (
               <RoutineExerciseEditor

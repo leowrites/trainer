@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View } from 'react-native';
 
 import {
+  useExerciseCapabilities,
   useSessionIntelligence,
   useTrainingGoals,
 } from '@features/intelligence';
@@ -116,7 +117,10 @@ export function HistorySessionDetailContent({
   session: HistorySession;
   progressionConfig: ProgressiveOverloadConfig;
 }): React.JSX.Element {
-  const { goalViewModels } = useTrainingGoals([session]);
+  const { capabilitiesByExerciseId } = useExerciseCapabilities();
+  const { goalViewModels } = useTrainingGoals([session], {
+    capabilitiesByExerciseId,
+  });
   const recommendations = useMemo(
     () => buildRecommendations(session, progressionConfig),
     [session, progressionConfig],
@@ -126,6 +130,9 @@ export function HistorySessionDetailContent({
     [session],
     goalViewModels,
     progressionConfig.unit,
+    {
+      capabilitiesByExerciseId,
+    },
   );
 
   return (

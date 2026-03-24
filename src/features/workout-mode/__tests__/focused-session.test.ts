@@ -1,5 +1,5 @@
 import { buildFocusedWorkoutViewModel } from '../domain/focused-session';
-import type { ActiveWorkoutSession, FocusedWorkoutLocation } from '../types';
+import type { ActiveWorkoutSession } from '../types';
 
 function buildSession(
   overrides: Partial<ActiveWorkoutSession> = {},
@@ -38,12 +38,24 @@ function buildSession(
 function buildViewModel(
   selectedReps: number,
 ): ReturnType<typeof buildFocusedWorkoutViewModel> {
-  const location: FocusedWorkoutLocation = { exerciseIndex: 0, setIndex: 0 };
+  const session = buildSession();
+  const exercise = session.exercises[0];
+  const set = exercise.sets[0];
 
   return buildFocusedWorkoutViewModel({
-    session: buildSession(),
-    location,
+    exercise: {
+      exerciseId: exercise.exerciseId,
+      exerciseName: exercise.exerciseName,
+      targetReps: exercise.targetReps ?? null,
+      targetRepsMin: exercise.targetRepsMin ?? null,
+      targetRepsMax: exercise.targetRepsMax ?? null,
+    },
+    set,
+    setNumber: 1,
+    totalSetsForExercise: 1,
+    totalRemainingSets: 0,
     selectedReps,
+    selectedWeight: set.weight,
     selectedRir: 1,
     previousPerformance: {
       reps: 8,

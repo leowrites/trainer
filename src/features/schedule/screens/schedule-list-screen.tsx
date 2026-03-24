@@ -23,6 +23,7 @@ import {
   getActiveScheduleSummary,
   getScheduleStatusText,
 } from '../domain/schedule-preview';
+import { useScheduleEntryIndex } from '../hooks/use-schedule-entry-index';
 import { useSchedules } from '../hooks/use-schedules';
 import type { ScheduleStackParamList } from '../types';
 
@@ -67,24 +68,23 @@ export function ScheduleListScreen({
   ScheduleStackParamList,
   'ScheduleList'
 >): React.JSX.Element {
-  const {
-    schedules,
-    refresh: refreshSchedules,
-    getScheduleEntries,
-  } = useSchedules();
+  const { schedules, refresh: refreshSchedules } = useSchedules();
   const { routines, refresh: refreshRoutines } = useRoutines();
+  const { entriesByScheduleId, refresh: refreshScheduleEntryIndex } =
+    useScheduleEntryIndex();
   const [searchQuery, setSearchQuery] = useState('');
 
   useFocusEffect(
     useCallback(() => {
       refreshSchedules();
       refreshRoutines();
-    }, [refreshSchedules, refreshRoutines]),
+      refreshScheduleEntryIndex();
+    }, [refreshScheduleEntryIndex, refreshSchedules, refreshRoutines]),
   );
 
   const activeSummary = useMemo(
-    () => getActiveScheduleSummary(schedules, routines, getScheduleEntries),
-    [getScheduleEntries, routines, schedules],
+    () => getActiveScheduleSummary(schedules, routines, entriesByScheduleId),
+    [entriesByScheduleId, routines, schedules],
   );
 
   const filteredSchedules = useMemo(() => {
@@ -105,7 +105,7 @@ export function ScheduleListScreen({
         data={filteredSchedules}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => {
-          const entries = getScheduleEntries(item.id);
+          const entries = entriesByScheduleId[item.id] ?? [];
           const summary = buildScheduleSummary(item, entries, routines);
 
           return (
