@@ -123,9 +123,23 @@ export function useActiveWorkoutActions(): {
   const pendingSetChangesRef = useRef<Record<string, QueuedSetChanges>>({});
   const flushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushInFlightRef = useRef<Promise<void> | null>(null);
+  const mutationQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [isCriticalMutationPending, setIsCriticalMutationPending] =
     useState(false);
   const isCriticalMutationPendingRef = useRef(false);
+
+  const enqueueMutation = useCallback(
+    (mutation: () => Promise<void>): Promise<void> => {
+      const nextMutation = mutationQueueRef.current.then(mutation);
+      mutationQueueRef.current = nextMutation.catch(() => {});
+      return nextMutation;
+    },
+    [],
+  );
+
+  const waitForQueuedMutations = useCallback(async (): Promise<void> => {
+    await mutationQueueRef.current;
+  }, []);
 
   const flushPendingWrites = useCallback(async (): Promise<void> => {
     if (flushTimeoutRef.current !== null) {
@@ -207,7 +221,11 @@ export function useActiveWorkoutActions(): {
 
   const addExercise = useCallback(
     (exerciseId: string, exerciseName: string): void => {
-      void (async () => {
+      if (isCriticalMutationPendingRef.current) {
+        return;
+      }
+
+      void enqueueMutation(async () => {
         await flushPendingWrites();
 
         const currentState = useWorkoutStore.getState();
@@ -269,16 +287,20 @@ export function useActiveWorkoutActions(): {
           targetRepsMax: null,
           sets: [newSet],
         });
-      })().catch((error: unknown) => {
+      }).catch((error: unknown) => {
         console.error('[Workout] Failed to add exercise:', error);
       });
     },
-    [addExerciseToStore, db, flushPendingWrites],
+    [addExerciseToStore, db, enqueueMutation, flushPendingWrites],
   );
 
   const removeExercise = useCallback(
     (exerciseId: string): void => {
-      void (async () => {
+      if (isCriticalMutationPendingRef.current) {
+        return;
+      }
+
+      void enqueueMutation(async () => {
         await flushPendingWrites();
 
         const currentState = useWorkoutStore.getState();
@@ -294,11 +316,11 @@ export function useActiveWorkoutActions(): {
           exerciseId,
         );
         removeExerciseFromStore(exerciseId);
-      })().catch((error: unknown) => {
+      }).catch((error: unknown) => {
         console.error('[Workout] Failed to remove exercise:', error);
       });
     },
-    [db, flushPendingWrites, removeExerciseFromStore],
+    [db, enqueueMutation, flushPendingWrites, removeExerciseFromStore],
   );
 
   const updateReps = useCallback(
@@ -341,7 +363,11 @@ export function useActiveWorkoutActions(): {
 
   const addSet = useCallback(
     (exerciseId: string): void => {
-      void (async () => {
+      if (isCriticalMutationPendingRef.current) {
+        return;
+      }
+
+      void enqueueMutation(async () => {
         await flushPendingWrites();
 
         const currentState = useWorkoutStore.getState();
@@ -380,29 +406,37 @@ export function useActiveWorkoutActions(): {
         );
 
         addSetToStore(exerciseId, newSet);
-      })().catch((error: unknown) => {
+      }).catch((error: unknown) => {
         console.error('[Workout] Failed to add set:', error);
       });
     },
-    [addSetToStore, db, flushPendingWrites],
+    [addSetToStore, db, enqueueMutation, flushPendingWrites],
   );
 
   const deleteSet = useCallback(
     (setId: string): void => {
-      void (async () => {
+      if (isCriticalMutationPendingRef.current) {
+        return;
+      }
+
+      void enqueueMutation(async () => {
         await flushPendingWrites();
         await deleteWorkoutSetRecord(db, setId);
         deleteSetFromStore(setId);
-      })().catch((error: unknown) => {
+      }).catch((error: unknown) => {
         console.error('[Workout] Failed to delete set:', error);
       });
     },
-    [db, deleteSetFromStore, flushPendingWrites],
+    [db, deleteSetFromStore, enqueueMutation, flushPendingWrites],
   );
 
   const updateExerciseRestSeconds = useCallback(
     (exerciseId: string, restSeconds: number): void => {
-      void (async () => {
+      if (isCriticalMutationPendingRef.current) {
+        return;
+      }
+
+      void enqueueMutation(async () => {
         const currentActiveSessionId =
           useWorkoutStore.getState().activeSessionId;
 
@@ -416,11 +450,11 @@ export function useActiveWorkoutActions(): {
           exerciseId,
           restSeconds,
         );
-      })().catch((error: unknown) => {
+      }).catch((error: unknown) => {
         console.error('[Workout] Failed to update exercise rest timer:', error);
       });
     },
-    [db],
+    [db, enqueueMutation],
   );
 
   const toggleSetLogged = useCallback(
@@ -467,6 +501,7 @@ export function useActiveWorkoutActions(): {
     setIsCriticalMutationPending(true);
 
     try {
+      await waitForQueuedMutations();
       await flushPendingWrites();
       await completeWorkoutSessionRecord(db, activeSessionId, Date.now());
       endWorkout();
@@ -475,7 +510,7 @@ export function useActiveWorkoutActions(): {
       isCriticalMutationPendingRef.current = false;
       setIsCriticalMutationPending(false);
     }
-  }, [db, endWorkout, flushPendingWrites]);
+  }, [db, endWorkout, flushPendingWrites, waitForQueuedMutations]);
 
   const deleteWorkout = useCallback(async (): Promise<boolean> => {
     if (isCriticalMutationPendingRef.current) {
@@ -492,6 +527,7 @@ export function useActiveWorkoutActions(): {
     setIsCriticalMutationPending(true);
 
     try {
+      await waitForQueuedMutations();
       await flushPendingWrites();
       await deleteWorkoutSessionRecord(db, activeSessionId);
       endWorkout();
@@ -500,7 +536,7 @@ export function useActiveWorkoutActions(): {
       isCriticalMutationPendingRef.current = false;
       setIsCriticalMutationPending(false);
     }
-  }, [db, endWorkout, flushPendingWrites]);
+  }, [db, endWorkout, flushPendingWrites, waitForQueuedMutations]);
 
   return useMemo(
     () => ({

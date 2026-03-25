@@ -6,6 +6,9 @@ import { getDatabase } from './database';
 import { seedDevelopmentDatabase } from './seed-development';
 import { seedDefaultExercises } from './seed-exercises';
 
+const BOOTSTRAP_MAX_ATTEMPTS = 3;
+const BOOTSTRAP_RETRY_DELAY_MS = 750;
+
 // ─── React Context ────────────────────────────────────────────────────────────
 
 const DatabaseContext = createContext<SQLiteDatabase | null>(null);
@@ -32,13 +35,17 @@ export function DatabaseProvider({
   const [resolvedDatabase, setResolvedDatabase] =
     useState<SQLiteDatabase | null>(db ?? null);
   const [isReady, setIsReady] = useState<boolean>(db !== undefined);
+  const [bootstrapError, setBootstrapError] = useState<Error | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let attemptCount = 0;
 
     if (db !== undefined) {
       setResolvedDatabase(db);
       setIsReady(true);
+      setBootstrapError(null);
       return () => {
         isCancelled = true;
       };
@@ -47,42 +54,82 @@ export function DatabaseProvider({
     const shouldSeedDevelopmentData =
       __DEV__ && process.env.EXPO_PUBLIC_DEV_SEED === '1';
 
-    async function bootstrapDatabase(): Promise<void> {
-      const targetDb = await getDatabase();
-
-      if (isCancelled) {
-        return;
+    function normalizeError(error: unknown): Error {
+      if (error instanceof Error) {
+        return error;
       }
 
+      return new Error(String(error));
+    }
+
+    async function bootstrapDatabase(): Promise<void> {
       try {
-        if (shouldSeedDevelopmentData) {
-          await seedDevelopmentDatabase(targetDb);
-        } else {
-          await seedDefaultExercises(targetDb);
+        attemptCount += 1;
+        const targetDb = await getDatabase();
+
+        if (isCancelled) {
+          return;
+        }
+
+        try {
+          if (shouldSeedDevelopmentData) {
+            await seedDevelopmentDatabase(targetDb);
+          } else {
+            await seedDefaultExercises(targetDb);
+          }
+        } catch (error) {
+          console.error(
+            shouldSeedDevelopmentData
+              ? '[Seed] Failed to seed development data:'
+              : '[Seed] Failed to seed default exercises:',
+            error,
+          );
+        }
+
+        if (!isCancelled) {
+          setResolvedDatabase(targetDb);
+          setIsReady(true);
+          setBootstrapError(null);
         }
       } catch (error) {
+        const normalizedError = normalizeError(error);
         console.error(
-          shouldSeedDevelopmentData
-            ? '[Seed] Failed to seed development data:'
-            : '[Seed] Failed to seed default exercises:',
-          error,
+          `[Database] Failed to initialize (attempt ${attemptCount}/${BOOTSTRAP_MAX_ATTEMPTS}):`,
+          normalizedError,
         );
-      }
 
-      if (!isCancelled) {
-        setResolvedDatabase(targetDb);
-        setIsReady(true);
+        if (isCancelled) {
+          return;
+        }
+
+        if (attemptCount >= BOOTSTRAP_MAX_ATTEMPTS) {
+          setBootstrapError(normalizedError);
+          return;
+        }
+
+        retryTimeout = setTimeout(() => {
+          retryTimeout = null;
+          void bootstrapDatabase();
+        }, BOOTSTRAP_RETRY_DELAY_MS);
       }
     }
 
     setIsReady(false);
     setResolvedDatabase(null);
+    setBootstrapError(null);
     void bootstrapDatabase();
 
     return () => {
       isCancelled = true;
+      if (retryTimeout !== null) {
+        clearTimeout(retryTimeout);
+      }
     };
   }, [db]);
+
+  if (bootstrapError) {
+    throw bootstrapError;
+  }
 
   if (!isReady || resolvedDatabase === null) {
     return <>{fallback}</>;

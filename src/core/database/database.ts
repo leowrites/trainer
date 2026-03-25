@@ -20,6 +20,9 @@ export function getDatabase(): Promise<SQLiteDatabase> {
     return cachedDatabasePromise;
   }
 
-  cachedDatabasePromise = initDatabaseAsync();
+  cachedDatabasePromise = initDatabaseAsync().catch((error: unknown) => {
+    cachedDatabasePromise = null;
+    throw error;
+  });
   return cachedDatabasePromise;
 }
