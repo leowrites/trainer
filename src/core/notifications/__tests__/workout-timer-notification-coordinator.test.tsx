@@ -30,8 +30,8 @@ jest.mock('@core/navigation', () => ({
   navigateToActiveWorkoutScreen: mockNavigateToActiveWorkoutScreen,
 }));
 
-jest.mock('@core/database', () => ({
-  database: mockDatabase,
+jest.mock('@core/database/provider', () => ({
+  useDatabase: () => mockDatabase,
 }));
 
 jest.mock('@features/workout-mode', () => {

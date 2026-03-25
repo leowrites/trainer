@@ -11,19 +11,21 @@ interface ExerciseNameRow {
 function resolveExerciseIds(
   db: SQLiteDatabase,
   exerciseNames: string[],
-): Map<string, string> {
+): Promise<Map<string, string>> {
   if (exerciseNames.length === 0) {
-    return new Map();
+    return Promise.resolve(new Map());
   }
 
-  const rows = db.getAllSync<ExerciseNameRow>(
-    `SELECT id, name FROM exercises WHERE name IN (${exerciseNames
-      .map(() => '?')
-      .join(', ')})`,
-    exerciseNames,
-  );
-
-  return new Map(rows.map((row: ExerciseNameRow) => [row.name, row.id]));
+  return db
+    .getAllAsync<ExerciseNameRow>(
+      `SELECT id, name FROM exercises WHERE name IN (${exerciseNames
+        .map(() => '?')
+        .join(', ')})`,
+      exerciseNames,
+    )
+    .then(
+      (rows) => new Map(rows.map((row: ExerciseNameRow) => [row.name, row.id])),
+    );
 }
 
 function requireExerciseId(
@@ -65,23 +67,25 @@ function collectRequiredExerciseNames(): string[] {
  * The seed is additive and idempotent for the fixed development records,
  * so it is safe to run on every app launch in development mode.
  */
-export function seedDevelopmentDatabase(db: SQLiteDatabase): void {
-  seedDefaultExercises(db);
+export async function seedDevelopmentDatabase(
+  db: SQLiteDatabase,
+): Promise<void> {
+  await seedDefaultExercises(db);
 
-  const exerciseIdsByName = resolveExerciseIds(
+  const exerciseIdsByName = await resolveExerciseIds(
     db,
     collectRequiredExerciseNames(),
   );
 
-  db.withTransactionSync(() => {
+  await db.withTransactionAsync(async () => {
     for (const routine of developmentSeedData.routines) {
-      db.runSync(
+      await db.runAsync(
         'INSERT OR REPLACE INTO routines (id, name, notes) VALUES (?, ?, ?)',
         [routine.id, routine.name, routine.notes],
       );
 
       for (const exercise of routine.exercises) {
-        db.runSync(
+        await db.runAsync(
           'INSERT OR REPLACE INTO routine_exercises (id, routine_id, exercise_id, position, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?)',
           [
             exercise.id,
@@ -96,7 +100,7 @@ export function seedDevelopmentDatabase(db: SQLiteDatabase): void {
     }
 
     for (const schedule of developmentSeedData.schedules) {
-      db.runSync(
+      await db.runAsync(
         'INSERT OR REPLACE INTO schedules (id, name, is_active, current_position) VALUES (?, ?, ?, ?)',
         [
           schedule.id,
@@ -107,7 +111,7 @@ export function seedDevelopmentDatabase(db: SQLiteDatabase): void {
       );
 
       for (const entry of schedule.entries) {
-        db.runSync(
+        await db.runAsync(
           'INSERT OR REPLACE INTO schedule_entries (id, schedule_id, routine_id, position) VALUES (?, ?, ?, ?)',
           [entry.id, schedule.id, entry.routineId, entry.position],
         );
@@ -115,7 +119,7 @@ export function seedDevelopmentDatabase(db: SQLiteDatabase): void {
     }
 
     for (const session of developmentSeedData.workoutSessions) {
-      db.runSync(
+      await db.runAsync(
         'INSERT OR REPLACE INTO workout_sessions (id, routine_id, schedule_id, snapshot_name, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)',
         [
           session.id,
@@ -128,7 +132,7 @@ export function seedDevelopmentDatabase(db: SQLiteDatabase): void {
       );
 
       for (const set of session.sets) {
-        db.runSync(
+        await db.runAsync(
           'INSERT OR REPLACE INTO workout_sets (id, session_id, exercise_id, weight, reps, is_completed, target_sets, target_reps) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
           [
             set.id,
@@ -145,13 +149,13 @@ export function seedDevelopmentDatabase(db: SQLiteDatabase): void {
     }
 
     for (const entry of developmentSeedData.bodyWeightEntries) {
-      db.runSync(
+      await db.runAsync(
         'INSERT OR REPLACE INTO body_weight_entries (id, weight, unit, logged_at, notes) VALUES (?, ?, ?, ?, ?)',
         [entry.id, entry.weight, entry.unit, entry.loggedAt, entry.notes],
       );
     }
 
-    db.runSync(
+    await db.runAsync(
       'INSERT OR REPLACE INTO user_profile (id, display_name, preferred_weight_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
       [
         developmentSeedData.userProfile.id,

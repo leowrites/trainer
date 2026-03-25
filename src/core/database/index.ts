@@ -5,7 +5,7 @@
  * of the app via a React context / custom hook.
  * Never import this module directly inside a React component — use useDatabase().
  */
-export { database } from './database';
+export { getDatabase, initDatabaseAsync } from './database';
 export type {
   BodyWeightEntry,
   Exercise,
@@ -19,7 +19,7 @@ export type {
   WorkoutSessionExercise,
   WorkoutSet,
 } from './types';
-export { DatabaseProvider, useDatabase } from './provider';
+export { DatabaseProvider, useDatabase, useOptionalDatabase } from './provider';
 export { seedDevelopmentDatabase } from './seed-development';
 export { seedDefaultExercises } from './seed-exercises';
 export { generateId } from './utils';

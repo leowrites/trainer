@@ -52,7 +52,7 @@ export interface ActiveWorkoutContentProps {
   updateWeight: (setId: string, weight: number) => void;
   updateActualRir: (setId: string, actualRir: number | null) => void;
   toggleSetLogged: (setId: string, isCompleted: boolean) => void;
-  flushPendingWrites: () => void;
+  flushPendingWrites: () => Promise<void>;
   insets: ReturnType<typeof useSafeAreaInsets>;
 }
 

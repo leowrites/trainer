@@ -10,7 +10,7 @@
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
-import { Alert } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from '@core/navigation';
@@ -61,6 +61,7 @@ export function WorkoutActiveScreen({
     updateActualRir,
     toggleSetLogged,
     flushPendingWrites,
+    isCriticalMutationPending,
     completeWorkout,
     deleteWorkout,
   } = useActiveWorkoutActions();
@@ -175,14 +176,26 @@ export function WorkoutActiveScreen({
           text: 'Delete Workout',
           style: 'destructive',
           onPress: () => {
-            if (deleteWorkout()) {
+            void (async () => {
               allowExitRef.current = true;
+
+              try {
+                if (!(await deleteWorkout())) {
+                  allowExitRef.current = false;
+                  return;
+                }
+              } catch (error: unknown) {
+                allowExitRef.current = false;
+                console.error('[Workout] Failed to delete workout:', error);
+                return;
+              }
+
               if (navigation.canGoBack()) {
                 navigation.goBack();
               } else {
                 navigation.navigate('Tabs', { screen: 'Workout' });
               }
-            }
+            })();
           },
         },
       ],
@@ -196,15 +209,25 @@ export function WorkoutActiveScreen({
       />
       <ActiveWorkoutContent
         onCompleteWorkout={() => {
-          flushPendingWrites();
-          const completedSessionId = completeWorkout();
-
-          if (completedSessionId) {
+          void (async () => {
             allowExitRef.current = true;
-            navigation.replace('WorkoutSummary', {
-              sessionId: completedSessionId,
-            });
-          }
+            try {
+              await flushPendingWrites();
+              const completedSessionId = await completeWorkout();
+
+              if (!completedSessionId) {
+                allowExitRef.current = false;
+                return;
+              }
+
+              navigation.replace('WorkoutSummary', {
+                sessionId: completedSessionId,
+              });
+            } catch (error: unknown) {
+              allowExitRef.current = false;
+              console.error('[Workout] Failed to complete workout:', error);
+            }
+          })();
         }}
         onDeleteWorkout={handleDeleteWorkout}
         onOpenExerciseDetails={(exerciseId) =>
@@ -222,6 +245,13 @@ export function WorkoutActiveScreen({
         flushPendingWrites={flushPendingWrites}
         insets={insets}
       />
+      {isCriticalMutationPending ? (
+        <View className="absolute inset-0 items-center justify-center bg-black/35">
+          <View className="rounded-2xl border border-surface-border bg-surface-card px-5 py-4">
+            <ActivityIndicator />
+          </View>
+        </View>
+      ) : null}
     </>
   );
 }

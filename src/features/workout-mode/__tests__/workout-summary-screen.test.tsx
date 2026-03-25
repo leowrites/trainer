@@ -30,6 +30,7 @@ describe('WorkoutSummaryScreen', () => {
   it('renders the completed workout summary with badges and schedule context', () => {
     const goBack = jest.fn();
     const navigate = jest.fn();
+    const reset = jest.fn();
 
     mockUseWorkoutSummary.mockReturnValue({
       isLoading: false,
@@ -96,6 +97,7 @@ describe('WorkoutSummaryScreen', () => {
             canGoBack: jest.fn(() => true),
             goBack,
             navigate,
+            reset,
             setOptions: jest.fn(),
           } as never
         }
@@ -119,7 +121,11 @@ describe('WorkoutSummaryScreen', () => {
 
     fireEvent.press(screen.getByText('Return Home'));
 
-    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(reset).toHaveBeenCalledWith({
+      index: 0,
+      routes: [{ name: 'Tabs', params: { screen: 'Workout' } }],
+    });
+    expect(goBack).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
   });
 

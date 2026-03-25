@@ -86,7 +86,7 @@ describe('workout write-path perf contracts', () => {
     jest.useRealTimers();
   });
 
-  it('updates RIR optimistically and defers sqlite writes until flush window', () => {
+  it('updates RIR optimistically and defers sqlite writes until flush window', async () => {
     const db = createMockDb();
     const dbTracker = createDbSyncCallTracker(db);
     const wrapper = createDatabaseWrapper(db);
@@ -110,8 +110,9 @@ describe('workout write-path perf contracts', () => {
     ).toBe(0);
 
     dbTracker.setPhase('effect');
-    act(() => {
+    await act(async () => {
       jest.advanceTimersByTime(200);
+      await Promise.resolve();
     });
 
     expect(
@@ -124,7 +125,7 @@ describe('workout write-path perf contracts', () => {
     dbTracker.restore();
   });
 
-  it('batches rapid reps and weight edits into deferred flush writes', () => {
+  it('batches rapid reps and weight edits into deferred flush writes', async () => {
     const db = createMockDb();
     const dbTracker = createDbSyncCallTracker(db);
     const wrapper = createDatabaseWrapper(db);
@@ -151,8 +152,9 @@ describe('workout write-path perf contracts', () => {
     ).toBe(0);
 
     dbTracker.setPhase('effect');
-    act(() => {
+    await act(async () => {
       jest.advanceTimersByTime(220);
+      await Promise.resolve();
     });
 
     expect(

@@ -4,10 +4,10 @@ import { prepareDatabase } from '../migrations';
 import { SCHEMA_VERSION } from '../schema';
 
 interface MockDatabase extends Partial<SQLiteDatabase> {
-  execSync: jest.Mock;
-  getAllSync: jest.Mock;
-  getFirstSync: jest.Mock;
-  withTransactionSync: jest.Mock;
+  execAsync: jest.Mock;
+  getAllAsync: jest.Mock;
+  getFirstAsync: jest.Mock;
+  withTransactionAsync: jest.Mock;
 }
 
 function createMigrationDbMock({
@@ -28,13 +28,13 @@ function createMigrationDbMock({
   let userVersion = version;
 
   const db: MockDatabase = {
-    execSync: jest.fn((sql: string) => {
+    execAsync: jest.fn(async (sql: string) => {
       const match = sql.match(/PRAGMA user_version = (\d+)/);
       if (match) {
         userVersion = Number(match[1]);
       }
     }),
-    getAllSync: jest.fn((sql: string) => {
+    getAllAsync: jest.fn(async (sql: string) => {
       const match = /^PRAGMA table_info\((.+)\)$/.exec(sql);
       if (match) {
         const tableName = match[1];
@@ -43,7 +43,7 @@ function createMigrationDbMock({
 
       return [];
     }),
-    getFirstSync: jest.fn((sql: string, params?: unknown[]) => {
+    getFirstAsync: jest.fn(async (sql: string, params?: unknown[]) => {
       if (sql === 'PRAGMA user_version') {
         return { user_version: userVersion };
       }
@@ -55,7 +55,7 @@ function createMigrationDbMock({
 
       return null;
     }),
-    withTransactionSync: jest.fn((fn: () => void) => fn()),
+    withTransactionAsync: jest.fn(async (fn: () => Promise<void>) => fn()),
   };
 
   return db;
@@ -73,43 +73,43 @@ describe('prepareDatabase', () => {
     consoleWarnSpy.mockRestore();
   });
 
-  it('creates the latest schema for a fresh install and sets the current version', () => {
+  it('creates the latest schema for a fresh install and sets the current version', async () => {
     const db = createMigrationDbMock({
       version: 0,
       tableNames: [],
     });
 
-    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+    const finalVersion = await prepareDatabase(db as SQLiteDatabase);
 
     expect(finalVersion).toBe(SCHEMA_VERSION);
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       expect.stringContaining('CREATE TABLE IF NOT EXISTS body_weight_entries'),
     );
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       `PRAGMA user_version = ${SCHEMA_VERSION}`,
     );
-    expect(db.withTransactionSync).not.toHaveBeenCalled();
+    expect(db.withTransactionAsync).not.toHaveBeenCalled();
     expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 
-  it('migrates a version 2 database forward without destructive resets', () => {
+  it('migrates a version 2 database forward without destructive resets', async () => {
     const db = createMigrationDbMock({ version: 2 });
 
-    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+    const finalVersion = await prepareDatabase(db as SQLiteDatabase);
 
     expect(finalVersion).toBe(SCHEMA_VERSION);
-    expect(db.execSync).not.toHaveBeenCalledWith(
+    expect(db.execAsync).not.toHaveBeenCalledWith(
       expect.stringContaining('DROP TABLE'),
     );
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       `PRAGMA user_version = ${SCHEMA_VERSION}`,
     );
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       expect.stringContaining('CREATE TABLE IF NOT EXISTS body_weight_entries'),
     );
   });
 
-  it('patches legacy unversioned workout sessions before running newer migrations', () => {
+  it('patches legacy unversioned workout sessions before running newer migrations', async () => {
     const db = createMigrationDbMock({
       version: 0,
       tableNames: ['workout_sessions'],
@@ -120,19 +120,19 @@ describe('prepareDatabase', () => {
       },
     });
 
-    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+    const finalVersion = await prepareDatabase(db as SQLiteDatabase);
 
     expect(finalVersion).toBe(SCHEMA_VERSION);
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       'ALTER TABLE workout_sessions ADD COLUMN schedule_id TEXT;',
     );
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       'ALTER TABLE workout_sessions ADD COLUMN snapshot_name TEXT;',
     );
-    expect(db.withTransactionSync).toHaveBeenCalled();
+    expect(db.withTransactionAsync).toHaveBeenCalled();
   });
 
-  it('adds phase-2 exercise metadata columns and user profile support for version 4 databases', () => {
+  it('adds phase-2 exercise metadata columns and user profile support for version 4 databases', async () => {
     const db = createMigrationDbMock({
       version: 4,
       tableNames: ['exercises', 'workout_sets'],
@@ -143,35 +143,35 @@ describe('prepareDatabase', () => {
       },
     });
 
-    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+    const finalVersion = await prepareDatabase(db as SQLiteDatabase);
 
     expect(finalVersion).toBe(SCHEMA_VERSION);
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       'ALTER TABLE exercises ADD COLUMN how_to TEXT;',
     );
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       'ALTER TABLE exercises ADD COLUMN equipment TEXT;',
     );
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       expect.stringContaining('CREATE TABLE IF NOT EXISTS user_profile'),
     );
   });
 
-  it('returns early on a newer schema version without applying DDL', () => {
+  it('returns early on a newer schema version without applying DDL', async () => {
     const db = createMigrationDbMock({
       version: SCHEMA_VERSION + 1,
       tableNames: ['workout_sessions', 'workout_sets'],
     });
 
-    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+    const finalVersion = await prepareDatabase(db as SQLiteDatabase);
 
     expect(finalVersion).toBe(SCHEMA_VERSION + 1);
-    expect(db.execSync).not.toHaveBeenCalledWith(
+    expect(db.execAsync).not.toHaveBeenCalledWith(
       expect.stringContaining('CREATE TABLE IF NOT EXISTS'),
     );
   });
 
-  it('adds routine and schedule archive columns for version 6 databases', () => {
+  it('adds routine and schedule archive columns for version 6 databases', async () => {
     const db = createMigrationDbMock({
       version: 6,
       tableNames: ['routines', 'schedules'],
@@ -184,18 +184,18 @@ describe('prepareDatabase', () => {
       },
     });
 
-    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+    const finalVersion = await prepareDatabase(db as SQLiteDatabase);
 
     expect(finalVersion).toBe(SCHEMA_VERSION);
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       'ALTER TABLE routines ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
     );
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       'ALTER TABLE schedules ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;',
     );
   });
 
-  it('adds ordered-query indexes for version 10 databases', () => {
+  it('adds ordered-query indexes for version 10 databases', async () => {
     const db = createMigrationDbMock({
       version: 10,
       tableNames: [
@@ -240,20 +240,20 @@ describe('prepareDatabase', () => {
       },
     });
 
-    const finalVersion = prepareDatabase(db as SQLiteDatabase);
+    const finalVersion = await prepareDatabase(db as SQLiteDatabase);
 
     expect(finalVersion).toBe(SCHEMA_VERSION);
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       expect.stringContaining(
         'CREATE INDEX IF NOT EXISTS idx_schedule_entries_schedule_position',
       ),
     );
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       expect.stringContaining(
         'CREATE INDEX IF NOT EXISTS idx_routine_exercises_routine_position',
       ),
     );
-    expect(db.execSync).toHaveBeenCalledWith(
+    expect(db.execAsync).toHaveBeenCalledWith(
       expect.stringContaining(
         'CREATE INDEX IF NOT EXISTS idx_workout_sessions_end_time_start_time',
       ),

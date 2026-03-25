@@ -27,11 +27,11 @@ const defaultExercises: ExerciseSeedEntry[] = exerciseSeedData;
  *
  * @param db - The expo-sqlite `SQLiteDatabase` instance to seed.
  */
-export function seedDefaultExercises(db: SQLiteDatabase): void {
+export async function seedDefaultExercises(db: SQLiteDatabase): Promise<void> {
   const defaultExerciseNames = defaultExercises.map(
     (exercise: ExerciseSeedEntry) => exercise.name,
   );
-  const existingExercises = db.getAllSync<ExistingExerciseRow>(
+  const existingExercises = await db.getAllAsync<ExistingExerciseRow>(
     `SELECT id, name, how_to, equipment FROM exercises WHERE name IN (${defaultExerciseNames
       .map(() => '?')
       .join(', ')})`,
@@ -66,9 +66,9 @@ export function seedDefaultExercises(db: SQLiteDatabase): void {
     return;
   }
 
-  db.withTransactionSync(() => {
+  await db.withTransactionAsync(async () => {
     for (const entry of missingExercises) {
-      db.runSync(
+      await db.runAsync(
         'INSERT INTO exercises (id, name, muscle_group, how_to, equipment) VALUES (?, ?, ?, ?, ?)',
         [
           generateId(),
@@ -87,7 +87,7 @@ export function seedDefaultExercises(db: SQLiteDatabase): void {
         continue;
       }
 
-      db.runSync(
+      await db.runAsync(
         'UPDATE exercises SET how_to = COALESCE(how_to, ?), equipment = COALESCE(equipment, ?) WHERE id = ?',
         [entry.howTo ?? null, entry.equipment ?? null, existingExercise.id],
       );

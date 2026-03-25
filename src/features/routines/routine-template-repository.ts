@@ -134,6 +134,84 @@ export function loadRoutineExerciseTemplates(
   });
 }
 
+export async function loadRoutineExerciseTemplatesAsync(
+  db: Pick<SQLiteDatabase, 'getAllAsync'>,
+  routineId: string,
+): Promise<RoutineExerciseTemplate[]> {
+  const exerciseRows = await db.getAllAsync<RoutineExercise>(
+    `SELECT id, routine_id, exercise_id, position, target_sets, target_reps, rest_seconds, progression_policy, target_rir
+     FROM routine_exercises
+     WHERE routine_id = ?
+     ORDER BY position ASC`,
+    [routineId],
+  );
+
+  if (exerciseRows.length === 0) {
+    return [];
+  }
+
+  const setRows = await db.getAllAsync<RoutineExerciseSet>(
+    `SELECT id, routine_exercise_id, position, target_reps, planned_weight, target_reps_min, target_reps_max, set_role
+     FROM routine_exercise_sets
+     WHERE routine_exercise_id IN (${exerciseRows.map(() => '?').join(', ')})
+     ORDER BY position ASC`,
+    exerciseRows.map((row) => row.id),
+  );
+
+  const setsByExerciseId = new Map<string, RoutineExerciseTemplateSet[]>();
+
+  for (const setRow of setRows) {
+    const sets = setsByExerciseId.get(setRow.routine_exercise_id) ?? [];
+    sets.push({
+      id: setRow.id,
+      position: setRow.position,
+      targetReps: setRow.target_reps,
+      targetRepsMin: setRow.target_reps_min ?? setRow.target_reps,
+      targetRepsMax:
+        setRow.target_reps_max ?? setRow.target_reps_min ?? setRow.target_reps,
+      plannedWeight: setRow.planned_weight,
+      setRole: setRow.set_role ?? 'work',
+    });
+    setsByExerciseId.set(setRow.routine_exercise_id, sets);
+  }
+
+  return exerciseRows.map((exerciseRow) => {
+    const sets =
+      setsByExerciseId.get(exerciseRow.id) ??
+      Array.from(
+        { length: Math.max(0, exerciseRow.target_sets) },
+        (_, index) => ({
+          id: `${exerciseRow.id}-legacy-${index}`,
+          position: index,
+          targetReps: exerciseRow.target_reps,
+          targetRepsMin: exerciseRow.target_reps,
+          targetRepsMax: exerciseRow.target_reps,
+          plannedWeight: null,
+          setRole:
+            exerciseRow.progression_policy === 'top_set_backoff'
+              ? index === 0
+                ? 'top_set'
+                : 'backoff'
+              : 'work',
+        }),
+      );
+
+    return {
+      id: exerciseRow.id,
+      exerciseId: exerciseRow.exercise_id,
+      position: exerciseRow.position,
+      restSeconds: exerciseRow.rest_seconds ?? null,
+      progressionPolicy: exerciseRow.progression_policy ?? 'double_progression',
+      targetRir: exerciseRow.target_rir ?? null,
+      targetSets: sets.length,
+      targetReps: sets[0]?.targetRepsMin ?? null,
+      targetRepsMin: sets[0]?.targetRepsMin ?? null,
+      targetRepsMax: sets[0]?.targetRepsMax ?? null,
+      sets,
+    };
+  });
+}
+
 export function insertRoutineExerciseTemplates(
   db: Pick<SQLiteDatabase, 'runSync'>,
   routineId: string,

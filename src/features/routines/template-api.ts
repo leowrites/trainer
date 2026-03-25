@@ -9,6 +9,7 @@
 
 export {
   insertRoutineExerciseTemplates,
+  loadRoutineExerciseTemplatesAsync,
   loadRoutineExerciseTemplates,
   replaceRoutineExerciseTemplates,
 } from './routine-template-repository';

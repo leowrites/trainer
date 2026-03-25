@@ -118,12 +118,15 @@ export function WorkoutSummaryScreen({
   }, [applyTemplateUpdate, dismissedTemplatePrompt, summary?.templateUpdate]);
 
   const handleBackToHome = (): void => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return;
-    }
-
-    navigation.navigate('Tabs', { screen: 'Workout' });
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'Tabs',
+          params: { screen: 'Workout' },
+        },
+      ],
+    });
   };
 
   if (isLoading || !summary) {

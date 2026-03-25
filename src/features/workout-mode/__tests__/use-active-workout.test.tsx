@@ -11,6 +11,8 @@ import type { ActiveWorkoutSession } from '../types';
 jest.mock('@core/database/utils', () => ({
   generateId: jest.fn().mockReturnValue('new-set-1'),
 }));
+const mockGenerateId = jest.requireMock('@core/database/utils')
+  .generateId as jest.Mock;
 
 jest.mock('@lodev09/react-native-true-sheet', () => {
   const React = require('react');
@@ -65,11 +67,13 @@ const activeSession: ActiveWorkoutSession = {
 describe('useActiveWorkoutActions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGenerateId.mockReset();
+    mockGenerateId.mockReturnValue('new-set-1');
     useWorkoutStore.getState().endWorkout();
     useWorkoutStore.getState().startWorkout(activeSession);
   });
 
-  it('adds and removes ad hoc exercises without subscribing to the full session tree', () => {
+  it('adds and removes ad hoc exercises without subscribing to the full session tree', async () => {
     const db = createMockDb();
     const wrapper = createDatabaseWrapper(db);
     useWorkoutStore.getState().endWorkout();
@@ -81,8 +85,9 @@ describe('useActiveWorkoutActions', () => {
 
     const { result } = renderHook(() => useActiveWorkoutActions(), { wrapper });
 
-    act(() => {
+    await act(async () => {
       result.current.addExercise('exercise-2', 'Goblet Squat');
+      await Promise.resolve();
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
@@ -130,8 +135,9 @@ describe('useActiveWorkoutActions', () => {
       },
     ]);
 
-    act(() => {
+    await act(async () => {
       result.current.removeExercise('exercise-2');
+      await Promise.resolve();
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
@@ -143,7 +149,7 @@ describe('useActiveWorkoutActions', () => {
     ).toEqual([]);
   });
 
-  it('persists set edits, additions, and deletions while keeping store selectors in sync', () => {
+  it('persists set edits, additions, and deletions while keeping store selectors in sync', async () => {
     jest.useFakeTimers();
 
     const db = createMockDb();
@@ -174,8 +180,8 @@ describe('useActiveWorkoutActions', () => {
       ),
     ).toBe(false);
 
-    act(() => {
-      result.current.flushPendingWrites();
+    await act(async () => {
+      await result.current.flushPendingWrites();
     });
 
     expect(db.runSync).toHaveBeenCalledWith(
@@ -183,9 +189,10 @@ describe('useActiveWorkoutActions', () => {
       [10, 145.5, 'set-1'],
     );
 
-    act(() => {
+    await act(async () => {
       result.current.addSet('exercise-1');
       result.current.deleteSet('set-1');
+      await Promise.resolve();
     });
 
     expect(
@@ -213,7 +220,93 @@ describe('useActiveWorkoutActions', () => {
     jest.useRealTimers();
   });
 
-  it('batches rapid RIR updates before flushing', () => {
+  it('serializes rapid add-set mutations so set positions remain monotonic', async () => {
+    const db = createMockDb();
+    const wrapper = createDatabaseWrapper(db);
+    let maxPosition = 0;
+
+    db.getFirstSync.mockImplementation((sql: unknown) => {
+      if (
+        typeof sql === 'string' &&
+        sql.includes('SELECT MAX(position) AS max_position') &&
+        sql.includes('FROM workout_sets')
+      ) {
+        return { max_position: maxPosition };
+      }
+
+      return null;
+    });
+
+    db.runSync.mockImplementation((sql: unknown, params?: unknown[]) => {
+      if (
+        typeof sql === 'string' &&
+        sql.includes('INSERT INTO workout_sets') &&
+        params
+      ) {
+        const insertedPosition = params[3];
+        if (typeof insertedPosition === 'number') {
+          maxPosition = Math.max(maxPosition, insertedPosition);
+        }
+      }
+    });
+
+    let resolveFirstInsert: (() => void) | undefined;
+    const firstInsertGate = new Promise<void>((resolve) => {
+      resolveFirstInsert = resolve;
+    });
+    let workoutSetInsertCount = 0;
+    db.runAsync.mockImplementation(async (...args: unknown[]) => {
+      const [sql] = args;
+      if (
+        typeof sql === 'string' &&
+        sql.includes('INSERT INTO workout_sets') &&
+        workoutSetInsertCount === 0
+      ) {
+        workoutSetInsertCount += 1;
+        await firstInsertGate;
+      }
+
+      return db.runSync(...args);
+    });
+
+    mockGenerateId
+      .mockReturnValueOnce('new-set-2')
+      .mockReturnValueOnce('new-set-3');
+
+    const { result } = renderHook(() => useActiveWorkoutActions(), { wrapper });
+
+    await act(async () => {
+      result.current.addSet('exercise-1');
+      result.current.addSet('exercise-1');
+      await Promise.resolve();
+    });
+
+    const preReleasePositionReads = db.getFirstSync.mock.calls.filter(
+      ([sql]) =>
+        (sql as string).includes('SELECT MAX(position) AS max_position') &&
+        (sql as string).includes('FROM workout_sets'),
+    );
+    expect(preReleasePositionReads).toHaveLength(1);
+
+    if (resolveFirstInsert === undefined) {
+      throw new Error('Expected first insert gate release function to exist.');
+    }
+    resolveFirstInsert();
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const workoutSetInsertCalls = db.runSync.mock.calls.filter(([sql]) =>
+      (sql as string).includes('INSERT INTO workout_sets'),
+    );
+    expect(
+      workoutSetInsertCalls.map(([, params]) => (params as unknown[])[3]),
+    ).toEqual([1, 2]);
+  });
+
+  it('batches rapid RIR updates before flushing', async () => {
     jest.useFakeTimers();
 
     const db = createMockDb();
@@ -238,8 +331,9 @@ describe('useActiveWorkoutActions', () => {
       ),
     ).toBe(false);
 
-    act(() => {
+    await act(async () => {
       jest.advanceTimersByTime(180);
+      await Promise.resolve();
     });
 
     const rirUpdateCalls = db.runSync.mock.calls.filter(([sql]) =>
@@ -255,7 +349,7 @@ describe('useActiveWorkoutActions', () => {
     jest.useRealTimers();
   });
 
-  it('flushes queued set changes before completing and deleting workouts', () => {
+  it('flushes queued set changes before completing and deleting workouts', async () => {
     jest.useFakeTimers();
     jest.setSystemTime(1_700_000_123_000);
 
@@ -296,8 +390,8 @@ describe('useActiveWorkoutActions', () => {
       result.current.updateReps('set-1', 10);
     });
 
-    act(() => {
-      expect(result.current.completeWorkout()).toBe('session-1');
+    await act(async () => {
+      expect(await result.current.completeWorkout()).toBe('session-1');
     });
 
     const completedSetFlushIndex = db.runSync.mock.calls.findIndex(
@@ -326,8 +420,8 @@ describe('useActiveWorkoutActions', () => {
       result.current.updateWeight('set-1', 140);
     });
 
-    act(() => {
-      expect(result.current.deleteWorkout()).toBe(true);
+    await act(async () => {
+      expect(await result.current.deleteWorkout()).toBe(true);
     });
 
     const deletedSetFlushIndex = db.runSync.mock.calls.findIndex(

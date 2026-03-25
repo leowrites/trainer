@@ -4,7 +4,7 @@
  * CALLING SPEC:
  * - render the active workout hero with split weight and reps edit zones
  * - renders always-on weight and reps wheels with a strong centered focus
- * - previews wheel changes immediately and commits settled values upstream
+ * - use wheel motion as visual-only and commit settled values upstream
  * - owns success highlight treatment only
  * - has no persistence side effects on its own
  */
@@ -22,9 +22,7 @@ export interface FocusedSetHeroProps {
   weightValue: number;
   repsValue: number;
   previousSetSummary: string;
-  onPreviewWeight: (value: number) => void;
   onCommitWeight: (value: number) => void;
-  onPreviewReps: (value: number) => void;
   onCommitReps: (value: number) => void;
 }
 
@@ -32,9 +30,7 @@ export const FocusedSetHero = React.memo(function FocusedSetHero({
   weightValue,
   repsValue,
   previousSetSummary,
-  onPreviewWeight,
   onCommitWeight,
-  onPreviewReps,
   onCommitReps,
 }: FocusedSetHeroProps): React.JSX.Element {
   const { tokens } = useTheme();
@@ -56,7 +52,6 @@ export const FocusedSetHero = React.memo(function FocusedSetHero({
           field="weight"
           value={weightValue}
           options={weightOptions}
-          onPreviewValue={onPreviewWeight}
           onCommitValue={onCommitWeight}
         />
         <View
@@ -69,7 +64,6 @@ export const FocusedSetHero = React.memo(function FocusedSetHero({
           field="reps"
           value={repsValue}
           options={repOptions}
-          onPreviewValue={onPreviewReps}
           onCommitValue={onCommitReps}
         />
       </View>

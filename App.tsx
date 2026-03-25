@@ -1,6 +1,7 @@
 import './global.css';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -23,13 +24,21 @@ function ThemedStatusBar(): React.JSX.Element {
 
 export default function App(): React.JSX.Element {
   const perfLabEnabled = isPerfLabEnabled();
+  const bootstrapFallback = (
+    <View className="flex-1 items-center justify-center bg-background">
+      <ActivityIndicator size="large" />
+      <Text className="mt-4 font-body text-foreground">
+        Preparing your data
+      </Text>
+    </View>
+  );
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
           <GluestackUIProvider>
-            <DatabaseProvider>
+            <DatabaseProvider fallback={bootstrapFallback}>
               <ThemedStatusBar />
               {perfLabEnabled ? <PerfLabScreen /> : <RootNavigator />}
               <WorkoutTimerNotificationCoordinator />

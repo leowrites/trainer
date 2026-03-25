@@ -20,6 +20,7 @@ export { useRoutineInsight } from './hooks/use-routine-insight';
 export { useRoutineTemplate } from './hooks/use-routine-template';
 export {
   insertRoutineExerciseTemplates,
+  loadRoutineExerciseTemplatesAsync,
   loadRoutineExerciseTemplates,
   replaceRoutineExerciseTemplates,
 } from './routine-template-repository';

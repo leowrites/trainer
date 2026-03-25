@@ -4,7 +4,7 @@
  * CALLING SPEC:
  * - render one weight or reps zone inside the focused workout hero
  * - shows a stable vertical wheel with one strongly focused current value
- * - previews wheel values locally and commits settled values upstream
+ * - treat wheel motion as visual-only and commit settled values upstream
  * - has no persistence side effects on its own
  */
 
@@ -20,7 +20,6 @@ interface HeroValueZoneProps {
   field: HeroValueField;
   value: number;
   options: number[];
-  onPreviewValue: (value: number) => void;
   onCommitValue: (value: number) => void;
   children?: React.ReactNode;
 }
@@ -39,7 +38,6 @@ export function HeroValueZone({
   field,
   value,
   options,
-  onPreviewValue,
   onCommitValue,
   children,
 }: HeroValueZoneProps): React.JSX.Element {
@@ -60,9 +58,6 @@ export function HeroValueZone({
         visibleItemCount={3}
         width="100%"
         enableScrollByTapOnItem
-        onValueChanging={({ item }) => {
-          onPreviewValue(item.value);
-        }}
         onValueChanged={({ item }) => {
           onCommitValue(item.value);
         }}

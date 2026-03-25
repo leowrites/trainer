@@ -219,9 +219,10 @@ describe('workout screens', () => {
       updateWeight: jest.fn(),
       updateActualRir: jest.fn(),
       toggleSetLogged: jest.fn(),
-      flushPendingWrites: jest.fn(),
-      completeWorkout: jest.fn().mockReturnValue('completed-session-1'),
-      deleteWorkout: jest.fn().mockReturnValue(true),
+      flushPendingWrites: jest.fn().mockResolvedValue(undefined),
+      isCriticalMutationPending: false,
+      completeWorkout: jest.fn().mockResolvedValue('completed-session-1'),
+      deleteWorkout: jest.fn().mockResolvedValue(true),
     });
     mockUsePreviousExercisePerformance.mockReturnValue({
       'exercise-1': {
@@ -290,8 +291,9 @@ describe('workout screens', () => {
     >);
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: null,
-      startWorkoutFromSchedule: jest.fn(),
-      startFreeWorkout: jest.fn(),
+      isStarting: false,
+      startWorkoutFromSchedule: jest.fn().mockResolvedValue(null),
+      startFreeWorkout: jest.fn().mockResolvedValue(''),
       refreshPreview: jest.fn(),
     });
 
@@ -305,10 +307,10 @@ describe('workout screens', () => {
     expect(expandWorkout).toHaveBeenCalledTimes(1);
   });
 
-  it('does not rerender the home shell while starting a scheduled workout', () => {
+  it('does not rerender the home shell while starting a scheduled workout', async () => {
     const props = createWorkoutTabScreenProps();
     const commits: string[] = [];
-    const startWorkoutFromSchedule = jest.fn().mockReturnValue('session-1');
+    const startWorkoutFromSchedule = jest.fn().mockResolvedValue('session-1');
 
     mockUseWorkoutStarter.mockReturnValue({
       nextRoutine: {
@@ -318,8 +320,9 @@ describe('workout screens', () => {
         exerciseCount: 5,
         estimatedMinutes: 45,
       },
+      isStarting: false,
       startWorkoutFromSchedule,
-      startFreeWorkout: jest.fn(),
+      startFreeWorkout: jest.fn().mockResolvedValue(''),
       refreshPreview: jest.fn(),
     });
 
@@ -336,8 +339,9 @@ describe('workout screens', () => {
 
     commits.length = 0;
 
-    act(() => {
+    await act(async () => {
       fireEvent(screen.getByText('Start now'), 'onPress');
+      await Promise.resolve();
     });
 
     expect(startWorkoutFromSchedule).toHaveBeenCalledTimes(1);
@@ -379,6 +383,57 @@ describe('workout screens', () => {
     expect(screen.getByText(/Set 2 of 2/)).toBeTruthy();
     fireEvent.press(screen.getByText('Previous'));
     expect(screen.getByText(/Set 1 of 2/)).toBeTruthy();
+  });
+
+  it('keeps completion navigation on summary when completion clears workout state', async () => {
+    const props = createWorkoutActiveScreenProps();
+    const completeWorkout = jest.fn().mockImplementation(async () => {
+      useWorkoutStore.getState().endWorkout();
+      return 'completed-session-1';
+    });
+
+    mockUseActiveWorkoutActions.mockReturnValue({
+      addExercise: jest.fn(),
+      removeExercise: jest.fn(),
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateExerciseRestSeconds: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      updateActualRir: jest.fn(),
+      toggleSetLogged: jest.fn(),
+      flushPendingWrites: jest.fn().mockResolvedValue(undefined),
+      isCriticalMutationPending: false,
+      completeWorkout,
+      deleteWorkout: jest.fn().mockResolvedValue(true),
+    });
+
+    seedActiveWorkout({
+      ...activeSession,
+      exercises: [
+        {
+          ...activeSession.exercises[0],
+          sets: [activeSession.exercises[0].sets[0]],
+        },
+      ],
+    });
+
+    render(<WorkoutActiveScreen {...props} />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Complete Set'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(completeWorkout).toHaveBeenCalledTimes(1);
+    expect(props.navigation.replace).toHaveBeenCalledWith('WorkoutSummary', {
+      sessionId: 'completed-session-1',
+    });
+    expect(props.navigation.goBack).not.toHaveBeenCalled();
+    expect(props.navigation.navigate).not.toHaveBeenCalledWith('Tabs', {
+      screen: 'Workout',
+    });
   });
 
   it('opens the workout overview without triggering a selector loop', () => {
