@@ -11,6 +11,10 @@
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import {
+  buildSetControlStackViewModel,
+  type SetControlStackViewModel,
+} from '../domain/set-control-stack';
 import type {
   ActiveWorkoutOverview,
   ActiveWorkoutSessionMeta,
@@ -191,6 +195,14 @@ export function useActiveWorkoutSetSceneState(
 export function useActiveWorkoutSetExerciseId(setId: string): string | null {
   return useWorkoutStore(
     (state) => state.activeSetsById[setId]?.exerciseId ?? null,
+  );
+}
+
+export function useActiveWorkoutSetControlStack(
+  focusedSetId: string,
+): SetControlStackViewModel | null {
+  return useWorkoutStore(
+    useShallow((state) => buildSetControlStackViewModel(state, focusedSetId)),
   );
 }
 
