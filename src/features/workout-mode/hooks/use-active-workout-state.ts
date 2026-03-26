@@ -58,6 +58,12 @@ interface ActiveWorkoutOverviewSource {
   activeSetsById: WorkoutStore['activeSetsById'];
 }
 
+interface ActiveWorkoutSetControlStackSource {
+  activeRouteSetIds: string[];
+  activeSetsById: WorkoutStore['activeSetsById'];
+  activeExercisesById: WorkoutStore['activeExercisesById'];
+}
+
 function buildSetSceneState(
   state: WorkoutStore,
   setId: string,
@@ -201,9 +207,19 @@ export function useActiveWorkoutSetExerciseId(setId: string): string | null {
 export function useActiveWorkoutSetControlStack(
   focusedSetId: string,
 ): SetControlStackViewModel | null {
-  return useWorkoutStore(
-    useShallow((state) => buildSetControlStackViewModel(state, focusedSetId)),
+  const source = useWorkoutStore(
+    useShallow(
+      (state): ActiveWorkoutSetControlStackSource => ({
+        activeRouteSetIds: state.activeRouteSetIds,
+        activeSetsById: state.activeSetsById,
+        activeExercisesById: state.activeExercisesById,
+      }),
+    ),
   );
+
+  return useMemo(() => {
+    return buildSetControlStackViewModel(source, focusedSetId);
+  }, [focusedSetId, source]);
 }
 
 export function useActiveWorkoutOverview(

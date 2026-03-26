@@ -1,67 +1,15 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 
 import { FocusedWorkoutScene } from '../components/focused-workout-scene';
 import { useWorkoutStore } from '../store';
 import type { ActiveWorkoutSession } from '../types';
 
-const queuedStaleCommits: Array<() => void> = [];
-
 jest.mock('@shared/hooks', () => ({
-  useReducedMotionPreference: () => false,
+  useReducedMotionPreference: () => true,
 }));
 
-jest.mock('@expo/vector-icons', () => {
-  const ReactNative = require('react-native');
-
-  return {
-    Feather: ({ name }: { name: string }) => (
-      <ReactNative.Text>{name}</ReactNative.Text>
-    ),
-  };
-});
-
-jest.mock('@quidone/react-native-wheel-picker', () => {
-  const React = require('react');
-  const ReactNative = require('react-native');
-
-  const MockWheelPicker = ({
-    value,
-    onValueChanging,
-    onValueChanged,
-    testID,
-  }: {
-    value: number;
-    onValueChanging?: (event: { item: { value: number } }) => void;
-    onValueChanged?: (event: { item: { value: number } }) => void;
-    testID?: string;
-  }): React.JSX.Element => {
-    React.useEffect(() => {
-      // Simulate library-driven programmatic sync updates when value prop changes.
-      onValueChanging?.({ item: { value: Math.max(0, value - 1) } });
-    }, [onValueChanging, value]);
-
-    React.useEffect(() => {
-      queuedStaleCommits.push(() => {
-        onValueChanged?.({ item: { value: value + 5 } });
-      });
-    }, [onValueChanged, value]);
-
-    return (
-      <ReactNative.Pressable
-        testID={`${testID}-commit`}
-        onPress={() => onValueChanged?.({ item: { value } })}
-      />
-    );
-  };
-
-  return {
-    __esModule: true,
-    default: MockWheelPicker,
-  };
-});
-
-const activeSession: ActiveWorkoutSession = {
+const singleExerciseSession: ActiveWorkoutSession = {
   id: 'session-1',
   title: 'Push A',
   startTime: new Date(2026, 2, 18, 8, 0, 0).getTime(),
@@ -104,13 +52,112 @@ const activeSession: ActiveWorkoutSession = {
   ],
 };
 
-function seedActiveWorkout(): void {
+const multiExerciseSession: ActiveWorkoutSession = {
+  id: 'session-2',
+  title: 'Upper B',
+  startTime: new Date(2026, 2, 19, 9, 0, 0).getTime(),
+  isFreeWorkout: false,
+  exercises: [
+    {
+      exerciseId: 'exercise-1',
+      exerciseName: 'Bench Press',
+      targetSets: 2,
+      targetReps: 8,
+      targetRepsMin: 8,
+      targetRepsMax: 10,
+      sets: [
+        {
+          id: 'set-1',
+          exerciseId: 'exercise-1',
+          reps: 8,
+          weight: 135,
+          isCompleted: false,
+          targetSets: 2,
+          targetReps: 8,
+          targetRepsMin: 8,
+          targetRepsMax: 10,
+          actualRir: 2,
+        },
+        {
+          id: 'set-2',
+          exerciseId: 'exercise-1',
+          reps: 8,
+          weight: 140,
+          isCompleted: false,
+          targetSets: 2,
+          targetReps: 8,
+          targetRepsMin: 8,
+          targetRepsMax: 10,
+          actualRir: 1,
+        },
+      ],
+    },
+    {
+      exerciseId: 'exercise-2',
+      exerciseName: 'Row',
+      targetSets: 2,
+      targetReps: 10,
+      targetRepsMin: 10,
+      targetRepsMax: 12,
+      sets: [
+        {
+          id: 'set-3',
+          exerciseId: 'exercise-2',
+          reps: 10,
+          weight: 95,
+          isCompleted: false,
+          targetSets: 2,
+          targetReps: 10,
+          targetRepsMin: 10,
+          targetRepsMax: 12,
+          actualRir: 1,
+        },
+        {
+          id: 'set-4',
+          exerciseId: 'exercise-2',
+          reps: 10,
+          weight: 100,
+          isCompleted: false,
+          targetSets: 2,
+          targetReps: 10,
+          targetRepsMin: 10,
+          targetRepsMax: 12,
+          actualRir: 1,
+        },
+      ],
+    },
+  ],
+};
+
+function seedActiveWorkout(session: ActiveWorkoutSession): void {
   useWorkoutStore.getState().endWorkout();
-  useWorkoutStore.getState().startWorkout(activeSession);
+  useWorkoutStore.getState().startWorkout(session);
 }
 
-function FocusedWorkoutHarness(): React.JSX.Element {
-  const [focusedSetId, setFocusedSetId] = React.useState('set-1');
+interface HarnessOptions {
+  initialFocusedSetId?: string;
+  onMoveFocus?: jest.Mock;
+  onOpenExerciseDetails?: jest.Mock;
+  onOpenExerciseTimerOptions?: jest.Mock;
+  onCompleteWorkout?: jest.Mock;
+  updateWeight?: jest.Mock;
+  updateReps?: jest.Mock;
+  updateActualRir?: jest.Mock;
+  toggleSetLogged?: jest.Mock;
+}
+
+function FocusedWorkoutHarness({
+  initialFocusedSetId = 'set-1',
+  onMoveFocus,
+  onOpenExerciseDetails,
+  onOpenExerciseTimerOptions,
+  onCompleteWorkout,
+  updateWeight,
+  updateReps,
+  updateActualRir,
+  toggleSetLogged,
+}: HarnessOptions): React.JSX.Element {
+  const [focusedSetId, setFocusedSetId] = React.useState(initialFocusedSetId);
 
   return (
     <FocusedWorkoutScene
@@ -123,24 +170,36 @@ function FocusedWorkoutHarness(): React.JSX.Element {
         completedAt: new Date(2026, 2, 16, 9, 0, 0).getTime(),
       }}
       onOpenOverview={jest.fn()}
-      onOpenExerciseDetails={jest.fn()}
-      onOpenExerciseTimerOptions={jest.fn()}
+      onOpenExerciseDetails={(exerciseId) => {
+        onOpenExerciseDetails?.(exerciseId);
+      }}
+      onOpenExerciseTimerOptions={(exerciseId) => {
+        onOpenExerciseTimerOptions?.(exerciseId);
+      }}
       onMoveFocus={(nextSetId) => {
+        onMoveFocus?.(nextSetId);
+
         if (nextSetId !== null) {
           setFocusedSetId(nextSetId);
         }
       }}
-      onCompleteWorkout={jest.fn()}
+      onCompleteWorkout={() => {
+        onCompleteWorkout?.();
+      }}
       updateReps={(setId, reps) => {
+        updateReps?.(setId, reps);
         useWorkoutStore.getState().updateSet(setId, { reps });
       }}
       updateWeight={(setId, weight) => {
+        updateWeight?.(setId, weight);
         useWorkoutStore.getState().updateSet(setId, { weight });
       }}
       updateActualRir={(setId, actualRir) => {
+        updateActualRir?.(setId, actualRir);
         useWorkoutStore.getState().updateSet(setId, { actualRir });
       }}
       toggleSetLogged={(setId, isCompleted) => {
+        toggleSetLogged?.(setId, isCompleted);
         useWorkoutStore.getState().updateSet(setId, { isCompleted });
       }}
     />
@@ -150,52 +209,125 @@ function FocusedWorkoutHarness(): React.JSX.Element {
 describe('focused workout scene guidance stability', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    queuedStaleCommits.length = 0;
-    seedActiveWorkout();
   });
 
-  it('keeps set navigation to one focused-scene commit under programmatic wheel sync', () => {
-    const commits: Array<{ phase: string; actualDuration: number }> = [];
-
-    render(
-      <React.Profiler
-        id="FocusedWorkoutScene"
-        onRender={(_id, phase, actualDuration) => {
-          commits.push({ phase, actualDuration });
-        }}
-      >
-        <FocusedWorkoutHarness />
-      </React.Profiler>,
-    );
-
-    commits.length = 0;
-
-    act(() => {
-      fireEvent.press(screen.getByText('Next'));
-    });
+  it('keeps linear one-step tap navigation across exercise boundaries', () => {
+    seedActiveWorkout(multiExerciseSession);
+    render(<FocusedWorkoutHarness initialFocusedSetId="set-2" />);
 
     expect(screen.getByText(/Set 2 of 2/)).toBeTruthy();
-    expect(screen.getByText('On target')).toBeTruthy();
-    expect(commits).toHaveLength(1);
+    expect(screen.getByText('Bench Press')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('stack-preview-next-transition'));
+
+    expect(screen.getByText(/Set 1 of 2/)).toBeTruthy();
+    expect(screen.getByText('Row')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('stack-preview-previous-transition'));
+
+    expect(screen.getByText(/Set 2 of 2/)).toBeTruthy();
+    expect(screen.getByText('Bench Press')).toBeTruthy();
   });
 
-  it('ignores stale wheel commit callbacks after focus moves to another set', () => {
+  it('applies first/last boundary no-op behavior', () => {
+    seedActiveWorkout(multiExerciseSession);
+    const onMoveFocus = jest.fn();
+
+    const firstRender = render(
+      <FocusedWorkoutHarness
+        initialFocusedSetId="set-1"
+        onMoveFocus={onMoveFocus}
+      />,
+    );
+
+    expect(screen.getByTestId('stack-preview-previous-empty')).toBeTruthy();
+
+    expect(screen.getByText(/Set 1 of 2/)).toBeTruthy();
+    expect(onMoveFocus).not.toHaveBeenCalled();
+
+    firstRender.unmount();
+
+    render(
+      <FocusedWorkoutHarness
+        initialFocusedSetId="set-4"
+        onMoveFocus={onMoveFocus}
+      />,
+    );
+
+    expect(screen.getByTestId('stack-preview-next-empty')).toBeTruthy();
+
+    expect(screen.getByText('Row')).toBeTruthy();
+    expect(screen.getByText(/Set 2 of 2/)).toBeTruthy();
+  });
+
+  it('renders local adjacency as numeric and cross-exercise adjacency as label-first', () => {
+    seedActiveWorkout(multiExerciseSession);
+    render(<FocusedWorkoutHarness initialFocusedSetId="set-2" />);
+
+    expect(screen.getByTestId('stack-preview-previous-local')).toBeTruthy();
+    expect(screen.getByText('↑ 135 x 8')).toBeTruthy();
+
+    expect(screen.getByTestId('stack-preview-next-transition')).toBeTruthy();
+    expect(screen.getByText('↓ Row · 1/2')).toBeTruthy();
+  });
+
+  it('renders persistent numeric inputs for weight and reps', () => {
+    seedActiveWorkout(singleExerciseSession);
     render(<FocusedWorkoutHarness />);
 
-    const staleCallbackCount = queuedStaleCommits.length;
+    expect(screen.getByTestId('active-set-weight-input').props.value).toBe(
+      '135',
+    );
+    expect(screen.getByTestId('active-set-reps-input').props.value).toBe('8');
+    expect(screen.getByText('lbs')).toBeTruthy();
+    expect(screen.getByText('reps')).toBeTruthy();
+  });
 
-    act(() => {
-      fireEvent.press(screen.getByText('Next'));
-    });
+  it('keeps the scene interactive without a modal edit state', () => {
+    seedActiveWorkout(singleExerciseSession);
+    const onOpenExerciseDetails = jest.fn();
+    const onOpenExerciseTimerOptions = jest.fn();
 
-    act(() => {
-      queuedStaleCommits.slice(0, staleCallbackCount).forEach((callback) => {
-        callback();
-      });
-    });
+    render(
+      <FocusedWorkoutHarness
+        onOpenExerciseDetails={onOpenExerciseDetails}
+        onOpenExerciseTimerOptions={onOpenExerciseTimerOptions}
+      />,
+    );
 
-    const setOne = useWorkoutStore.getState().activeSetsById['set-1'];
-    expect(setOne?.reps).toBe(8);
-    expect(setOne?.weight).toBe(135);
+    fireEvent.press(screen.getByTestId('stack-preview-next-local'));
+    expect(screen.getByText(/Set 2 of 2/)).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Set RIR to 0'));
+    expect(useWorkoutStore.getState().activeSetsById['set-2']?.actualRir).toBe(
+      0,
+    );
+
+    fireEvent.press(screen.getByText('Notes'));
+    fireEvent.press(screen.getByText(/Timer/));
+    fireEvent.press(screen.getByRole('button', { name: 'Complete Set' }));
+
+    expect(onOpenExerciseDetails).toHaveBeenCalledTimes(1);
+    expect(onOpenExerciseTimerOptions).toHaveBeenCalledTimes(1);
+    expect(
+      useWorkoutStore.getState().activeSetsById['set-2']?.isCompleted,
+    ).toBe(true);
+  });
+
+  it('shows visible numeric inputs instead of the retired wheel editor', () => {
+    seedActiveWorkout(singleExerciseSession);
+    render(<FocusedWorkoutHarness />);
+
+    expect(screen.getByTestId('active-set-weight-input')).toBeTruthy();
+    expect(screen.getByTestId('active-set-reps-input')).toBeTruthy();
+    expect(screen.queryByTestId('active-set-wheel-editor')).toBeNull();
+  });
+
+  it('removes explicit Previous and Next controls from the scene', () => {
+    seedActiveWorkout(singleExerciseSession);
+    render(<FocusedWorkoutHarness />);
+
+    expect(screen.queryByText('Previous')).toBeNull();
+    expect(screen.queryByText('Next')).toBeNull();
   });
 });

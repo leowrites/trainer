@@ -24,6 +24,7 @@ import {
   Container,
   DayTile,
   DisclosureCard,
+  EmojiSafeText,
   Heading,
   Input,
   Label,
@@ -140,6 +141,7 @@ describe('Typography components', () => {
   it.each([
     ['Heading', <Heading key="h">Title</Heading>],
     ['Body', <Body key="b">Body text</Body>],
+    ['EmojiSafeText', <EmojiSafeText key="es">Start 💪 End 🎉</EmojiSafeText>],
     ['Label', <Label key="l">LABEL</Label>],
     ['Caption', <Caption key="c">Caption text</Caption>],
     ['Muted', <Muted key="m">Muted text</Muted>],
@@ -147,6 +149,19 @@ describe('Typography components', () => {
   ])('%s renders its children', (_name, element) => {
     const { toJSON } = render(element);
     expect(toJSON()).toBeTruthy();
+  });
+
+  it('EmojiSafeText preserves accessibility props and renders emoji runs', () => {
+    render(
+      <EmojiSafeText accessibilityLabel="emoji-copy" className="text-muted">
+        Start 💪 End 🎉
+      </EmojiSafeText>,
+    );
+
+    const textNode = screen.getByLabelText('emoji-copy');
+    expect(textNode).toBeTruthy();
+    expect(screen.getByText('💪')).toBeTruthy();
+    expect(screen.getByText('🎉')).toBeTruthy();
   });
 });
 

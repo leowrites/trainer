@@ -11,17 +11,19 @@
 import React, { useEffect } from 'react';
 import { Animated, Text } from 'react-native';
 
-import { useReducedMotionPreference } from '@shared/hooks';
 import { InteractivePressable } from '@shared/components';
+import { useReducedMotionPreference } from '@shared/hooks';
 
 export interface CompleteSetButtonProps {
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 }
 
 export function CompleteSetButton({
   label,
   onPress,
+  disabled = false,
 }: CompleteSetButtonProps): React.JSX.Element {
   const prefersReducedMotion = useReducedMotionPreference();
   const pressScale = React.useRef(new Animated.Value(1)).current;
@@ -30,7 +32,7 @@ export function CompleteSetButton({
   useEffect(() => {
     glowPulse.stopAnimation();
 
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion || disabled) {
       glowPulse.setValue(0);
       return;
     }
@@ -55,10 +57,10 @@ export function CompleteSetButton({
     return () => {
       animation.stop();
     };
-  }, [glowPulse, prefersReducedMotion]);
+  }, [disabled, glowPulse, prefersReducedMotion]);
 
   const animatePressScale = (nextValue: number): void => {
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion || disabled) {
       return;
     }
 
@@ -73,19 +75,19 @@ export function CompleteSetButton({
   return (
     <Animated.View
       style={{ transform: [{ scale: pressScale }] }}
-      className="flex-1"
+      className={`flex-1 ${disabled ? 'opacity-45' : ''}`}
     >
       <InteractivePressable
         accessibilityRole="button"
         accessibilityLabel={label}
-        className="h-12 items-center justify-center rounded-[16px] border border-accent/40 bg-accent px-4"
+        accessibilityState={{ disabled }}
+        className="h-12 items-center justify-center rounded-3xl border-accent bg-accent px-4"
         onPress={onPress}
         onPressIn={() => animatePressScale(1.035)}
         onPressOut={() => animatePressScale(1)}
+        disabled={disabled}
       >
-        <Text className="font-body text-sm font-semibold text-accent-foreground">
-          {label}
-        </Text>
+        <Text className="font-semibold text-accent-foreground">{label}</Text>
       </InteractivePressable>
     </Animated.View>
   );

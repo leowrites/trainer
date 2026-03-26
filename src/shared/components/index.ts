@@ -41,6 +41,7 @@ export {
   DisplayHeading,
   Heading,
   Body,
+  EmojiSafeText,
   Label,
   Caption,
   Meta,

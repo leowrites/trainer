@@ -34,6 +34,7 @@ import type { TextProps } from 'react-native';
 
 import { Heading as GluestackHeading } from '@shared/ui/heading';
 import { Text as GluestackText } from '@shared/ui/text';
+import { splitTextIntoEmojiRuns } from './emoji-safe-text-utils';
 
 interface TypographyProps extends Pick<
   TextProps,
@@ -41,6 +42,11 @@ interface TypographyProps extends Pick<
 > {
   children: React.ReactNode;
   className?: string;
+}
+
+interface EmojiSafeTextProps extends TypographyProps {
+  children: React.ReactNode;
+  style?: TextProps['style'];
 }
 
 // ─── Heading ──────────────────────────────────────────────────────────────────
@@ -110,6 +116,55 @@ export function Body({
       accessibilityLabel={accessibilityLabel}
     >
       {children}
+    </GluestackText>
+  );
+}
+
+export function EmojiSafeText({
+  children,
+  className = '',
+  style,
+  numberOfLines,
+  accessibilityRole = 'text',
+  accessibilityLabel,
+}: EmojiSafeTextProps): React.JSX.Element {
+  if (typeof children !== 'string' && typeof children !== 'number') {
+    return (
+      <GluestackText
+        className={`font-body leading-[20px] text-foreground ${className}`}
+        size="sm"
+        style={style}
+        numberOfLines={numberOfLines}
+        accessibilityRole={accessibilityRole}
+        accessibilityLabel={accessibilityLabel}
+      >
+        {children}
+      </GluestackText>
+    );
+  }
+
+  const rawText = String(children);
+  const runs = splitTextIntoEmojiRuns(rawText);
+
+  return (
+    <GluestackText
+      className={`font-body leading-[20px] text-foreground ${className}`}
+      size="sm"
+      style={style}
+      numberOfLines={numberOfLines}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+    >
+      {runs.map((run, index) => {
+        return (
+          <GluestackText
+            key={`${run.kind}-${index}-${run.text}`}
+            className={run.kind === 'emoji' ? 'font-sans' : 'font-body'}
+          >
+            {run.text}
+          </GluestackText>
+        );
+      })}
     </GluestackText>
   );
 }

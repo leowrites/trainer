@@ -23,7 +23,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 jest.mock('@shared/hooks', () => ({
-  useReducedMotionPreference: () => false,
+  useReducedMotionPreference: () => true,
 }));
 
 jest.mock('@react-navigation/elements', () => ({
@@ -357,7 +357,7 @@ describe('workout screens', () => {
     render(<WorkoutActiveScreen {...props} />);
 
     expect(screen.getAllByText('Bench Press').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Last: 8 x 130').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Target:/)).toBeTruthy();
     expect(screen.queryByTestId('focused-workout-tab-view')).toBeNull();
 
     const setOptions = props.navigation.setOptions as jest.Mock;
@@ -372,17 +372,23 @@ describe('workout screens', () => {
     );
   });
 
-  it('navigates between sets with explicit controls instead of swipe tabs', () => {
+  it('navigates between sets with single-step stack preview taps', () => {
     const props = createWorkoutActiveScreenProps();
 
     seedActiveWorkout();
     render(<WorkoutActiveScreen {...props} />);
 
     expect(screen.getByText(/Set 1 of 2/)).toBeTruthy();
-    fireEvent.press(screen.getByText('Next'));
+    act(() => {
+      fireEvent.press(screen.getByTestId('stack-preview-next-local'));
+    });
     expect(screen.getByText(/Set 2 of 2/)).toBeTruthy();
-    fireEvent.press(screen.getByText('Previous'));
+    act(() => {
+      fireEvent.press(screen.getByTestId('stack-preview-previous-local'));
+    });
     expect(screen.getByText(/Set 1 of 2/)).toBeTruthy();
+    expect(screen.queryByText('Next')).toBeNull();
+    expect(screen.queryByText('Previous')).toBeNull();
   });
 
   it('keeps completion navigation on summary when completion clears workout state', async () => {
