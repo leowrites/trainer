@@ -134,8 +134,8 @@ export const darkTokens: ThemeTokens = {
 
 export const lightTokens: ThemeTokens = {
   bgBase: palette.bg,
-  bgCard: palette.surface,
-  bgElevated: palette.surface2,
+  bgCard: palette.surface2,
+  bgElevated: palette.bgAlt,
   bgBorder: palette.border,
 
   textPrimary: palette.text,

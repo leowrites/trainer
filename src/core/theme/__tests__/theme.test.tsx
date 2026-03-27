@@ -72,7 +72,8 @@ describe('lightTokens', () => {
 
   it('uses the provided light palette values', () => {
     expect(lightTokens.bgBase).toBe(palette.bg);
-    expect(lightTokens.bgCard).toBe(palette.surface);
+    expect(lightTokens.bgCard).toBe(palette.surface2);
+    expect(lightTokens.bgElevated).toBe(palette.bgAlt);
     expect(lightTokens.accent).toBe(palette.primary);
     expect(lightTokens.error).toBe(palette.error);
   });
