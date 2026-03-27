@@ -22,6 +22,7 @@ import {
 import {
   Body,
   Button,
+  Card,
   Container,
   DayTile,
   DisplayHeading,
@@ -340,24 +341,21 @@ export function WorkoutHomeScreen({
               </Surface>
             ) : null}
 
-            {activeGoal ? (
-              <InteractivePressable
-                accessibilityRole="button"
-                accessibilityLabel="Open goals"
-                className="rounded-[22px] border border-surface-border/60 bg-surface px-4 py-4"
+            {activeGoal && (
+              <Card
                 onPress={() =>
                   navigation.navigate('History', {
                     screen: 'Goals',
                   })
                 }
               >
-                <Heading className="text-xl">Goal</Heading>
-                <Body className="mt-3 font-semibold">{activeGoal.title}</Body>
-                <Muted className="mt-2">
-                  {activeGoal.progress.progressText}
-                </Muted>
-              </InteractivePressable>
-            ) : null}
+                <Body className="font-heading text-2xl leading-[28px]">
+                  Goal
+                </Body>
+                <Label className="font-semibold mt-2">{activeGoal.title}</Label>
+                <Body>{activeGoal.progress.progressText}</Body>
+              </Card>
+            )}
           </View>
         </View>
       </ScrollView>
