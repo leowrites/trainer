@@ -1,156 +1,143 @@
-import { TrueSheet } from '@lodev09/react-native-true-sheet';
-import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, TextInput, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
 
-import { useTheme } from '@core/theme/theme-context';
+import type { Exercise } from '@core/database/types';
 import { useExercises } from '@features/routines';
-import { Heading, Muted } from '@shared/components';
-import { ExercisePickerRow } from './exercise-picker-row';
+import {
+  ActionRow,
+  Checkbox,
+  EditorSheet,
+  Heading,
+  Input,
+  Label,
+  Muted,
+} from '@shared/components';
+import { normalizeQuery } from '@shared/utils';
 
 export function ExercisePickerBottomSheet({
   visible,
   exerciseIdsInSession,
   onClose,
-  onAddExercise,
+  onDidClose,
+  onAddExercises,
 }: {
   visible: boolean;
   exerciseIdsInSession: string[];
   onClose: () => void;
-  onAddExercise: (exerciseId: string, exerciseName: string) => void;
-}): React.JSX.Element {
-  const { colorMode, tokens } = useTheme();
+  onDidClose?: () => void;
+  onAddExercises: (exercises: Exercise[]) => void;
+}): React.JSX.Element | null {
   const { exercises, hasLoaded } = useExercises();
-  const sheetRef = React.useRef<TrueSheet>(null);
-  const isPresentedRef = React.useRef(false);
-  const isTransitioningRef = React.useRef(false);
-  const latestVisibleRef = React.useRef(visible);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [query, setQuery] = useState('');
+  const [pendingExerciseIds, setPendingExerciseIds] = useState<string[]>([]);
 
-  const availableExercises = useMemo(
-    () =>
-      exercises.filter(
-        (exercise) => !exerciseIdsInSession.includes(exercise.id),
-      ),
-    [exerciseIdsInSession, exercises],
-  );
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const filteredExercises = useMemo(
-    () =>
-      availableExercises.filter((exercise) => {
-        if (normalizedSearchQuery === '') {
-          return true;
-        }
+  const availableExercises = useMemo(() => {
+    const normalizedQuery = normalizeQuery(query);
 
-        return (
-          exercise.name.toLowerCase().includes(normalizedSearchQuery) ||
-          exercise.muscle_group.toLowerCase().includes(normalizedSearchQuery)
-        );
-      }),
-    [availableExercises, normalizedSearchQuery],
-  );
+    return exercises.filter((exercise) => {
+      if (exerciseIdsInSession.includes(exercise.id)) {
+        return false;
+      }
 
-  useEffect(() => {
-    latestVisibleRef.current = visible;
-  }, [visible]);
+      if (pendingExerciseIds.includes(exercise.id)) {
+        return true;
+      }
+
+      if (normalizedQuery === '') {
+        return true;
+      }
+
+      return (
+        normalizeQuery(exercise.name).includes(normalizedQuery) ||
+        normalizeQuery(exercise.muscle_group).includes(normalizedQuery)
+      );
+    });
+  }, [exerciseIdsInSession, exercises, pendingExerciseIds, query]);
 
   useEffect(() => {
     if (!visible) {
-      setSearchQuery('');
+      setQuery('');
+      setPendingExerciseIds([]);
     }
   }, [visible]);
 
-  useEffect(() => {
-    if (visible) {
-      if (isPresentedRef.current || isTransitioningRef.current) {
-        return;
-      }
+  const handleToggleExercise = useCallback((exerciseId: string): void => {
+    setPendingExerciseIds((current) =>
+      current.includes(exerciseId)
+        ? current.filter((id) => id !== exerciseId)
+        : [...current, exerciseId],
+    );
+  }, []);
 
-      isTransitioningRef.current = true;
-      void sheetRef.current?.present().catch(() => {
-        isTransitioningRef.current = false;
-      });
+  const handleClose = useCallback((): void => {
+    setQuery('');
+    setPendingExerciseIds([]);
+    onClose();
+  }, [onClose]);
 
+  const handleAddSelected = useCallback((): void => {
+    if (pendingExerciseIds.length === 0) {
       return;
     }
 
-    if (!isPresentedRef.current || isTransitioningRef.current) {
-      return;
-    }
-
-    isTransitioningRef.current = true;
-    void sheetRef.current?.dismiss().catch(() => {
-      isTransitioningRef.current = false;
-    });
-  }, [visible]);
+    onAddExercises(
+      exercises.filter((exercise) => pendingExerciseIds.includes(exercise.id)),
+    );
+    handleClose();
+  }, [exercises, handleClose, onAddExercises, pendingExerciseIds]);
 
   return (
-    <TrueSheet
-      ref={sheetRef}
-      detents={['auto', 1]}
-      cornerRadius={28}
-      grabber
-      scrollable
-      backgroundColor={tokens.bgBase}
-      backgroundBlur={colorMode === 'dark' ? 'dark' : 'light'}
-      onDidPresent={() => {
-        isPresentedRef.current = true;
-        isTransitioningRef.current = false;
-      }}
-      onDidDismiss={() => {
-        isPresentedRef.current = false;
-        isTransitioningRef.current = false;
-
-        if (latestVisibleRef.current) {
-          onClose();
-        }
-      }}
+    <EditorSheet
+      visible={visible}
+      onClose={handleClose}
+      onDidDismiss={onDidClose}
+      footer={
+        <ActionRow
+          className="mb-2 p-4"
+          primaryLabel="Add Selected"
+          onPrimaryPress={handleAddSelected}
+          primaryDisabled={pendingExerciseIds.length === 0}
+        />
+      }
     >
-      <View>
-        <View className="p-4">
-          <Heading className="text-lg leading-[20px]">Add Exercise</Heading>
-          <Muted className="mt-1 text-xs leading-[15px]">
-            Pick an exercise to bring into the current session.
-          </Muted>
-          <TextInput
-            accessibilityLabel="Search exercises"
-            className="mt-4 h-12 rounded-[14px]  bg-surface-card px-4 py-0 font-body text-base text-foreground"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search exercises"
-            placeholderTextColor={tokens.textMuted}
-            returnKeyType="search"
-          />
-        </View>
+      <Heading className="text-2xl leading-[28px]">Add Exercises</Heading>
+      <Label className="mt-2">Search exercises</Label>
+      <Muted className="mt-2 text-sm leading-5">
+        Pick an exercise to bring into the current session.
+      </Muted>
+      <Input
+        className="mt-3"
+        accessibilityLabel="Search exercises"
+        placeholder="Search exercises to add"
+        value={query}
+        onChangeText={setQuery}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
 
+      <View className="mt-4 gap-2">
         {!hasLoaded ? (
-          <View className="bg-surface-card px-4 py-4">
-            <Muted className="text-sm">Loading exercises...</Muted>
-          </View>
-        ) : availableExercises.length === 0 ? (
-          <View className="bg-surface-card px-4 py-4">
-            <Muted className="text-sm">All exercises are already added.</Muted>
-          </View>
-        ) : filteredExercises.length === 0 ? (
-          <View className="bg-surface-card px-4 py-4">
-            <Muted className="text-sm">No exercises match your search.</Muted>
-          </View>
+          <Muted className="text-sm">Loading exercises...</Muted>
+        ) : availableExercises.length > 0 ? (
+          availableExercises.map((exercise) => (
+            <Checkbox
+              key={exercise.id}
+              accessibilityLabel={`Add ${exercise.name} to workout`}
+              checked={pendingExerciseIds.includes(exercise.id)}
+              onToggle={() => handleToggleExercise(exercise.id)}
+              label={exercise.name}
+              sublabel={exercise.muscle_group}
+              className="mb-0"
+            />
+          ))
         ) : (
-          <FlatList
-            data={filteredExercises}
-            keyExtractor={(exercise) => exercise.id}
-            renderItem={({ item }) => (
-              <ExercisePickerRow
-                exerciseName={item.name}
-                muscleGroup={item.muscle_group}
-                onPress={() => {
-                  onAddExercise(item.id, item.name);
-                  onClose();
-                }}
-              />
-            )}
-          />
+          <Muted className="text-sm leading-5">
+            {exercises.length === 0
+              ? 'No exercises available yet. Create one from the Plan tab first.'
+              : 'No matching exercises available to add.'}
+          </Muted>
         )}
       </View>
-    </TrueSheet>
+    </EditorSheet>
   );
 }

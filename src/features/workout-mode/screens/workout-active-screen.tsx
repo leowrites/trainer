@@ -51,7 +51,7 @@ export function WorkoutActiveScreen({
   const { title, completedExerciseCount, totalExerciseCount, startTime } =
     useActiveWorkoutHeaderState();
   const {
-    addExercise,
+    addExercises,
     removeExercise,
     addSet,
     deleteSet,
@@ -235,7 +235,7 @@ export function WorkoutActiveScreen({
         }
         onOpenExerciseTimerOptions={showExerciseTimerOptions}
         addSet={addSet}
-        addExercise={addExercise}
+        addExercises={addExercises}
         removeExercise={removeExercise}
         deleteSet={deleteSet}
         updateReps={updateReps}

@@ -5,13 +5,13 @@ import type { Exercise } from '@core/database/types';
 import {
   ActionRow,
   Checkbox,
+  EditorSheet,
   Heading,
   Input,
   Label,
   Muted,
 } from '@shared/components';
 import { normalizeQuery } from '@shared/utils';
-import { EditorSheet } from './editor-sheet';
 
 export function ExercisePickerSheet({
   visible,

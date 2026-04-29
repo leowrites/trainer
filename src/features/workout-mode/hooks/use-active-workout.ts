@@ -97,6 +97,9 @@ export function useEnsureActiveWorkoutLoaded(): void {
 }
 
 export function useActiveWorkoutActions(): {
+  addExercises: (
+    exercisesToAdd: Array<{ exerciseId: string; exerciseName: string }>,
+  ) => void;
   addExercise: (exerciseId: string, exerciseName: string) => void;
   removeExercise: (exerciseId: string) => void;
   addSet: (exerciseId: string) => void;
@@ -219,8 +222,10 @@ export function useActiveWorkoutActions(): {
     };
   }, [flushPendingWrites]);
 
-  const addExercise = useCallback(
-    (exerciseId: string, exerciseName: string): void => {
+  const addExercises = useCallback(
+    (
+      exercisesToAdd: Array<{ exerciseId: string; exerciseName: string }>,
+    ): void => {
       if (isCriticalMutationPendingRef.current) {
         return;
       }
@@ -231,10 +236,18 @@ export function useActiveWorkoutActions(): {
         const currentState = useWorkoutStore.getState();
         const currentActiveSessionId = currentState.activeSessionId;
 
-        if (
-          !currentActiveSessionId ||
-          currentState.activeExercisesById[exerciseId]
-        ) {
+        if (!currentActiveSessionId) {
+          return;
+        }
+
+        const uniqueExercisesToAdd = exercisesToAdd.filter(
+          ({ exerciseId }, index) =>
+            exercisesToAdd.findIndex(
+              (exercise) => exercise.exerciseId === exerciseId,
+            ) === index && !currentState.activeExercisesById[exerciseId],
+        );
+
+        if (uniqueExercisesToAdd.length === 0) {
           return;
         }
 
@@ -245,53 +258,75 @@ export function useActiveWorkoutActions(): {
             currentActiveSessionId,
           ),
         );
-        let newSet: Awaited<ReturnType<typeof createWorkoutSetRecord>> | null =
-          null;
+        const createdExercises: Array<{
+          exerciseId: string;
+          exerciseName: string;
+          position: number;
+          set: Awaited<ReturnType<typeof createWorkoutSetRecord>>;
+        }> = [];
 
         await db.withTransactionAsync(async () => {
-          newSet = await createWorkoutSetRecord(
-            db,
-            currentActiveSessionId,
-            exerciseId,
-            0,
-            0,
-            null,
-            null,
-            null,
-            'optional',
-          );
-          await createWorkoutSessionExerciseRecord(
-            db,
-            currentActiveSessionId,
-            exerciseId,
-            nextExercisePosition,
-            DEFAULT_EXERCISE_TIMER_SECONDS,
-            'double_progression',
-            null,
-          );
+          for (const [index, exercise] of uniqueExercisesToAdd.entries()) {
+            const newSet = await createWorkoutSetRecord(
+              db,
+              currentActiveSessionId,
+              exercise.exerciseId,
+              0,
+              0,
+              null,
+              null,
+              null,
+              'optional',
+            );
+            const position = nextExercisePosition + index;
+
+            await createWorkoutSessionExerciseRecord(
+              db,
+              currentActiveSessionId,
+              exercise.exerciseId,
+              position,
+              DEFAULT_EXERCISE_TIMER_SECONDS,
+              'double_progression',
+              null,
+            );
+
+            createdExercises.push({
+              exerciseId: exercise.exerciseId,
+              exerciseName: exercise.exerciseName,
+              position,
+              set: newSet,
+            });
+          }
         });
 
-        if (!newSet) {
-          return;
-        }
-
-        addExerciseToStore({
-          exerciseId,
-          exerciseName,
-          restSeconds: DEFAULT_EXERCISE_TIMER_SECONDS,
-          progressionPolicy: 'double_progression',
-          targetRir: null,
-          targetSets: null,
-          targetReps: null,
-          targetRepsMin: null,
-          targetRepsMax: null,
-          sets: [newSet],
-        });
+        createdExercises
+          .sort((left, right) => left.position - right.position)
+          .forEach(({ exerciseId, exerciseName, set }) => {
+            addExerciseToStore({
+              exerciseId,
+              exerciseName,
+              restSeconds: DEFAULT_EXERCISE_TIMER_SECONDS,
+              progressionPolicy: 'double_progression',
+              targetRir: null,
+              targetSets: null,
+              targetReps: null,
+              targetRepsMin: null,
+              targetRepsMax: null,
+              sets: [set],
+            });
+          });
       }).catch((error: unknown) => {
-        console.error('[Workout] Failed to add exercise:', error);
+        console.error('[Workout] Failed to add exercises:', error);
       });
     },
     [addExerciseToStore, db, enqueueMutation, flushPendingWrites],
+  );
+
+  const addExercise = useCallback(
+    (exerciseId: string, exerciseName: string): void => {
+      addExercises([{ exerciseId, exerciseName }]);
+    },
+    [addExercises],
   );
 
   const removeExercise = useCallback(
@@ -540,6 +575,7 @@ export function useActiveWorkoutActions(): {
 
   return useMemo(
     () => ({
+      addExercises,
       addExercise,
       removeExercise,
       addSet,
@@ -555,6 +591,7 @@ export function useActiveWorkoutActions(): {
       deleteWorkout,
     }),
     [
+      addExercises,
       addExercise,
       removeExercise,
       addSet,

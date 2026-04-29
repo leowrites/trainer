@@ -10,7 +10,6 @@
 import React from 'react';
 import { Modal, ScrollView, View } from 'react-native';
 
-import { Divider } from '@/shared/ui/divider';
 import { Body, Button, Heading, Muted } from '@shared/components';
 import type { ActiveWorkoutOverview, ActiveWorkoutSummary } from '../types';
 import { WorkoutOverviewSetRow } from './workout-overview-set-row';
@@ -101,10 +100,10 @@ export function WorkoutOverviewModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 justify-end bg-black/40">
-        <View className="max-h-[80%] rounded-t-[28px] border border-surface-border bg-surface-card px-5 pt-5">
-          <View className="flex-row items-center justify-between gap-3">
-            <Heading className="text-2xl">Overview</Heading>
-            <Button size="sm" variant="secondary" onPress={onClose}>
+        <View className="max-h-[80%] rounded-t-[28px] bg-surface-card p-4">
+          <View className="flex-row items-center justify-between">
+            <Heading className="text-xl">Overview</Heading>
+            <Button size="sm" variant="ghost" onPress={onClose}>
               Close
             </Button>
           </View>
@@ -126,7 +125,7 @@ export function WorkoutOverviewModal({
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
-            <View className="gap-4 pb-4">
+            <View className="gap-4 pb-2">
               {overview === null ? (
                 <View className="rounded-[20px] px-4 py-4">
                   <Muted className="text-sm">Loading workout details...</Muted>
@@ -135,7 +134,7 @@ export function WorkoutOverviewModal({
                 overview.exercises.map((exercise) => (
                   <View
                     key={exercise.exerciseId}
-                    className="rounded-[20px] px-4 py-4"
+                    className="rounded-[20px] py-2"
                   >
                     <View className="flex-row items-start justify-between gap-3">
                       <View className="flex-1">
@@ -178,14 +177,12 @@ export function WorkoutOverviewModal({
                         Remove exercise
                       </Button>
                     </View>
-                    <Divider className="mt-4" />
                   </View>
                 ))
               )}
 
-              <View className="pt-2">
+              <View>
                 <Button
-                  size="sm"
                   variant="danger"
                   onPress={onDeleteWorkout}
                   accessibilityLabel="Delete workout"

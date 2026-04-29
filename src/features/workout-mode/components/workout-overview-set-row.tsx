@@ -43,7 +43,9 @@ export function WorkoutOverviewSetRow({
         className={`flex-1 rounded-[18px] border px-4 py-4 ${
           isCurrent
             ? 'border-accent bg-accent/10'
-            : 'border-surface-border bg-surface-elevated'
+            : isCompleted
+              ? 'border-success bg-success/10'
+              : 'border-surface-border bg-surface-elevated'
         }`}
         onPress={onJump}
       >
@@ -56,7 +58,7 @@ export function WorkoutOverviewSetRow({
           </View>
           <View
             className={`h-2.5 w-2.5 rounded-full ${
-              isCompleted ? 'bg-accent' : 'bg-surface-border'
+              isCompleted ? 'bg-success' : 'bg-surface-border'
             }`}
           />
         </View>

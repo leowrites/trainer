@@ -45,7 +45,9 @@ export interface ActiveWorkoutContentProps {
   onOpenExerciseDetails: (exerciseId: string) => void;
   onOpenExerciseTimerOptions: (exerciseId: string) => void;
   addSet: (exerciseId: string) => void;
-  addExercise: (exerciseId: string, exerciseName: string) => void;
+  addExercises: (
+    exercisesToAdd: Array<{ exerciseId: string; exerciseName: string }>,
+  ) => void;
   removeExercise: (exerciseId: string) => void;
   deleteSet: (setId: string) => void;
   updateReps: (setId: string, reps: number) => void;
@@ -112,7 +114,7 @@ export function ActiveWorkoutContent({
   onOpenExerciseDetails,
   onOpenExerciseTimerOptions,
   addSet,
-  addExercise,
+  addExercises,
   removeExercise,
   deleteSet,
   updateReps,
@@ -133,6 +135,9 @@ export function ActiveWorkoutContent({
   const [showOverview, setShowOverview] = useState(false);
   const [isOverviewContentReady, setIsOverviewContentReady] = useState(false);
   const [showExerciseSheet, setShowExerciseSheet] = useState(false);
+  const [queueExerciseSheetOpen, setQueueExerciseSheetOpen] = useState(false);
+  const [restoreOverviewOnSheetClose, setRestoreOverviewOnSheetClose] =
+    useState(false);
   const [focusedSetId, setFocusedSetId] = useState<string | null>(null);
   const focusedExerciseId = useActiveWorkoutSetExerciseId(focusedSetId ?? '');
   const previousPerformanceByExerciseId = usePreviousExercisePerformance(
@@ -193,6 +198,21 @@ export function ActiveWorkoutContent({
   }, [showOverview]);
 
   useEffect(() => {
+    if (!queueExerciseSheetOpen || showOverview) {
+      return;
+    }
+
+    const openSheetTimeout = setTimeout(() => {
+      setShowExerciseSheet(true);
+      setQueueExerciseSheetOpen(false);
+    }, 0);
+
+    return () => {
+      clearTimeout(openSheetTimeout);
+    };
+  }, [queueExerciseSheetOpen, showOverview]);
+
+  useEffect(() => {
     return () => {
       flushPendingWrites();
     };
@@ -213,6 +233,26 @@ export function ActiveWorkoutContent({
       }
     });
   }, [openOverview, perfLabEnabled]);
+
+  const handleOpenExercisePicker = useCallback((): void => {
+    void flushPendingWrites();
+    setShowOverview(false);
+    setRestoreOverviewOnSheetClose(true);
+    setQueueExerciseSheetOpen(true);
+  }, [flushPendingWrites]);
+
+  const handleAddExercisesToWorkout = useCallback(
+    (exercises: Array<{ id: string; name: string }>): void => {
+      flushPendingWrites();
+      addExercises(
+        exercises.map((exercise) => ({
+          exerciseId: exercise.id,
+          exerciseName: exercise.name,
+        })),
+      );
+    },
+    [addExercises, flushPendingWrites],
+  );
 
   const hasFocusableSet = setIds.length > 0;
 
@@ -261,11 +301,7 @@ export function ActiveWorkoutContent({
               overview={overview}
               currentSetId={null}
               onClose={() => setShowOverview(false)}
-              onAddExercise={() => {
-                flushPendingWrites();
-                setShowOverview(false);
-                setShowExerciseSheet(true);
-              }}
+              onAddExercise={handleOpenExercisePicker}
               onDeleteWorkout={() => {
                 flushPendingWrites();
                 onDeleteWorkout();
@@ -289,11 +325,17 @@ export function ActiveWorkoutContent({
           <ExercisePickerBottomSheet
             visible={showExerciseSheet}
             exerciseIdsInSession={exerciseIdsInSession}
-            onClose={() => setShowExerciseSheet(false)}
-            onAddExercise={(exerciseId, exerciseName) => {
-              flushPendingWrites();
-              addExercise(exerciseId, exerciseName);
+            onClose={() => {
+              setShowExerciseSheet(false);
+              setQueueExerciseSheetOpen(false);
             }}
+            onDidClose={() => {
+              if (restoreOverviewOnSheetClose) {
+                openOverview();
+                setRestoreOverviewOnSheetClose(false);
+              }
+            }}
+            onAddExercises={handleAddExercisesToWorkout}
           />
         </View>
       </Container>
@@ -331,11 +373,7 @@ export function ActiveWorkoutContent({
           overview={overview}
           currentSetId={focusedSetId}
           onClose={() => setShowOverview(false)}
-          onAddExercise={() => {
-            flushPendingWrites();
-            setShowOverview(false);
-            setShowExerciseSheet(true);
-          }}
+          onAddExercise={handleOpenExercisePicker}
           onDeleteWorkout={() => {
             flushPendingWrites();
             onDeleteWorkout();
@@ -358,17 +396,21 @@ export function ActiveWorkoutContent({
         />
       ) : null}
 
-      {showExerciseSheet ? (
-        <ExercisePickerBottomSheet
-          visible={showExerciseSheet}
-          exerciseIdsInSession={exerciseIdsInSession}
-          onClose={() => setShowExerciseSheet(false)}
-          onAddExercise={(exerciseId, exerciseName) => {
-            flushPendingWrites();
-            addExercise(exerciseId, exerciseName);
-          }}
-        />
-      ) : null}
+      <ExercisePickerBottomSheet
+        visible={showExerciseSheet}
+        exerciseIdsInSession={exerciseIdsInSession}
+        onClose={() => {
+          setShowExerciseSheet(false);
+          setQueueExerciseSheetOpen(false);
+        }}
+        onDidClose={() => {
+          if (restoreOverviewOnSheetClose) {
+            openOverview();
+            setRestoreOverviewOnSheetClose(false);
+          }
+        }}
+        onAddExercises={handleAddExercisesToWorkout}
+      />
     </Container>
   );
 }

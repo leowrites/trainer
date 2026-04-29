@@ -1,19 +1,34 @@
+/**
+ * EditorSheet
+ *
+ * CALLING SPEC:
+ * - render a reusable TrueSheet-backed editor surface
+ * - manage present/dismiss lifecycle from a simple `visible` prop
+ * - provide a shared scrollable content area with optional footer actions
+ * - side effects: presents and dismisses the native sheet instance
+ */
+
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
 
 import { useTheme } from '@core/theme/theme-context';
 
+export interface EditorSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  onDidDismiss?: () => void;
+  footer?: React.ReactElement | null;
+  children: React.ReactNode;
+}
+
 export function EditorSheet({
   visible,
   onClose,
+  onDidDismiss,
   footer,
   children,
-}: React.PropsWithChildren<{
-  visible: boolean;
-  onClose: () => void;
-  footer?: React.ReactElement | null;
-}>): React.JSX.Element | null {
+}: EditorSheetProps): React.JSX.Element | null {
   const { colorMode, tokens } = useTheme();
   const sheetRef = useRef<TrueSheet>(null);
   const latestVisibleRef = useRef(visible);
@@ -82,6 +97,7 @@ export function EditorSheet({
         isPresentedRef.current = false;
         isTransitioningRef.current = false;
         setShouldRender(false);
+        onDidDismiss?.();
 
         if (latestVisibleRef.current) {
           onClose();

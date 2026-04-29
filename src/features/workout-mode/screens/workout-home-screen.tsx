@@ -198,7 +198,7 @@ export function WorkoutHomeScreen({
     <Container edges={['left', 'right']} className="px-0">
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 0 }}
+        contentContainerStyle={{ paddingBottom: 0 }}
       >
         <View>
           <Meta>{heroTitle}</Meta>
@@ -255,11 +255,6 @@ export function WorkoutHomeScreen({
 
         <View className="mt-3 flex-1 rounded-[28px] py-5">
           <View className="gap-3">
-            <View className="px-1 py-1">
-              <Heading>Insights</Heading>
-              <Body>{homePrimaryInsight.text}</Body>
-            </View>
-
             <View className="mt-2 flex-row justify-between gap-1.5">
               {weekCalendarDays.map((day) => (
                 <DayTile
@@ -279,6 +274,11 @@ export function WorkoutHomeScreen({
                 />
               ))}
             </View>
+            <View className="px-1 py-1">
+              <Label>Insights</Label>
+              <Body>{homePrimaryInsight.text}</Body>
+            </View>
+
             <View className="flex-row gap-2.5">
               <Surface className="flex-1 rounded-[16px] bg-surface px-3 py-2.5">
                 <Label>This week</Label>

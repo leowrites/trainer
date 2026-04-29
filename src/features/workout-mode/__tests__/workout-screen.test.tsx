@@ -91,18 +91,42 @@ jest.mock('@lodev09/react-native-true-sheet', () => {
   return {
     TrueSheet: React.forwardRef(
       (
-        { children }: React.PropsWithChildren,
+        {
+          children,
+          footer,
+          onDidDismiss,
+          onDidPresent,
+        }: React.PropsWithChildren<{
+          footer?: React.ReactNode;
+          onDidDismiss?: () => void;
+          onDidPresent?: () => void;
+        }>,
         ref: React.ForwardedRef<{
           present: () => Promise<void>;
           dismiss: () => Promise<void>;
         }>,
       ) => {
         React.useImperativeHandle(ref, () => ({
-          present: async () => undefined,
-          dismiss: async () => undefined,
+          present: async () => {
+            onDidPresent?.();
+          },
+          dismiss: async () => {
+            onDidDismiss?.();
+          },
         }));
 
-        return <ReactNative.View>{children}</ReactNative.View>;
+        return (
+          <ReactNative.View>
+            {children}
+            <ReactNative.Pressable
+              accessibilityLabel="Dismiss sheet"
+              onPress={() => {
+                onDidDismiss?.();
+              }}
+            />
+            {footer}
+          </ReactNative.View>
+        );
       },
     ),
   };
@@ -210,6 +234,7 @@ describe('workout screens', () => {
     useWorkoutStore.getState().endWorkout();
     mockUseEnsureActiveWorkoutLoaded.mockImplementation(() => undefined);
     mockUseActiveWorkoutActions.mockReturnValue({
+      addExercises: jest.fn(),
       addExercise: jest.fn(),
       removeExercise: jest.fn(),
       addSet: jest.fn(),
@@ -399,6 +424,7 @@ describe('workout screens', () => {
     });
 
     mockUseActiveWorkoutActions.mockReturnValue({
+      addExercises: jest.fn(),
       addExercise: jest.fn(),
       removeExercise: jest.fn(),
       addSet: jest.fn(),
@@ -448,7 +474,7 @@ describe('workout screens', () => {
     seedActiveWorkout();
     render(<WorkoutActiveScreen {...props} />);
 
-    fireEvent.press(screen.getByText('Overview'));
+    fireEvent.press(screen.getAllByText('Overview')[0]);
 
     expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
     expect(screen.getByText('Delete workout')).toBeTruthy();
@@ -460,7 +486,7 @@ describe('workout screens', () => {
     seedActiveWorkout();
     render(<WorkoutActiveScreen {...props} />);
 
-    fireEvent.press(screen.getByText('Overview'));
+    fireEvent.press(screen.getAllByText('Overview')[0]);
 
     expect(screen.getByText('Loading workout details...')).toBeTruthy();
     expect(screen.queryByLabelText('Jump to Set 1')).toBeNull();
@@ -478,7 +504,7 @@ describe('workout screens', () => {
     seedActiveWorkout();
     render(<WorkoutActiveScreen {...props} />);
 
-    fireEvent.press(screen.getByText('Overview'));
+    fireEvent.press(screen.getAllByText('Overview')[0]);
 
     act(() => {
       jest.runOnlyPendingTimers();
@@ -488,6 +514,268 @@ describe('workout screens', () => {
 
     expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
     expect(screen.getByText(/Set 2 of 2/)).toBeTruthy();
+  });
+
+  it('opens the picker from overview and returns to overview after adding exercises', () => {
+    const props = createWorkoutActiveScreenProps();
+    const addExercises = jest.fn();
+
+    mockUseActiveWorkoutActions.mockReturnValue({
+      addExercises,
+      addExercise: jest.fn(),
+      removeExercise: jest.fn(),
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateExerciseRestSeconds: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      updateActualRir: jest.fn(),
+      toggleSetLogged: jest.fn(),
+      flushPendingWrites: jest.fn().mockResolvedValue(undefined),
+      isCriticalMutationPending: false,
+      completeWorkout: jest.fn().mockResolvedValue('completed-session-1'),
+      deleteWorkout: jest.fn().mockResolvedValue(true),
+    });
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-2',
+          name: 'Incline Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+        {
+          id: 'exercise-3',
+          name: 'Cable Fly',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+      ],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+
+    seedActiveWorkout();
+    render(<WorkoutActiveScreen {...props} />);
+
+    fireEvent.press(screen.getByText('Overview'));
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    fireEvent.press(screen.getByLabelText('Add exercise'));
+
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(screen.getByText('Add Exercises')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Add Incline Press to workout'));
+    fireEvent.press(screen.getByLabelText('Add Cable Fly to workout'));
+    fireEvent.press(screen.getByText('Add Selected'));
+
+    expect(addExercises).toHaveBeenCalledWith([
+      { exerciseId: 'exercise-2', exerciseName: 'Incline Press' },
+      { exerciseId: 'exercise-3', exerciseName: 'Cable Fly' },
+    ]);
+
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
+  });
+
+  it('filters exercises already in the session from the picker', () => {
+    const props = createWorkoutActiveScreenProps();
+
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-1',
+          name: 'Bench Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+        {
+          id: 'exercise-2',
+          name: 'Incline Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+      ],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+
+    seedActiveWorkout();
+    render(<WorkoutActiveScreen {...props} />);
+
+    fireEvent.press(screen.getByText('Overview'));
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    fireEvent.press(screen.getByLabelText('Add exercise'));
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(screen.queryByLabelText('Add Bench Press to workout')).toBeNull();
+    expect(screen.getByLabelText('Add Incline Press to workout')).toBeTruthy();
+  });
+
+  it('clears pending picker state when the sheet closes', () => {
+    const props = createWorkoutActiveScreenProps();
+    const addExercises = jest.fn();
+
+    mockUseActiveWorkoutActions.mockReturnValue({
+      addExercises,
+      addExercise: jest.fn(),
+      removeExercise: jest.fn(),
+      addSet: jest.fn(),
+      deleteSet: jest.fn(),
+      updateExerciseRestSeconds: jest.fn(),
+      updateReps: jest.fn(),
+      updateWeight: jest.fn(),
+      updateActualRir: jest.fn(),
+      toggleSetLogged: jest.fn(),
+      flushPendingWrites: jest.fn().mockResolvedValue(undefined),
+      isCriticalMutationPending: false,
+      completeWorkout: jest.fn().mockResolvedValue('completed-session-1'),
+      deleteWorkout: jest.fn().mockResolvedValue(true),
+    });
+
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-2',
+          name: 'Incline Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+        {
+          id: 'exercise-3',
+          name: 'Lat Pulldown',
+          muscle_group: 'Back',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+      ],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+
+    seedActiveWorkout();
+    render(<WorkoutActiveScreen {...props} />);
+
+    fireEvent.press(screen.getByText('Overview'));
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    fireEvent.press(screen.getByLabelText('Add exercise'));
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Search exercises to add'),
+      'incline',
+    );
+    fireEvent.press(screen.getByLabelText('Add Incline Press to workout'));
+
+    expect(screen.getByDisplayValue('incline')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Add Selected' }).props
+        .accessibilityState.disabled,
+    ).toBe(false);
+
+    fireEvent.press(screen.getByText('Add Selected'));
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    fireEvent.press(screen.getAllByText('Overview')[0]);
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    fireEvent.press(screen.getByLabelText('Add exercise'));
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(
+      screen.getByPlaceholderText('Search exercises to add').props.value,
+    ).toBe('');
+    expect(screen.queryByDisplayValue('incline')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Add Selected' }).props
+        .accessibilityState.disabled,
+    ).toBe(true);
+  });
+
+  it('returns to overview when the picker is dismissed by swipe', () => {
+    const props = createWorkoutActiveScreenProps();
+
+    mockUseExercises.mockReturnValue({
+      exercises: [
+        {
+          id: 'exercise-2',
+          name: 'Incline Press',
+          muscle_group: 'Chest',
+          how_to: null,
+          equipment: null,
+          is_deleted: 0,
+        },
+      ],
+      hasLoaded: true,
+      refresh: jest.fn(),
+      createExercise: jest.fn(),
+      updateExercise: jest.fn(),
+      deleteExercise: jest.fn(),
+    });
+
+    seedActiveWorkout();
+    render(<WorkoutActiveScreen {...props} />);
+
+    fireEvent.press(screen.getByText('Overview'));
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    fireEvent.press(screen.getByLabelText('Add exercise'));
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(screen.getByText('Add Exercises')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Dismiss sheet'));
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Add Exercises')).toBeNull();
   });
 
   it('keeps the overview mounted when delete workout is pressed', () => {

@@ -65,6 +65,9 @@ export type { InteractivePressableProps } from './interactive-pressable';
 export { ActionRow } from './action-row';
 export type { ActionRowProps } from './action-row';
 
+export { EditorSheet } from './editor-sheet';
+export type { EditorSheetProps } from './editor-sheet';
+
 export { ExerciseCard } from './exercise-card';
 export type {
   ExerciseCardProps,
